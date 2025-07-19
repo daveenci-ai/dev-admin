@@ -20,6 +20,30 @@
 
 ---
 
+## ✅ ADDITIONAL FIX: NEXT.JS CLI AVAILABILITY (Dec 2024)
+
+**🔧 FIXED:** "next: not found" error during Render build
+
+**Issue**: After git repository fix, deployment failed with:
+```
+> next build
+sh: 1: next: not found
+```
+
+**Root Cause**: Render couldn't find the `next` CLI command in PATH
+
+**Solution**: Updated all package.json scripts to use `npx`:
+- ✅ `"build": "npx next build"` (was `"build": "next build"`)  
+- ✅ `"start": "npx next start"` (was `"start": "next start"`)
+- ✅ `"dev": "npx next dev"` (was `"dev": "next dev"`)
+- ✅ `"lint": "npx next lint"` (was `"lint": "next lint"`)
+
+**Result**: `npx` ensures locally installed Next.js CLI is found and executed
+
+**Status**: Ready for deployment retry - both git and CLI issues resolved!
+
+---
+
 ## 🚨 CURRENT STATUS & DEPLOYMENT UPDATES
 
 ### **Latest Update: "next: not found" Error (Dec 2024)**
