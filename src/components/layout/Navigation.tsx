@@ -33,13 +33,13 @@ export function Navigation() {
 
   return (
     <nav className="bg-white shadow-sm border-b border-gray-200">
-      <div className="max-w-7xl mx-auto px-6 lg:px-8">
-        <div className="flex justify-between h-16">
-          <div className="flex">
-            <div className="flex-shrink-0 flex items-center">
-              <h1 className="text-xl font-bold text-gray-900">DaVeenci Admin</h1>
+      <div className="w-full px-6 lg:px-8">
+        <div className="flex justify-between items-center h-16">
+          <div className="flex items-center">
+            <div className="flex-shrink-0">
+              <h1 className="text-xl font-bold text-gray-900">Admin Dashboard</h1>
             </div>
-            <div className="hidden sm:ml-8 sm:flex sm:space-x-8">
+            <div className="hidden sm:ml-12 sm:flex sm:space-x-8">
               {navigation.map((item) => {
                 const Icon = item.icon
                 const isActive = pathname === item.href
@@ -65,7 +65,7 @@ export function Navigation() {
           
           <div className="flex items-center">
             {session?.user && (
-              <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-6">
                 <span className="text-sm font-medium text-gray-700">
                   {session.user.name || session.user.email}
                 </span>

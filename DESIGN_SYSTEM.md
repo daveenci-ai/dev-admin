@@ -190,6 +190,29 @@ This document serves as the comprehensive design system guide for the DaVeenci A
 }
 ```
 
+### Sentiment Indicators
+Visual indicators for user sentiment using consistent lucide-react icons:
+
+```css
+/* Sentiment Icon Styling */
+.sentiment-icon {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+
+.sentiment-good { color: var(--success); }     /* Green - CheckCircle */
+.sentiment-neutral { color: var(--warning); }  /* Yellow - AlertCircle */
+.sentiment-bad { color: var(--danger); }       /* Red - XCircle */
+```
+
+**Icon Mapping:**
+- **Good Sentiment**: `CheckCircle` icon with green color (`text-green-600`)
+- **Neutral Sentiment**: `AlertCircle` icon with yellow color (`text-yellow-600`)  
+- **Bad Sentiment**: `XCircle` icon with red color (`text-red-600`)
+
+**Usage Pattern**: Place sentiment icons before primary text/names in tables or lists to provide immediate visual context.
+
 ### Cards
 ```css
 .card {
@@ -205,11 +228,39 @@ This document serves as the comprehensive design system guide for the DaVeenci A
   border-color: var(--gray-300);
 }
 
-/* Metric Cards */
+/* Metric Cards - Standard */
 .metric-card {
   padding: 1.5rem;
   text-align: center;
 }
+
+/* Interactive Filter Cards */
+.filter-card {
+  padding: 1rem;
+  text-align: center;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+}
+
+.filter-card:hover {
+  background-color: var(--semantic-light-bg);
+  border-bottom-color: var(--semantic-color);
+}
+
+.filter-card.active {
+  background-color: var(--semantic-light-bg);
+  border-bottom-color: var(--semantic-color);
+}
+
+/* Status-specific filter cards */
+.filter-card.churned { --semantic-color: var(--danger); --semantic-light-bg: var(--danger-light); }
+.filter-card.declined { --semantic-color: var(--danger); --semantic-light-bg: var(--danger-light); }
+.filter-card.unqualified { --semantic-color: var(--info); --semantic-light-bg: var(--info-light); }
+.filter-card.prospect { --semantic-color: var(--primary-blue); --semantic-light-bg: var(--blue-50); }
+.filter-card.lead { --semantic-color: var(--warning); --semantic-light-bg: var(--warning-light); }
+.filter-card.opportunity { --semantic-color: #7C3AED; --semantic-light-bg: #F3E8FF; }
+.filter-card.client { --semantic-color: var(--success); --semantic-light-bg: var(--success-light); }
 
 /* Data Cards */
 .data-card {
@@ -348,6 +399,34 @@ All spacing should use multiples of 8px (0.5rem) for consistency:
 .container-4xl { max-width: 56rem; }           /* 896px - Forms, narrow content */
 ```
 
+## 🎯 Interactive Patterns
+
+### Filter Cards
+Interactive cards that act as both display and filter controls:
+
+**Pattern**: Statistics cards that users can click to filter data
+**Visual States**:
+- **Default**: White background, subtle border, semantic bottom border on hover
+- **Active**: Semantic background color, semantic bottom border
+- **Hover**: Light semantic background, semantic bottom border
+
+**Implementation**:
+```jsx
+<div 
+  onClick={() => handleFilter(item.value)}
+  className={`filter-card ${isActive ? 'active' : ''} ${item.status}`}
+>
+  <div className="text-xl font-bold text-gray-900">{item.count}</div>
+  <div className="text-xs font-medium text-gray-500 uppercase">{item.label}</div>
+</div>
+```
+
+### Reset Controls
+Always provide a way to clear filters:
+- **Button Style**: Secondary button styling
+- **Placement**: Near filter controls
+- **Label**: "Reset" or "Clear Filters"
+
 ## 🎯 Usage Guidelines
 
 ### Do's ✅
@@ -357,6 +436,9 @@ All spacing should use multiples of 8px (0.5rem) for consistency:
 - Use semantic colors for status indicators
 - Ensure sufficient color contrast (4.5:1 minimum)
 - Test components at different screen sizes
+- **Make data cards interactive when they can filter or drill down**
+- **Provide reset functionality for any filtering system**
+- **Use consistent bottom borders for visual hierarchy**
 
 ### Don'ts ❌
 - Don't use custom colors outside the palette
@@ -364,6 +446,8 @@ All spacing should use multiples of 8px (0.5rem) for consistency:
 - Don't use pure black (#000000) for text
 - Don't forget focus states for accessibility
 - Don't use inconsistent spacing values
+- **Don't make cards clickable without clear visual feedback**
+- **Don't implement filters without a reset mechanism**
 
 ## 📱 Responsive Design
 
@@ -414,6 +498,61 @@ All interactive elements must have visible focus indicators:
   <div className="text-2xl font-bold text-blue-600">585</div>
   <div className="text-xs font-medium text-gray-500 uppercase">Prospects</div>
   <div className="text-xs text-gray-400">+100% 28d</div>
+</div>
+```
+
+### Interactive Filter Card Component
+```jsx
+<div 
+  onClick={() => handleStatusFilter('prospect')}
+  className={`bg-white p-4 rounded-lg shadow-sm border border-gray-200 border-b-2 cursor-pointer transition-all duration-200 ${
+    isActive 
+      ? 'bg-blue-50 border-b-blue-400' 
+      : 'hover:bg-blue-50 border-b-blue-400'
+  }`}
+>
+  <div className="text-xl font-bold text-gray-900">585</div>
+  <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">Prospects</div>
+  <div className="text-xs text-gray-400">+100% 28d</div>
+</div>
+```
+
+### Filter Reset Button
+```jsx
+<button
+  onClick={resetFilters}
+  className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-all duration-200"
+>
+  Reset
+</button>
+```
+
+### Sentiment Icon Implementation
+```jsx
+import { CheckCircle, AlertCircle, XCircle } from 'lucide-react'
+
+const getSentimentIcon = (sentiment: string) => {
+  const sentimentLower = sentiment?.toLowerCase() || 'neutral'
+  
+  switch (sentimentLower) {
+    case 'good':
+      return <CheckCircle className="h-4 w-4 text-green-600" />
+    case 'bad':
+      return <XCircle className="h-4 w-4 text-red-600" />
+    case 'neutral':
+    default:
+      return <AlertCircle className="h-4 w-4 text-yellow-600" />
+  }
+}
+
+// Usage in table/list
+<div className="flex items-center">
+  <div className="mr-3 flex-shrink-0">
+    {getSentimentIcon(contact.sentiment)}
+  </div>
+  <div>
+    <div className="text-sm font-medium text-gray-900">{contact.name}</div>
+  </div>
 </div>
 ```
 

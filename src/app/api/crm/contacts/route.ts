@@ -34,6 +34,7 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search') || ''
     const status = searchParams.get('status')
     const source = searchParams.get('source')
+    const dateRange = searchParams.get('dateRange')
 
     const skip = (page - 1) * limit
 
@@ -54,6 +55,17 @@ export async function GET(request: NextRequest) {
 
     if (source && source !== 'all') {
       where.source = { contains: source, mode: 'insensitive' }
+    }
+
+    // Date range filtering
+    if (dateRange && dateRange !== 'all') {
+      const days = parseInt(dateRange)
+      const startDate = new Date()
+      startDate.setDate(startDate.getDate() - days)
+      
+      where.createdAt = {
+        gte: startDate
+      }
     }
 
     // Get contacts with touchpoints
