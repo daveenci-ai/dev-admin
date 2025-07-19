@@ -89,7 +89,7 @@ export default function CRMPage() {
   const getStatusColor = (status: string) => {
     const colors = {
       CHURNED: 'bg-red-100 text-red-800',
-      DECLINED: 'bg-red-100 text-red-800',
+      DECLINED: 'bg-red-100 text-red-800', 
       UNQUALIFIED: 'bg-gray-100 text-gray-800',
       PROSPECT: 'bg-blue-100 text-blue-800',
       LEAD: 'bg-yellow-100 text-yellow-800',
@@ -100,43 +100,88 @@ export default function CRMPage() {
   }
 
   const statCards = [
-    { label: 'CHURNED', value: stats.churned, color: 'text-red-600' },
-    { label: 'DECLINED', value: stats.declined, color: 'text-red-600' },
-    { label: 'UNQUALIFIED', value: stats.unqualified, color: 'text-gray-600' },
-    { label: 'PROSPECTS', value: stats.prospects, color: 'text-blue-600' },
-    { label: 'LEADS', value: stats.leads, color: 'text-yellow-600' },
-    { label: 'OPPORTUNITIES', value: stats.opportunities, color: 'text-purple-600' },
-    { label: 'CLIENTS', value: stats.clients, color: 'text-green-600' }
+    { 
+      label: 'CHURNED', 
+      value: stats.churned, 
+      color: 'text-red-600',
+      bgColor: 'hover:bg-red-50',
+      borderColor: 'hover:border-red-200'
+    },
+    { 
+      label: 'DECLINED', 
+      value: stats.declined, 
+      color: 'text-red-600',
+      bgColor: 'hover:bg-red-50',
+      borderColor: 'hover:border-red-200'
+    },
+    { 
+      label: 'UNQUALIFIED', 
+      value: stats.unqualified, 
+      color: 'text-gray-600',
+      bgColor: 'hover:bg-gray-50',
+      borderColor: 'hover:border-gray-300'
+    },
+    { 
+      label: 'PROSPECTS', 
+      value: stats.prospects, 
+      color: 'text-blue-600',
+      bgColor: 'hover:bg-blue-50',
+      borderColor: 'hover:border-blue-200'
+    },
+    { 
+      label: 'LEADS', 
+      value: stats.leads, 
+      color: 'text-yellow-600',
+      bgColor: 'hover:bg-yellow-50',
+      borderColor: 'hover:border-yellow-200'
+    },
+    { 
+      label: 'OPPORTUNITIES', 
+      value: stats.opportunities, 
+      color: 'text-purple-600',
+      bgColor: 'hover:bg-purple-50',
+      borderColor: 'hover:border-purple-200'
+    },
+    { 
+      label: 'CLIENTS', 
+      value: stats.clients, 
+      color: 'text-green-600',
+      bgColor: 'hover:bg-green-50',
+      borderColor: 'hover:border-green-200'
+    }
   ]
 
   return (
     <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
       {/* Statistics Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-6 mb-8">
         {statCards.map((stat, index) => (
-          <div key={stat.label} className="bg-white p-4 rounded-lg shadow-sm border">
-            <div className={`text-2xl font-bold ${stat.color}`}>{stat.value}</div>
-            <div className="text-xs font-medium text-gray-500 uppercase">{stat.label}</div>
-            <div className="text-xs text-gray-400">+100% 28d</div>
+          <div 
+            key={stat.label} 
+            className={`bg-white p-6 rounded-lg shadow-sm border border-gray-200 transition-all duration-200 cursor-pointer ${stat.bgColor} ${stat.borderColor}`}
+          >
+            <div className={`text-2xl font-bold ${stat.color} mb-2`}>{stat.value}</div>
+            <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">{stat.label}</div>
+            <div className="text-xs text-gray-400 mt-1">+100% 28d</div>
           </div>
         ))}
       </div>
 
       {/* Search and Filters */}
-      <div className="mb-6 flex flex-col md:flex-row gap-4">
+      <div className="mb-8 flex flex-col md:flex-row gap-4">
         <div className="flex-1">
           <input
             type="text"
             placeholder="Search contacts by name, email, company..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder-gray-400"
           />
         </div>
         <select
           value={sourceFilter}
           onChange={(e) => setSourceFilter(e.target.value)}
-          className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="border border-gray-300 rounded-md px-3 py-2 text-sm bg-white transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
         >
           <option value="all">All Sources</option>
           <option value="networking">Networking</option>
@@ -147,7 +192,7 @@ export default function CRMPage() {
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="border border-gray-300 rounded-md px-3 py-2 text-sm bg-white transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
         >
           <option value="all">All Time</option>
           <option value="PROSPECT">Prospects</option>
@@ -193,7 +238,7 @@ export default function CRMPage() {
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(contact.status)}`}>
+                    <span className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full uppercase tracking-wide ${getStatusColor(contact.status)}`}>
                       {contact.status}
                     </span>
                   </td>
