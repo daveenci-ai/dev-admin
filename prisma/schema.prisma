@@ -90,6 +90,66 @@ model AvatarGenerated {
   @@map("avatars_generated")
 }
 
+// NEW: For Avatar Generator system
+model AvatarGeneration {
+  id                  Int      @id @default(autoincrement())
+  prompt              String
+  loraRepository      String?  @map("lora_repository") @db.VarChar(255)
+  loraScale           Decimal? @default(1.0) @map("lora_scale") @db.Decimal(3, 2)
+  guidanceScale       Decimal? @default(3.5) @map("guidance_scale") @db.Decimal(4, 1)
+  numInferenceSteps   Int?     @default(28) @map("num_inference_steps")
+  seed                Int?
+  aspectRatio         String?  @default("1:1") @map("aspect_ratio") @db.VarChar(10)
+  outputFormat        String?  @default("webp") @map("output_format") @db.VarChar(10)
+  outputQuality       Int?     @default(80) @map("output_quality")
+  safetyChecker       Boolean? @default(true) @map("safety_checker")
+  status              String   @default("pending") @db.VarChar(20)
+  imageUrl            String?  @map("image_url")
+  replicateId         String?  @map("replicate_id") @db.VarChar(255)
+  errorMessage        String?  @map("error_message")
+  confidence          Decimal? @map("confidence") @db.Decimal(3, 2)
+  processingTime      Int?     @map("processing_time")
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamp(3)
+  updatedAt           DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(3)
+
+  @@map("avatar_generations")
+}
+
+// NEW: For Chatbot Logs system
+model ChatbotConversation {
+  id             Int      @id @default(autoincrement())
+  sessionId      String   @map("session_id") @db.VarChar(255)
+  userId         String?  @map("user_id") @db.VarChar(255)
+  userMessage    String   @map("user_message")
+  botResponse    String   @map("bot_response")
+  context        String?
+  intent         String?  @db.VarChar(100)
+  confidence     Decimal? @db.Decimal(3, 2)
+  responseTime   Int?     @map("response_time")
+  feedbackRating Int?     @map("feedback_rating")
+  metadata       String?
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamp(3)
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(3)
+
+  @@map("chatbot_conversations")
+}
+
+// NEW: For Smart Assistant system
+model AssistantQuery {
+  id             Int      @id @default(autoincrement())
+  naturalQuery   String   @map("natural_query")
+  generatedSQL   String?  @map("generated_sql")
+  explanation    String?
+  resultCount    Int      @default(0) @map("result_count")
+  status         String   @default("pending") @db.VarChar(20)
+  errorMessage   String?  @map("error_message")
+  context        String?
+  executionTime  Int?     @map("execution_time")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamp(3)
+
+  @@map("assistant_queries")
+}
+
 model BlogPost {
   id               Int       @id @default(autoincrement())
   title            String    @db.VarChar(500)
