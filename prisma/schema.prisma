@@ -1,0 +1,198 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TouchpointSource {
+  MANUAL
+  @@map("touchpoint_source")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  name      String?
+  password  String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(3)
+  validated Boolean  @default(false)
+
+  contacts Contact[]
+
+  @@map("users")
+}
+
+model Contact {
+  id                 Int      @id @default(autoincrement())
+  name               String
+  primaryEmail       String   @map("primary_email")
+  secondaryEmail     String?  @map("secondary_email")
+  primaryPhone       String?  @map("primary_phone")
+  secondaryPhone     String?  @map("secondary_phone")
+  company            String?
+  industry           String?
+  website            String?
+  address            String?
+  notes              String?
+  linkedinUrl        String?  @map("linkedin_url")
+  facebookUrl        String?  @map("facebook_url")
+  instagramUrl       String?  @map("instagram_url")
+  youtubeUrl         String?  @map("youtube_url")
+  tiktokUrl          String?  @map("tiktok_url")
+  source             String?
+  status             String   @default("PROSPECT")
+  sentiment          String   @default("NEUTRAL")
+  leadScore          Decimal? @map("lead_score") @db.Decimal(3, 2)
+  opportunityScore   Decimal? @map("opportunity_score") @db.Decimal(3, 2)
+  userId             Int      @map("user_id")
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamp(3)
+  updatedAt          DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(3)
+
+  user        User         @relation(fields: [userId], references: [id])
+  touchpoints Touchpoint[]
+  avatars     Avatar[]
+
+  @@map("contacts")
+}
+
+model Avatar {
+  id                 BigInt   @id @default(autoincrement())
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamp(3)
+  updatedAt          DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(3)
+  contactId          Int?     @map("contact_id")
+  fullName           String   @map("full_name")
+  replicateModelUrl  String   @unique @map("replicate_model_url")
+  triggerWord        String   @map("trigger_word")
+  description        String?
+  visible            Boolean  @default(true)
+
+  contact           Contact?           @relation(fields: [contactId], references: [id])
+  generatedAvatars  AvatarGenerated[]
+
+  @@map("avatars")
+}
+
+model AvatarGenerated {
+  id             BigInt   @id @default(autoincrement())
+  avatarId       BigInt   @map("avatar_id")
+  prompt         String
+  githubImageUrl String   @map("github_image_url")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamp(3)
+
+  avatar Avatar @relation(fields: [avatarId], references: [id], onDelete: Cascade)
+
+  @@map("avatars_generated")
+}
+
+model BlogPost {
+  id               Int       @id @default(autoincrement())
+  title            String    @db.VarChar(500)
+  slug             String    @unique @db.VarChar(500)
+  content          String
+  excerpt          String?
+  tags             String?
+  metaDescription  String?   @map("meta_description") @db.VarChar(160)
+  metaKeywords     String?   @map("meta_keywords")
+  seoScore         Decimal?  @default(0.0) @map("seo_score") @db.Decimal(3, 2)
+  featuredImageUrl String?   @map("featured_image_url")
+  status           String?   @default("published") @db.VarChar(20)
+  isFeatured       Boolean?  @default(false) @map("is_featured")
+  viewCount        Int?      @default(0) @map("view_count")
+  readTimeMinutes  Int?      @map("read_time_minutes")
+  publishedAt      DateTime? @default(now()) @map("published_at")
+  createdAt        DateTime? @default(now()) @map("created_at")
+  updatedAt        DateTime? @default(now()) @updatedAt @map("updated_at")
+  createdByLlm     Boolean?  @default(true) @map("created_by_llm")
+  llmPrompt        String?   @map("llm_prompt")
+
+  @@map("blog_posts")
+}
+
+model ChatSummary {
+  id                   Int      @id @default(autoincrement())
+  interactionDate      DateTime @map("interaction_date") @db.Date
+  contactName          String?  @map("contact_name") @db.VarChar(255)
+  contactEmail         String?  @map("contact_email") @db.VarChar(255)
+  contactPhone         String?  @map("contact_phone") @db.VarChar(50)
+  companyName          String?  @map("company_name") @db.VarChar(255)
+  chatSummary          String   @map("chat_summary")
+  servicesDiscussed    Json?    @default("[]") @map("services_discussed")
+  keyPainPoints        Json?    @default("[]") @map("key_pain_points")
+  callToActionOffered  Boolean? @default(false) @map("call_to_action_offered")
+  nextStep             String?  @map("next_step")
+  leadQualification    String?  @default("Cold") @map("lead_qualification") @db.VarChar(10)
+  createdAt            DateTime? @default(now()) @map("created_at") @db.Timestamptz()
+
+  @@map("chat_summaries")
+}
+
+model ConversationContext {
+  id                    Int       @id @default(autoincrement())
+  sessionId             String    @unique @map("session_id") @db.VarChar(255)
+  userInfo              Json?     @default("{}") @map("user_info")
+  conversationStage     String?   @default("greeting") @map("conversation_stage") @db.VarChar(50)
+  servicesDiscussed     Json?     @default("[]") @map("services_discussed")
+  painPoints            Json?     @default("[]") @map("pain_points")
+  lastInteraction       DateTime? @map("last_interaction") @db.Timestamptz()
+  messageCount          Int?      @default(0) @map("message_count")
+  conversationQuality   Decimal?  @default(0.5) @map("conversation_quality") @db.Decimal(3, 2)
+  userSentiment         String?   @default("neutral") @map("user_sentiment") @db.VarChar(20)
+  createdAt             DateTime? @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt             DateTime? @default(now()) @updatedAt @map("updated_at") @db.Timestamptz()
+
+  @@map("conversation_contexts")
+}
+
+model Event {
+  id              Int      @id @default(autoincrement())
+  eventDate       DateTime? @map("event_date") @db.Timestamp(3)
+  eventName       String?   @map("event_name")
+  eventAddress    String?   @map("event_address")
+  eventType       String?   @map("event_type")
+  eventDescription String?  @map("event_description")
+  eventCapacity   Int?      @map("event_capacity")
+  eventStatus     String?   @map("event_status")
+  dt              DateTime  @default(now()) @db.Timestamp(3)
+  dtUpdated       DateTime  @default(now()) @updatedAt @map("dt_updated") @db.Timestamp(3)
+
+  participants EventParticipant[]
+
+  @@unique([eventName, eventType], name: "idx_events_unique")
+  @@map("events")
+}
+
+model EventParticipant {
+  id          Int      @id @default(autoincrement())
+  eventId     Int?     @map("event_id")
+  fullName    String?  @map("full_name")
+  email       String?
+  phone       String?
+  companyName String?  @map("company_name")
+  website     String?
+  notes       String?
+  dt          DateTime @default(now()) @db.Timestamp(3)
+  dtUpdated   DateTime @default(now()) @updatedAt @map("dt_updated") @db.Timestamp(3)
+
+  event Event? @relation(fields: [eventId], references: [id], onDelete: SetNull)
+
+  @@unique([eventId, email], name: "idx_participants_unique")
+  @@map("event_participants")
+}
+
+model Touchpoint {
+  id        Int              @id @default(autoincrement())
+  note      String
+  source    TouchpointSource @default(MANUAL)
+  contactId Int              @map("contact_id")
+  createdAt DateTime         @default(now()) @map("created_at") @db.Timestamp(3)
+
+  contact Contact @relation(fields: [contactId], references: [id], onDelete: Restrict)
+
+  @@map("touchpoints")
+} 
