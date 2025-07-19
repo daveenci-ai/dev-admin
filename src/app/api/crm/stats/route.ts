@@ -7,6 +7,7 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search') || ''
     const source = searchParams.get('source')
     const dateRange = searchParams.get('dateRange')
+    const sentiment = searchParams.get('sentiment')
 
     // Build where clause for filtering stats
     const where: any = {}
@@ -20,7 +21,11 @@ export async function GET(request: NextRequest) {
     }
 
     if (source && source !== 'all') {
-      where.source = { contains: source, mode: 'insensitive' }
+      where.source = source
+    }
+
+    if (sentiment && sentiment !== 'all') {
+      where.sentiment = sentiment.toUpperCase()
     }
 
     // Date range filtering

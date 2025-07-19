@@ -49,20 +49,36 @@ export default function CRMPage() {
   const [statusFilter, setStatusFilter] = useState('all')
   const [sourceFilter, setSourceFilter] = useState('all')
   const [dateFilter, setDateFilter] = useState('all')
+  const [sentimentFilter, setSentimentFilter] = useState('all')
   const [sortColumn, setSortColumn] = useState<string>('')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
+  const [availableSources, setAvailableSources] = useState<string[]>([])
 
   useEffect(() => {
     fetchStats()
     fetchContacts()
-  }, [searchTerm, statusFilter, sourceFilter, dateFilter])
+    fetchAvailableSources()
+  }, [searchTerm, statusFilter, sourceFilter, dateFilter, sentimentFilter])
+
+  const fetchAvailableSources = async () => {
+    try {
+      const response = await fetch('/api/crm/sources')
+      if (response.ok) {
+        const data = await response.json()
+        setAvailableSources(data.sources)
+      }
+    } catch (error) {
+      console.error('Error fetching sources:', error)
+    }
+  }
 
   const fetchStats = async () => {
     try {
       const params = new URLSearchParams({
         search: searchTerm,
         source: sourceFilter,
-        dateRange: dateFilter
+        dateRange: dateFilter,
+        sentiment: sentimentFilter
       })
       
       const response = await fetch(`/api/crm/stats?${params}`)
@@ -83,6 +99,7 @@ export default function CRMPage() {
         status: statusFilter,
         source: sourceFilter,
         dateRange: dateFilter,
+        sentiment: sentimentFilter,
         limit: '50'
       })
       
@@ -107,6 +124,7 @@ export default function CRMPage() {
     setStatusFilter('all')
     setSourceFilter('all')
     setDateFilter('all')
+    setSentimentFilter('all')
     setSortColumn('')
     setSortDirection('asc')
   }
@@ -177,24 +195,14 @@ export default function CRMPage() {
 
   const statCards = [
     { 
-      label: 'ALL CONTACTS',
-      value: stats.total,
-      status: 'all',
-      color: 'text-gray-600',
-      bgColor: 'hover:bg-gray-50',
-      borderColor: 'border-b-gray-400',
-      activeBg: 'bg-gray-50',
-      activeBorder: 'border-gray-400'
-    },
-    { 
       label: 'CHURNED', 
       value: stats.churned,
       status: 'churned', 
-      color: 'text-red-600',
-      bgColor: 'hover:bg-red-50',
-      borderColor: 'border-b-red-400',
-      activeBg: 'bg-red-50',
-      activeBorder: 'border-red-400'
+      color: 'text-black',
+      bgColor: 'hover:bg-gray-100',
+      borderColor: 'border-b-black',
+      activeBg: 'bg-gray-100',
+      activeBorder: 'border-black'
     },
     { 
       label: 'DECLINED', 
@@ -202,9 +210,9 @@ export default function CRMPage() {
       status: 'declined', 
       color: 'text-red-600',
       bgColor: 'hover:bg-red-50',
-      borderColor: 'border-b-red-400',
+      borderColor: 'border-b-red-500',
       activeBg: 'bg-red-50',
-      activeBorder: 'border-red-400'
+      activeBorder: 'border-red-500'
     },
     { 
       label: 'UNQUALIFIED', 
@@ -222,9 +230,9 @@ export default function CRMPage() {
       status: 'prospect', 
       color: 'text-blue-600',
       bgColor: 'hover:bg-blue-50',
-      borderColor: 'border-b-blue-400',
+      borderColor: 'border-b-blue-500',
       activeBg: 'bg-blue-50',
-      activeBorder: 'border-blue-400'
+      activeBorder: 'border-blue-500'
     },
     { 
       label: 'LEADS', 
@@ -232,36 +240,36 @@ export default function CRMPage() {
       status: 'lead', 
       color: 'text-yellow-600',
       bgColor: 'hover:bg-yellow-50',
-      borderColor: 'border-b-yellow-400',
+      borderColor: 'border-b-yellow-500',
       activeBg: 'bg-yellow-50',
-      activeBorder: 'border-yellow-400'
+      activeBorder: 'border-yellow-500'
     },
     { 
       label: 'OPPORTUNITIES', 
       value: stats.opportunities,
       status: 'opportunity', 
-      color: 'text-purple-600',
-      bgColor: 'hover:bg-purple-50',
-      borderColor: 'border-b-purple-400',
-      activeBg: 'bg-purple-50',
-      activeBorder: 'border-purple-400'
+      color: 'text-green-500',
+      bgColor: 'hover:bg-green-50',
+      borderColor: 'border-b-green-400',
+      activeBg: 'bg-green-50',
+      activeBorder: 'border-green-400'
     },
     { 
       label: 'CLIENTS', 
       value: stats.clients,
       status: 'client', 
-      color: 'text-green-600',
+      color: 'text-green-700',
       bgColor: 'hover:bg-green-50',
-      borderColor: 'border-b-green-400',
+      borderColor: 'border-b-green-600',
       activeBg: 'bg-green-50',
-      activeBorder: 'border-green-400'
+      activeBorder: 'border-green-600'
     }
   ]
 
   return (
     <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
       {/* Statistics Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-6">
         {statCards.map((stat) => {
           const isActive = statusFilter === stat.status
           return (
@@ -274,7 +282,7 @@ export default function CRMPage() {
                   : `${stat.bgColor} ${stat.borderColor}`
               }`}
             >
-              <div className={`text-xl font-bold text-gray-900 mb-1`}>{stat.value}</div>
+              <div className={`text-xl font-bold ${stat.color} mb-1`}>{stat.value}</div>
               <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">{stat.label}</div>
               <div className="text-xs text-gray-400">+100% 28d</div>
             </div>
@@ -282,44 +290,64 @@ export default function CRMPage() {
         })}
       </div>
 
-      {/* Search and Filters */}
-      <div className="mb-6 flex flex-col md:flex-row gap-4">
-        <div className="flex-1">
-          <input
-            type="text"
-            placeholder="Search contacts by name, email, company..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder-gray-400"
-          />
+      {/* Contact Count and Search */}
+      <div className="mb-6 flex flex-col md:flex-row gap-4 items-center">
+        <div className="flex items-center gap-4">
+          <div className="text-sm font-medium text-gray-700">
+            {stats.total} contacts
+          </div>
+          <div className="flex-1 min-w-80">
+            <input
+              type="text"
+              placeholder="Search contacts by name, email, company..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full border border-gray-300 rounded-md px-4 py-2 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder-gray-400"
+            />
+          </div>
         </div>
-        <select
-          value={sourceFilter}
-          onChange={(e) => setSourceFilter(e.target.value)}
-          className="border border-gray-300 rounded-md px-3 py-2 text-sm bg-white transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-        >
-          <option value="all">All Sources</option>
-          <option value="networking">Networking</option>
-          <option value="website">Website</option>
-          <option value="referral">Referral</option>
-          <option value="social">Social Media</option>
-        </select>
-        <select
-          value={dateFilter}
-          onChange={(e) => setDateFilter(e.target.value)}
-          className="border border-gray-300 rounded-md px-3 py-2 text-sm bg-white transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-        >
-          <option value="all">All Time</option>
-          <option value="7">Last 7 Days</option>
-          <option value="30">Last 30 Days</option>
-          <option value="180">Last 6 Months</option>
-        </select>
-        <button
-          onClick={resetFilters}
-          className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-        >
-          Reset
-        </button>
+        
+        <div className="flex gap-3 items-center">
+          <select
+            value={sourceFilter}
+            onChange={(e) => setSourceFilter(e.target.value)}
+            className="min-w-40 border border-gray-300 rounded-md px-4 py-2 pr-10 text-sm bg-white transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="all">All Sources</option>
+            {availableSources.map((source) => (
+              <option key={source} value={source}>{source}</option>
+            ))}
+          </select>
+          
+          <select
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value)}
+            className="min-w-36 border border-gray-300 rounded-md px-4 py-2 pr-10 text-sm bg-white transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="all">All Time</option>
+            <option value="7">Last 7 Days</option>
+            <option value="30">Last 30 Days</option>
+            <option value="180">Last 6 Months</option>
+          </select>
+          
+          <select
+            value={sentimentFilter}
+            onChange={(e) => setSentimentFilter(e.target.value)}
+            className="min-w-28 border border-gray-300 rounded-md px-3 py-2 pr-8 text-sm bg-white transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="all">😐 All</option>
+            <option value="good">😊 Good</option>
+            <option value="neutral">😐 Neutral</option>
+            <option value="bad">😞 Bad</option>
+          </select>
+          
+          <button
+            onClick={resetFilters}
+            className="px-6 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 shadow-sm"
+          >
+            Reset Filters
+          </button>
+        </div>
       </div>
 
       {/* Full Screen Contacts Table */}
