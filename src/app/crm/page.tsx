@@ -55,6 +55,7 @@ export default function CRMPage() {
   const [availableSources, setAvailableSources] = useState<string[]>([])
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null)
   const [showContactDetails, setShowContactDetails] = useState(false)
+  const [allFilteredContacts, setAllFilteredContacts] = useState<Contact[]>([])
 
   useEffect(() => {
     fetchStats()
@@ -95,14 +96,15 @@ export default function CRMPage() {
 
   const fetchContacts = async () => {
     try {
-      setLoading(true)
+      // Fetch current page for display
       const params = new URLSearchParams({
+        page: '1',
+        limit: '50',
         search: searchTerm,
         status: statusFilter,
         source: sourceFilter,
         dateRange: dateFilter,
-        sentiment: sentimentFilter,
-        limit: '50'
+        sentiment: sentimentFilter
       })
       
       const response = await fetch(`/api/crm/contacts?${params}`)
@@ -110,10 +112,25 @@ export default function CRMPage() {
         const data = await response.json()
         setContacts(data.contacts)
       }
+      
+      // Fetch ALL filtered contacts for export count
+      const allParams = new URLSearchParams({
+        page: '1',
+        limit: '10000', // Get all contacts
+        search: searchTerm,
+        status: statusFilter,
+        source: sourceFilter,
+        dateRange: dateFilter,
+        sentiment: sentimentFilter
+      })
+      
+      const allResponse = await fetch(`/api/crm/contacts?${allParams}`)
+      if (allResponse.ok) {
+        const allData = await allResponse.json()
+        setAllFilteredContacts(allData.contacts)
+      }
     } catch (error) {
       console.error('Error fetching contacts:', error)
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -142,11 +159,11 @@ export default function CRMPage() {
   }
 
   const handleExportCSV = () => {
-    // Create CSV content
+    // Create CSV content using ALL filtered contacts, not just displayed ones
     const headers = ['Name', 'Email', 'Phone', 'Company', 'Status', 'Source', 'Sentiment']
     const csvContent = [
       headers.join(','),
-      ...sortedContacts.map(contact => [
+      ...allFilteredContacts.map(contact => [
         `"${contact.name}"`,
         `"${contact.primaryEmail}"`,
         `"${contact.primaryPhone || ''}"`,
@@ -331,10 +348,10 @@ export default function CRMPage() {
       </div>
 
       {/* Search and Filters Row */}
-      <div className="mb-6 space-y-4">
-        {/* Full Width Search and Filters */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-          <div className="md:col-span-6">
+      <div className="mb-6">
+        {/* Search, Filters and Action Buttons in one row */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+          <div className="lg:col-span-4">
             <input
               type="text"
               placeholder="Search contacts by name, email, company..."
@@ -344,7 +361,7 @@ export default function CRMPage() {
             />
           </div>
           
-          <div className="md:col-span-2">
+          <div className="lg:col-span-2">
             <select
               value={sourceFilter}
               onChange={(e) => setSourceFilter(e.target.value)}
@@ -357,7 +374,7 @@ export default function CRMPage() {
             </select>
           </div>
           
-          <div className="md:col-span-2">
+          <div className="lg:col-span-2">
             <select
               value={dateFilter}
               onChange={(e) => setDateFilter(e.target.value)}
@@ -370,7 +387,7 @@ export default function CRMPage() {
             </select>
           </div>
           
-          <div className="md:col-span-2">
+          <div className="lg:col-span-1">
             <select
               value={sentimentFilter}
               onChange={(e) => setSentimentFilter(e.target.value)}
@@ -382,23 +399,23 @@ export default function CRMPage() {
               <option value="bad">😞 Bad</option>
             </select>
           </div>
-        </div>
-        
-        {/* Action Buttons */}
-        <div className="flex justify-end gap-3">
-          <button
-            onClick={handleExportCSV}
-            className="px-6 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 shadow-sm"
-          >
-            Export CSV ({sortedContacts.length} Contacts)
-          </button>
           
-          <button
-            onClick={resetFilters}
-            className="px-6 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 shadow-sm"
-          >
-            Reset Filters
-          </button>
+          {/* Action Buttons */}
+          <div className="lg:col-span-3 flex gap-2">
+            <button
+              onClick={handleExportCSV}
+              className="flex-1 px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 shadow-sm"
+            >
+              Export CSV ({allFilteredContacts.length} Contacts)
+            </button>
+            
+            <button
+              onClick={resetFilters}
+              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 shadow-sm"
+            >
+              Reset Filters
+            </button>
+          </div>
         </div>
       </div>
 
