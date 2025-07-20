@@ -14,6 +14,7 @@ interface Contact {
   source: string | null
   sentiment: string
   createdAt: string
+  website?: string
   linkedin_url?: string
   facebook_url?: string
   instagram_url?: string
@@ -594,10 +595,92 @@ export default function CRMPage() {
                 <div className="flex-1">
                   {selectedContact && (
                     <>
-                      <h2 className="text-xl font-semibold text-white">{selectedContact.name}</h2>
-                      {selectedContact.company && (
-                        <p className="text-blue-100 text-sm mt-1">{selectedContact.company}</p>
-                      )}
+                      <div className="flex items-center gap-4">
+                        <div>
+                          <h2 className="text-xl font-semibold text-white">{selectedContact.name}</h2>
+                          {selectedContact.company && (
+                            <p className="text-blue-100 text-sm mt-1">{selectedContact.company}</p>
+                          )}
+                        </div>
+                        
+                        {/* Social Media Icons in Header */}
+                        <div className="flex gap-2 ml-auto mr-4">
+                          {/* LinkedIn */}
+                          {selectedContact.linkedin_url ? (
+                            <a 
+                              href={selectedContact.linkedin_url} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="p-2 text-white hover:text-blue-200 hover:bg-blue-500 rounded-md transition-colors"
+                              title="LinkedIn Profile"
+                            >
+                              <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                              </svg>
+                            </a>
+                          ) : null}
+
+                          {/* Facebook */}
+                          {selectedContact.facebook_url ? (
+                            <a 
+                              href={selectedContact.facebook_url} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="p-2 text-white hover:text-blue-200 hover:bg-blue-500 rounded-md transition-colors"
+                              title="Facebook Profile"
+                            >
+                              <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                              </svg>
+                            </a>
+                          ) : null}
+
+                          {/* Instagram */}
+                          {selectedContact.instagram_url ? (
+                            <a 
+                              href={selectedContact.instagram_url} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="p-2 text-white hover:text-pink-200 hover:bg-blue-500 rounded-md transition-colors"
+                              title="Instagram Profile"
+                            >
+                              <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12.017 0C8.396 0 7.989.013 7.041.048 6.094.082 5.52.204 5.036.43c-.54.25-.972.633-1.38 1.153-.41.52-.713.97-.91 1.64-.198.67-.267 1.37-.267 2.31v8.934c0 .94.069 1.64.267 2.31.197.67.5 1.12.91 1.64.408.52.84.903 1.38 1.153.484.226 1.058.348 2.005.382.948.035 1.355.048 4.976.048 3.621 0 4.028-.013 4.976-.048.947-.034 1.521-.156 2.005-.382.54-.25.972-.633 1.38-1.153.41-.52.713-.97.91-1.64.198-.67.267-1.37.267-2.31V5.583c0-.94-.069-1.64-.267-2.31-.197-.67-.5-1.12-.91-1.64-.408-.52-.84-.903-1.38-1.153C18.497.204 17.923.082 16.976.048 16.028.013 15.621 0 12.017 0zm0 2.16c3.558 0 3.984.013 5.393.048.802.007 1.546.109 2.218.347.584.207 1.022.482 1.45.91.428.428.703.866.91 1.45.238.672.34 1.416.347 2.218.035 1.409.048 1.835.048 5.393s-.013 3.984-.048 5.393c-.007.802-.109 1.546-.347 2.218-.207.584-.482 1.022-.91 1.45-.428.428-.866.703-1.45.91-.672.238-1.416.34-2.218.347-1.409.035-1.835.048-5.393.048s-3.984-.013-5.393-.048c-.802-.007-1.546-.109-2.218-.347-.584-.207-1.022-.482-1.45-.91-.428-.428-.703-.866-.91-1.45-.238-.672-.34-1.416-.347-2.218C2.173 15.984 2.16 15.558 2.16 12s.013-3.984.048-5.393c.007-.802.109-1.546.347-2.218.207-.584.482-1.022.91-1.45.428-.428.866-.703 1.45-.91.672-.238 1.416-.34 2.218-.347C8.033 2.173 8.459 2.16 12.017 2.16zM12 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/>
+                              </svg>
+                            </a>
+                          ) : null}
+
+                          {/* YouTube */}
+                          {selectedContact.youtube_url ? (
+                            <a 
+                              href={selectedContact.youtube_url} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="p-2 text-white hover:text-red-200 hover:bg-blue-500 rounded-md transition-colors"
+                              title="YouTube Channel"
+                            >
+                              <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M23.498 6.186a2.999 2.999 0 00-2.109-2.124C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.389.517A2.999 2.999 0 00.502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a2.999 2.999 0 002.109 2.124C4.495 20.455 12 20.455 12 20.455s7.505 0 9.389-.517a2.999 2.999 0 002.109-2.124C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                              </svg>
+                            </a>
+                          ) : null}
+
+                          {/* TikTok */}
+                          {selectedContact.tiktok_url ? (
+                            <a 
+                              href={selectedContact.tiktok_url} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="p-2 text-white hover:text-gray-200 hover:bg-blue-500 rounded-md transition-colors"
+                              title="TikTok Profile"
+                            >
+                              <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-5.2 1.74 2.89 2.89 0 012.31-4.64 2.93 2.93 0 01.88.13V9.4a6.84 6.84 0 00-.88-.05A6.33 6.33 0 005 20.1a6.34 6.34 0 0010.86-4.43v-7a8.16 8.16 0 004.77 1.52v-3.4a4.85 4.85 0 01-1-.1z"/>
+                              </svg>
+                            </a>
+                          ) : null}
+                        </div>
+                      </div>
                     </>
                   )}
                 </div>
@@ -701,154 +784,120 @@ export default function CRMPage() {
                         </div>
                       </div>
                       
-                                             {/* Address Row */}
-                       <div className="mb-4">
-                         <label className="text-sm font-medium text-gray-500 mb-2 block">Address</label>
-                         <div className="flex items-center">
-                           <svg className="h-4 w-4 text-gray-400 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                           </svg>
-                           <span className="text-gray-500 text-sm">Not provided</span>
+                                             {/* Website and Address Row */}
+                       <div className="grid grid-cols-2 gap-6">
+                         <div>
+                           <label className="text-sm font-medium text-gray-500 mb-2 block">Website</label>
+                           <div className="flex items-center">
+                             <svg className="h-4 w-4 text-gray-400 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                             </svg>
+                             {selectedContact.website ? (
+                               <a href={selectedContact.website.startsWith('http') ? selectedContact.website : `https://${selectedContact.website}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 text-sm truncate">
+                                 {selectedContact.website}
+                               </a>
+                             ) : (
+                               <span className="text-gray-500 text-sm">Not provided</span>
+                             )}
+                           </div>
                          </div>
-                       </div>
-                       
-                       {/* Social Media Links */}
-                       <div>
-                         <label className="text-sm font-medium text-gray-500 mb-3 block">Social Media</label>
-                         <div className="flex gap-3">
-                           {/* LinkedIn */}
-                           {selectedContact.linkedin_url ? (
-                             <a 
-                               href={selectedContact.linkedin_url} 
-                               target="_blank" 
-                               rel="noopener noreferrer"
-                               className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md transition-colors"
-                               title="LinkedIn Profile"
-                             >
-                               <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-                                 <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
-                               </svg>
-                             </a>
-                           ) : (
-                             <div className="p-2 text-gray-300" title="LinkedIn not provided">
-                               <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-                                 <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
-                               </svg>
-                             </div>
-                           )}
-
-                           {/* Facebook */}
-                           {selectedContact.facebook_url ? (
-                             <a 
-                               href={selectedContact.facebook_url} 
-                               target="_blank" 
-                               rel="noopener noreferrer"
-                               className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md transition-colors"
-                               title="Facebook Profile"
-                             >
-                               <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-                                 <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-                               </svg>
-                             </a>
-                           ) : (
-                             <div className="p-2 text-gray-300" title="Facebook not provided">
-                               <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-                                 <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-                               </svg>
-                             </div>
-                           )}
-
-                           {/* Instagram */}
-                           {selectedContact.instagram_url ? (
-                             <a 
-                               href={selectedContact.instagram_url} 
-                               target="_blank" 
-                               rel="noopener noreferrer"
-                               className="p-2 text-pink-600 hover:text-pink-800 hover:bg-pink-50 rounded-md transition-colors"
-                               title="Instagram Profile"
-                             >
-                               <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-                                 <path d="M12.017 0C8.396 0 7.989.013 7.041.048 6.094.082 5.52.204 5.036.43c-.54.25-.972.633-1.38 1.153-.41.52-.713.97-.91 1.64-.198.67-.267 1.37-.267 2.31v8.934c0 .94.069 1.64.267 2.31.197.67.5 1.12.91 1.64.408.52.84.903 1.38 1.153.484.226 1.058.348 2.005.382.948.035 1.355.048 4.976.048 3.621 0 4.028-.013 4.976-.048.947-.034 1.521-.156 2.005-.382.54-.25.972-.633 1.38-1.153.41-.52.713-.97.91-1.64.198-.67.267-1.37.267-2.31V5.583c0-.94-.069-1.64-.267-2.31-.197-.67-.5-1.12-.91-1.64-.408-.52-.84-.903-1.38-1.153C18.497.204 17.923.082 16.976.048 16.028.013 15.621 0 12.017 0zm0 2.16c3.558 0 3.984.013 5.393.048.802.007 1.546.109 2.218.347.584.207 1.022.482 1.45.91.428.428.703.866.91 1.45.238.672.34 1.416.347 2.218.035 1.409.048 1.835.048 5.393s-.013 3.984-.048 5.393c-.007.802-.109 1.546-.347 2.218-.207.584-.482 1.022-.91 1.45-.428.428-.866.703-1.45.91-.672.238-1.416.34-2.218.347-1.409.035-1.835.048-5.393.048s-3.984-.013-5.393-.048c-.802-.007-1.546-.109-2.218-.347-.584-.207-1.022-.482-1.45-.91-.428-.428-.703-.866-.91-1.45-.238-.672-.34-1.416-.347-2.218C2.173 15.984 2.16 15.558 2.16 12s.013-3.984.048-5.393c.007-.802.109-1.546.347-2.218.207-.584.482-1.022.91-1.45.428-.428.866-.703 1.45-.91.672-.238 1.416-.34 2.218-.347C8.033 2.173 8.459 2.16 12.017 2.16zM12 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/>
-                               </svg>
-                             </a>
-                           ) : (
-                             <div className="p-2 text-gray-300" title="Instagram not provided">
-                               <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-                                 <path d="M12.017 0C8.396 0 7.989.013 7.041.048 6.094.082 5.52.204 5.036.43c-.54.25-.972.633-1.38 1.153-.41.52-.713.97-.91 1.64-.198.67-.267 1.37-.267 2.31v8.934c0 .94.069 1.64.267 2.31.197.67.5 1.12.91 1.64.408.52.84.903 1.38 1.153.484.226 1.058.348 2.005.382.948.035 1.355.048 4.976.048 3.621 0 4.028-.013 4.976-.048.947-.034 1.521-.156 2.005-.382.54-.25.972-.633 1.38-1.153.41-.52.713-.97.91-1.64.198-.67.267-1.37.267-2.31V5.583c0-.94-.069-1.64-.267-2.31-.197-.67-.5-1.12-.91-1.64-.408-.52-.84-.903-1.38-1.153C18.497.204 17.923.082 16.976.048 16.028.013 15.621 0 12.017 0zm0 2.16c3.558 0 3.984.013 5.393.048.802.007 1.546.109 2.218.347.584.207 1.022.482 1.45.91.428.428.703.866.91 1.45.238.672.34 1.416.347 2.218.035 1.409.048 1.835.048 5.393s-.013 3.984-.048 5.393c-.007.802-.109 1.546-.347 2.218-.207.584-.482 1.022-.91 1.45-.428.428-.866.703-1.45.91-.672.238-1.416.34-2.218.347-1.409.035-1.835.048-5.393.048s-3.984-.013-5.393-.048c-.802-.007-1.546-.109-2.218-.347-.584-.207-1.022-.482-1.45-.91-.428-.428-.703-.866-.91-1.45-.238-.672-.34-1.416-.347-2.218C2.173 15.984 2.16 15.558 2.16 12s.013-3.984.048-5.393c.007-.802.109-1.546.347-2.218.207-.584.482-1.022.91-1.45.428-.428.866-.703 1.45-.91.672-.238 1.416-.34 2.218-.347C8.033 2.173 8.459 2.16 12.017 2.16zM12 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/>
-                               </svg>
-                             </div>
-                           )}
-
-                           {/* YouTube */}
-                           {selectedContact.youtube_url ? (
-                             <a 
-                               href={selectedContact.youtube_url} 
-                               target="_blank" 
-                               rel="noopener noreferrer"
-                               className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-md transition-colors"
-                               title="YouTube Channel"
-                             >
-                               <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-                                 <path d="M23.498 6.186a2.999 2.999 0 00-2.109-2.124C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.389.517A2.999 2.999 0 00.502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a2.999 2.999 0 002.109 2.124C4.495 20.455 12 20.455 12 20.455s7.505 0 9.389-.517a2.999 2.999 0 002.109-2.124C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
-                               </svg>
-                             </a>
-                           ) : (
-                             <div className="p-2 text-gray-300" title="YouTube not provided">
-                               <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-                                 <path d="M23.498 6.186a2.999 2.999 0 00-2.109-2.124C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.389.517A2.999 2.999 0 00.502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a2.999 2.999 0 002.109 2.124C4.495 20.455 12 20.455 12 20.455s7.505 0 9.389-.517a2.999 2.999 0 002.109-2.124C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
-                               </svg>
-                             </div>
-                           )}
-
-                           {/* TikTok */}
-                           {selectedContact.tiktok_url ? (
-                             <a 
-                               href={selectedContact.tiktok_url} 
-                               target="_blank" 
-                               rel="noopener noreferrer"
-                               className="p-2 text-black hover:text-gray-700 hover:bg-gray-50 rounded-md transition-colors"
-                               title="TikTok Profile"
-                             >
-                               <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-                                 <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-5.2 1.74 2.89 2.89 0 012.31-4.64 2.93 2.93 0 01.88.13V9.4a6.84 6.84 0 00-.88-.05A6.33 6.33 0 005 20.1a6.34 6.34 0 0010.86-4.43v-7a8.16 8.16 0 004.77 1.52v-3.4a4.85 4.85 0 01-1-.1z"/>
-                               </svg>
-                             </a>
-                           ) : (
-                             <div className="p-2 text-gray-300" title="TikTok not provided">
-                               <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-                                 <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-5.2 1.74 2.89 2.89 0 012.31-4.64 2.93 2.93 0 01.88.13V9.4a6.84 6.84 0 00-.88-.05A6.33 6.33 0 005 20.1a6.34 6.34 0 0010.86-4.43v-7a8.16 8.16 0 004.77 1.52v-3.4a4.85 4.85 0 01-1-.1z"/>
-                               </svg>
-                             </div>
-                           )}
+                         
+                         <div>
+                           <label className="text-sm font-medium text-gray-500 mb-2 block">Address</label>
+                           <div className="flex items-center">
+                             <svg className="h-4 w-4 text-gray-400 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                             </svg>
+                             <span className="text-gray-500 text-sm">Not provided</span>
+                           </div>
                          </div>
                        </div>
                     </div>
 
-                    {/* Timeline Card */}
+                    {/* Touchpoints & Notes Card */}
                     <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
                       <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                         <svg className="h-5 w-5 text-purple-600 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                         </svg>
-                        Activity Timeline
+                        Touchpoints & Notes
                       </h4>
-                      <div className="space-y-4">
-                        <div>
-                          <label className="text-sm font-medium text-gray-500">Last Activity</label>
-                          <p className="mt-1 text-gray-900 font-medium">
-                            {selectedContact.touchpoints && selectedContact.touchpoints.length > 0 
-                              ? format(new Date(selectedContact.touchpoints[0].createdAt), 'EEEE, MMMM do, yyyy')
-                              : 'No activity recorded'
-                            }
-                          </p>
-                          {selectedContact.touchpoints && selectedContact.touchpoints.length > 0 && (
-                            <p className="text-sm text-gray-500">
-                              {format(new Date(selectedContact.touchpoints[0].createdAt), 'h:mm a')}
-                            </p>
-                          )}
+                      
+                      {selectedContact.touchpoints && selectedContact.touchpoints.length > 0 ? (
+                        <div className="grid grid-cols-2 gap-6">
+                          {/* Touchpoints Column */}
+                          <div className="border-r border-gray-200 pr-6">
+                            <h5 className="text-sm font-medium text-gray-700 mb-3 pb-2 border-b border-gray-100">
+                              Touchpoints ({selectedContact.touchpoints.length})
+                            </h5>
+                            <div className="space-y-3 max-h-64 overflow-y-auto pr-2">
+                              {selectedContact.touchpoints
+                                .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                                .map((touchpoint, index) => (
+                                  <div key={touchpoint.id} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg border border-gray-100 hover:bg-gray-100 transition-colors">
+                                    <div className="flex-shrink-0">
+                                      <div className="w-3 h-3 bg-purple-600 rounded-full shadow-sm"></div>
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-sm font-medium text-gray-900 truncate">
+                                        Touchpoint #{selectedContact.touchpoints.length - index}
+                                      </p>
+                                      <p className="text-xs text-gray-500 mt-1">
+                                        {format(new Date(touchpoint.createdAt), 'MMM d, yyyy')} at {format(new Date(touchpoint.createdAt), 'h:mm a')}
+                                      </p>
+                                    </div>
+                                  </div>
+                                ))}
+                            </div>
+                          </div>
+                          
+                          {/* Notes Column */}
+                          <div className="pl-2">
+                            <h5 className="text-sm font-medium text-gray-700 mb-3 pb-2 border-b border-gray-100">
+                              Notes (Most Recent First)
+                            </h5>
+                            <div className="space-y-4 max-h-64 overflow-y-auto pr-2">
+                              {selectedContact.touchpoints
+                                .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                                .map((touchpoint) => (
+                                  <div key={touchpoint.id} className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border-l-4 border-purple-500 shadow-sm">
+                                    <p className="text-sm text-gray-900 leading-relaxed mb-3">
+                                      {touchpoint.note}
+                                    </p>
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center space-x-2">
+                                        <svg className="h-3 w-3 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                                          <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
+                                        </svg>
+                                        <p className="text-xs text-gray-500 font-medium">
+                                          {format(new Date(touchpoint.createdAt), 'EEEE, MMM d, yyyy')}
+                                        </p>
+                                      </div>
+                                      <div className="flex items-center space-x-1">
+                                        <svg className="h-3 w-3 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                                        </svg>
+                                        <p className="text-xs text-gray-400 font-mono">
+                                          {format(new Date(touchpoint.createdAt), 'h:mm a')}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                            </div>
+                          </div>
                         </div>
-                      </div>
+                      ) : (
+                        <div className="text-center py-12">
+                          <svg className="h-16 w-16 text-gray-300 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                          </svg>
+                          <h6 className="text-lg font-medium text-gray-900 mb-2">No touchpoints recorded</h6>
+                          <p className="text-gray-500 text-sm mb-1">Contact interactions will appear here when added.</p>
+                          <p className="text-gray-400 text-xs">Add a note to start tracking communication history.</p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
