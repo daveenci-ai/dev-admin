@@ -373,8 +373,8 @@ export default function CRMPage() {
       {/* Search and Filters Row */}
       <div className="mb-6">
         {/* Search, Filters and Action Buttons in one row */}
-        <div className="grid grid-cols-1 lg:grid-cols-14 gap-4">
-          <div className="lg:col-span-4">
+        <div className="flex flex-wrap md:flex-nowrap gap-3 items-center">
+          <div className="flex-1 min-w-80">
             <input
               type="text"
               placeholder="Search contacts by name, email, company..."
@@ -384,7 +384,7 @@ export default function CRMPage() {
             />
           </div>
           
-          <div className="lg:col-span-2">
+          <div className="min-w-40">
             <select
               value={sourceFilter}
               onChange={(e) => setSourceFilter(e.target.value)}
@@ -397,7 +397,7 @@ export default function CRMPage() {
             </select>
           </div>
           
-          <div className="lg:col-span-2">
+          <div className="min-w-36">
             <select
               value={dateFilter}
               onChange={(e) => setDateFilter(e.target.value)}
@@ -410,7 +410,7 @@ export default function CRMPage() {
             </select>
           </div>
           
-          <div className="lg:col-span-2">
+          <div className="min-w-28">
             <select
               value={sentimentFilter}
               onChange={(e) => setSentimentFilter(e.target.value)}
@@ -423,18 +423,18 @@ export default function CRMPage() {
             </select>
           </div>
           
-          {/* Action Buttons - Now wider */}
-          <div className="lg:col-span-4 flex gap-2">
+          {/* Action Buttons */}
+          <div className="flex gap-2 min-w-fit">
             <button
               onClick={handleExportCSV}
-              className="flex-1 px-5 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 shadow-sm"
+              className="whitespace-nowrap px-5 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 shadow-sm"
             >
               Export CSV ({filteredContactsCount} Contacts)
             </button>
             
             <button
               onClick={resetFilters}
-              className="flex-1 px-5 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 shadow-sm"
+              className="whitespace-nowrap px-5 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 shadow-sm"
             >
               Reset Filters
             </button>
