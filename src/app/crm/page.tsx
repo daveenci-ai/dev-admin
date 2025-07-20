@@ -8,7 +8,9 @@ interface Contact {
   id: number
   name: string
   primaryEmail: string
+  secondaryEmail?: string
   primaryPhone: string | null
+  secondaryPhone?: string
   company: string | null
   status: string
   source: string | null
@@ -64,6 +66,10 @@ export default function CRMPage() {
   const [showContactDetails, setShowContactDetails] = useState(false)
   const [allFilteredContacts, setAllFilteredContacts] = useState<Contact[]>([])
   const [filteredContactsCount, setFilteredContactsCount] = useState(0)
+  const [isEditingContact, setIsEditingContact] = useState(false)
+  const [showSocialMediaEdit, setShowSocialMediaEdit] = useState(false)
+  const [newTouchpoint, setNewTouchpoint] = useState('')
+  const [editedContact, setEditedContact] = useState<Contact | null>(null)
 
   useEffect(() => {
     fetchStats()
@@ -183,6 +189,109 @@ export default function CRMPage() {
   const handleCloseContactDetails = () => {
     setShowContactDetails(false)
     setSelectedContact(null)
+    setIsEditingContact(false)
+    setEditedContact(null)
+    setNewTouchpoint('')
+    setShowSocialMediaEdit(false)
+  }
+
+  const handleEditContact = () => {
+    if (selectedContact) {
+      setEditedContact({ ...selectedContact })
+      setIsEditingContact(true)
+    }
+  }
+
+  const handleSaveContact = async () => {
+    if (!editedContact) return
+    
+    try {
+      const response = await fetch(`/api/crm/contacts/${editedContact.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editedContact)
+      })
+      
+      if (response.ok) {
+        const updatedContact = await response.json()
+        setSelectedContact(updatedContact)
+        setIsEditingContact(false)
+        setEditedContact(null)
+        // Refresh contacts list
+        fetchContacts()
+      }
+    } catch (error) {
+      console.error('Error saving contact:', error)
+    }
+  }
+
+  const handleCancelEdit = () => {
+    setIsEditingContact(false)
+    setEditedContact(null)
+  }
+
+  const handleAddTouchpoint = async () => {
+    if (!selectedContact || !newTouchpoint.trim()) return
+    
+    try {
+      const response = await fetch(`/api/crm/contacts/${selectedContact.id}/touchpoints`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ note: newTouchpoint.trim() })
+      })
+      
+      if (response.ok) {
+        // Refresh contact details
+        const fullContact = await fetchContactDetails(selectedContact.id)
+        if (fullContact) {
+          setSelectedContact(fullContact)
+        }
+        setNewTouchpoint('')
+      }
+    } catch (error) {
+      console.error('Error adding touchpoint:', error)
+    }
+  }
+
+  const handleStatusChange = async (newStatus: string) => {
+    if (!selectedContact) return
+    
+    try {
+      const response = await fetch(`/api/crm/contacts/${selectedContact.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...selectedContact, status: newStatus })
+      })
+      
+      if (response.ok) {
+        const updatedContact = await response.json()
+        setSelectedContact(updatedContact)
+        fetchContacts() // Refresh list
+        fetchStats() // Refresh stats
+      }
+    } catch (error) {
+      console.error('Error updating status:', error)
+    }
+  }
+
+  const handleSentimentChange = async (newSentiment: string) => {
+    if (!selectedContact) return
+    
+    try {
+      const response = await fetch(`/api/crm/contacts/${selectedContact.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...selectedContact, sentiment: newSentiment })
+      })
+      
+      if (response.ok) {
+        const updatedContact = await response.json()
+        setSelectedContact(updatedContact)
+        fetchContacts() // Refresh list
+      }
+    } catch (error) {
+      console.error('Error updating sentiment:', error)
+    }
   }
 
   const handleExportCSV = async () => {
@@ -731,6 +840,18 @@ export default function CRMPage() {
                             </div>
                           )}
                         </div>
+                        
+                        {/* Social Media Edit Button */}
+                        <button
+                          onClick={() => setShowSocialMediaEdit(true)}
+                          className="text-xs text-blue-200 hover:text-white px-2 py-1 bg-blue-500 hover:bg-blue-400 rounded-md transition-colors"
+                          title="Edit Social Media Links"
+                        >
+                          <svg className="h-3 w-3 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                          Edit
+                        </button>
                       </div>
                     </>
                   )}
@@ -751,15 +872,34 @@ export default function CRMPage() {
                   <div className="grid grid-cols-4 gap-4 text-center">
                     <div>
                       <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Status</div>
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full uppercase tracking-wide ${getStatusColor(selectedContact.status)}`}>
-                        {selectedContact.status}
-                      </span>
+                      <div className="relative">
+                        <select
+                          value={selectedContact.status}
+                          onChange={(e) => handleStatusChange(e.target.value)}
+                          className={`appearance-none bg-transparent border-none text-xs font-semibold rounded-full uppercase tracking-wide px-2 py-1 cursor-pointer hover:opacity-80 ${getStatusColor(selectedContact.status)}`}
+                        >
+                          <option value="PROSPECT">Prospect</option>
+                          <option value="LEAD">Lead</option>
+                          <option value="OPPORTUNITY">Opportunity</option>
+                          <option value="CLIENT">Client</option>
+                          <option value="CHURNED">Churned</option>
+                          <option value="DECLINED">Declined</option>
+                          <option value="UNQUALIFIED">Unqualified</option>
+                        </select>
+                      </div>
                     </div>
                     <div>
                       <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Sentiment</div>
-                      <div className="flex items-center justify-center">
-                        <span className="text-lg mr-1">{getSentimentIcon(selectedContact.sentiment)}</span>
-                        <span className="text-xs font-medium text-gray-700 capitalize">{selectedContact.sentiment}</span>
+                      <div className="relative">
+                        <select
+                          value={selectedContact.sentiment}
+                          onChange={(e) => handleSentimentChange(e.target.value)}
+                          className="appearance-none bg-transparent border-none text-xs font-medium text-gray-700 capitalize cursor-pointer hover:opacity-80 focus:outline-none"
+                        >
+                          <option value="GOOD">😊 Good</option>
+                          <option value="NEUTRAL">😐 Neutral</option>
+                          <option value="BAD">😞 Bad</option>
+                        </select>
                       </div>
                     </div>
                     <div>
@@ -797,9 +937,18 @@ export default function CRMPage() {
                             <svg className="h-4 w-4 text-gray-400 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                             </svg>
-                            <a href={`mailto:${selectedContact.primaryEmail}`} className="text-blue-600 hover:text-blue-800 text-sm truncate">
-                              {selectedContact.primaryEmail}
-                            </a>
+                            {isEditingContact ? (
+                              <input
+                                type="email"
+                                value={editedContact?.primaryEmail || ''}
+                                onChange={(e) => setEditedContact(prev => prev ? { ...prev, primaryEmail: e.target.value } : null)}
+                                className="flex-1 text-sm border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              />
+                            ) : (
+                              <a href={`mailto:${selectedContact.primaryEmail}`} className="text-blue-600 hover:text-blue-800 text-sm truncate">
+                                {selectedContact.primaryEmail}
+                              </a>
+                            )}
                           </div>
                         </div>
                         <div>
@@ -808,7 +957,17 @@ export default function CRMPage() {
                             <svg className="h-4 w-4 text-gray-400 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                             </svg>
-                            <span className="text-gray-500 text-sm">Not provided</span>
+                            {isEditingContact ? (
+                              <input
+                                type="email"
+                                value={editedContact?.secondaryEmail || ''}
+                                onChange={(e) => setEditedContact(prev => prev ? { ...prev, secondaryEmail: e.target.value } : null)}
+                                placeholder="Secondary email"
+                                className="flex-1 text-sm border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              />
+                            ) : (
+                              <span className="text-gray-500 text-sm">{selectedContact.secondaryEmail || 'Not provided'}</span>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -966,18 +1125,198 @@ export default function CRMPage() {
               
               {/* Footer Actions */}
               <div className="border-t border-gray-200 p-6 bg-white">
+                {/* Add Touchpoint Section */}
+                <div className="mb-4">
+                  <label className="text-sm font-medium text-gray-700 mb-2 block">Add New Touchpoint</label>
+                  <div className="flex space-x-2">
+                    <input
+                      type="text"
+                      value={newTouchpoint}
+                      onChange={(e) => setNewTouchpoint(e.target.value)}
+                      placeholder="Enter a note about this interaction..."
+                      className="flex-1 text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      onKeyPress={(e) => e.key === 'Enter' && handleAddTouchpoint()}
+                    />
+                    <button
+                      onClick={handleAddTouchpoint}
+                      disabled={!newTouchpoint.trim()}
+                      className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Add
+                    </button>
+                  </div>
+                </div>
+                
+                {/* Action Buttons */}
                 <div className="flex space-x-3">
-                  <button className="flex-1 bg-blue-600 text-white py-3 px-4 rounded-md text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm">
-                    <svg className="h-4 w-4 inline mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  {isEditingContact ? (
+                    <>
+                      <button 
+                        onClick={handleSaveContact}
+                        className="flex-1 bg-green-600 text-white py-3 px-4 rounded-md text-sm font-medium hover:bg-green-700 transition-colors shadow-sm"
+                      >
+                        <svg className="h-4 w-4 inline mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        Save Changes
+                      </button>
+                      <button 
+                        onClick={handleCancelEdit}
+                        className="flex-1 bg-gray-500 text-white py-3 px-4 rounded-md text-sm font-medium hover:bg-gray-600 transition-colors shadow-sm"
+                      >
+                        <svg className="h-4 w-4 inline mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                        Cancel
+                      </button>
+                    </>
+                  ) : (
+                    <button 
+                      onClick={handleEditContact}
+                      className="flex-1 bg-blue-600 text-white py-3 px-4 rounded-md text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm"
+                    >
+                      <svg className="h-4 w-4 inline mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                      Edit Contact
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Social Media Edit Modal */}
+      {showSocialMediaEdit && selectedContact && (
+        <>
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 z-60 transition-opacity"
+            onClick={() => setShowSocialMediaEdit(false)}
+          />
+          
+          {/* Modal */}
+          <div className="fixed inset-0 z-70 flex items-center justify-center p-4">
+            <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-96 overflow-y-auto">
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900">Edit Social Media Links</h3>
+                  <button
+                    onClick={() => setShowSocialMediaEdit(false)}
+                    className="p-2 hover:bg-gray-100 rounded-md transition-colors"
+                  >
+                    <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
-                    Edit Contact
                   </button>
-                  <button className="flex-1 bg-gray-100 text-gray-700 py-3 px-4 rounded-md text-sm font-medium hover:bg-gray-200 transition-colors shadow-sm">
-                    <svg className="h-4 w-4 inline mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                    </svg>
-                    Add Note
+                </div>
+                
+                <div className="space-y-4">
+                  {/* LinkedIn */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <svg className="h-4 w-4 inline mr-2" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                      </svg>
+                      LinkedIn URL
+                    </label>
+                    <input
+                      type="url"
+                      value={editedContact?.linkedinUrl || ''}
+                      onChange={(e) => setEditedContact(prev => prev ? { ...prev, linkedinUrl: e.target.value } : null)}
+                      placeholder="https://linkedin.com/in/username"
+                      className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  {/* Facebook */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <svg className="h-4 w-4 inline mr-2" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                      </svg>
+                      Facebook URL
+                    </label>
+                    <input
+                      type="url"
+                      value={editedContact?.facebookUrl || ''}
+                      onChange={(e) => setEditedContact(prev => prev ? { ...prev, facebookUrl: e.target.value } : null)}
+                      placeholder="https://facebook.com/username"
+                      className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  {/* Instagram */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <svg className="h-4 w-4 inline mr-2" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12.017 0C8.396 0 7.989.013 7.041.048 6.094.082 5.52.204 5.036.43c-.54.25-.972.633-1.38 1.153-.41.52-.713.97-.91 1.64-.198.67-.267 1.37-.267 2.31v8.934c0 .94.069 1.64.267 2.31.197.67.5 1.12.91 1.64.408.52.84.903 1.38 1.153.484.226 1.058.348 2.005.382.948.035 1.355.048 4.976.048 3.621 0 4.028-.013 4.976-.048.947-.034 1.521-.156 2.005-.382.54-.25.972-.633 1.38-1.153.41-.52.713-.97.91-1.64.198-.67.267-1.37.267-2.31V5.583c0-.94-.069-1.64-.267-2.31-.197-.67-.5-1.12-.91-1.64-.408-.52-.84-.903-1.38-1.153C18.497.204 17.923.082 16.976.048 16.028.013 15.621 0 12.017 0zm0 2.16c3.558 0 3.984.013 5.393.048.802.007 1.546.109 2.218.347.584.207 1.022.482 1.45.91.428.428.703.866.91 1.45.238.672.34 1.416.347 2.218.035 1.409.048 1.835.048 5.393s-.013 3.984-.048 5.393c-.007.802-.109 1.546-.347 2.218-.207.584-.482 1.022-.91 1.45-.428.428-.866.703-1.45.91-.672.238-1.416.34-2.218.347-1.409.035-1.835.048-5.393.048s-3.984-.013-5.393-.048c-.802-.007-1.546-.109-2.218-.347-.584-.207-1.022-.482-1.45-.91-.428-.428-.703-.866-.91-1.45-.238-.672-.34-1.416-.347-2.218C2.173 15.984 2.16 15.558 2.16 12s.013-3.984.048-5.393c.007-.802.109-1.546.347-2.218.207-.584.482-1.022.91-1.45.428-.428.866-.703 1.45-.91.672-.238 1.416-.34 2.218-.347C8.033 2.173 8.459 2.16 12.017 2.16zM12 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/>
+                      </svg>
+                      Instagram URL
+                    </label>
+                    <input
+                      type="url"
+                      value={editedContact?.instagramUrl || ''}
+                      onChange={(e) => setEditedContact(prev => prev ? { ...prev, instagramUrl: e.target.value } : null)}
+                      placeholder="https://instagram.com/username"
+                      className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  {/* YouTube */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <svg className="h-4 w-4 inline mr-2" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M23.498 6.186a2.999 2.999 0 00-2.109-2.124C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.389.517A2.999 2.999 0 00.502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a2.999 2.999 0 002.109 2.124C4.495 20.455 12 20.455 12 20.455s7.505 0 9.389-.517a2.999 2.999 0 002.109-2.124C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                      </svg>
+                      YouTube URL
+                    </label>
+                    <input
+                      type="url"
+                      value={editedContact?.youtubeUrl || ''}
+                      onChange={(e) => setEditedContact(prev => prev ? { ...prev, youtubeUrl: e.target.value } : null)}
+                      placeholder="https://youtube.com/channel/..."
+                      className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  {/* TikTok */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <svg className="h-4 w-4 inline mr-2" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-5.2 1.74 2.89 2.89 0 012.31-4.64 2.93 2.93 0 01.88.13V9.4a6.84 6.84 0 00-.88-.05A6.33 6.33 0 005 20.1a6.34 6.34 0 0010.86-4.43v-7a8.16 8.16 0 004.77 1.52v-3.4a4.85 4.85 0 01-1-.1z"/>
+                      </svg>
+                      TikTok URL
+                    </label>
+                    <input
+                      type="url"
+                      value={editedContact?.tiktokUrl || ''}
+                      onChange={(e) => setEditedContact(prev => prev ? { ...prev, tiktokUrl: e.target.value } : null)}
+                      placeholder="https://tiktok.com/@username"
+                      className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex space-x-3 mt-6">
+                  <button
+                    onClick={() => {
+                      if (editedContact) {
+                        handleSaveContact()
+                        setShowSocialMediaEdit(false)
+                      }
+                    }}
+                    className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md text-sm font-medium hover:bg-blue-700 transition-colors"
+                  >
+                    Save Changes
+                  </button>
+                  <button
+                    onClick={() => setShowSocialMediaEdit(false)}
+                    className="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-md text-sm font-medium hover:bg-gray-400 transition-colors"
+                  >
+                    Cancel
                   </button>
                 </div>
               </div>
