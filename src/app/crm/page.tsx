@@ -693,11 +693,22 @@ export default function CRMPage() {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {contact.primaryPhone || '-'}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {contact.touchpoints && contact.touchpoints.length > 0 
-                      ? format(new Date(contact.touchpoints[0].createdAt), 'MMM d, yyyy')
-                      : 'No activity'
-                    }
+                  <td className="px-6 py-4 text-sm text-gray-500 max-w-xs">
+                    {contact.touchpoints && contact.touchpoints.length > 0 ? (
+                      <div className="space-y-1">
+                        <div className="text-gray-900 font-medium truncate" title={contact.touchpoints[0].note}>
+                          {contact.touchpoints[0].note.length > 50 
+                            ? `${contact.touchpoints[0].note.substring(0, 50)}...` 
+                            : contact.touchpoints[0].note
+                          }
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {format(new Date(contact.touchpoints[0].createdAt), 'MMM d, yyyy')}
+                        </div>
+                      </div>
+                    ) : (
+                      <span className="text-gray-400 italic">No activity</span>
+                    )}
                   </td>
                 </tr>
               ))
