@@ -3,10 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "npx next@14.2.18 dev",
-    "build": "npm install && npx next@14.2.18 build",
-    "start": "npx next@14.2.18 start",
-    "lint": "npx next@14.2.18 lint"
+    "dev": "next dev",
+    "build": "npm install && next build",
+    "start": "next start",
+    "lint": "next lint"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
@@ -19,7 +19,7 @@
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "lucide-react": "^0.525.0",
-    "next": "14.2.18",
+    "next": "^14.2.30",
     "next-auth": "^4.24.5",
     "postcss": "^8.0.0",
     "prisma": "^5.22.0",
