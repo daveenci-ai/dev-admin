@@ -4,55 +4,33 @@ import { prisma } from '@/lib/db'
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const includeReview = searchParams.get('includeReview') === 'true'
+    const page = parseInt(searchParams.get('page') || '1')
+    const limit = parseInt(searchParams.get('limit') || '12')
+    const search = searchParams.get('search') || ''
+    const status = searchParams.get('status') || 'all'
     
-    // Get all avatars
-    const avatars = await prisma.avatar.findMany({
-      where: { visible: true },
-      select: {
-        id: true,
-        fullName: true,
-        description: true,
-        triggerWord: true,
-        replicateModelUrl: true,
-        createdAt: true
-      },
-      orderBy: { createdAt: 'desc' }
-    })
+    const skip = (page - 1) * limit
 
-    // Get recent avatar generations
-    let generationsWhere: any = {}
+    // Build where clause for generations
+    const where: any = {}
     
-         if (includeReview) {
-       // Include both completed and pending review images
-       generationsWhere = {
-         OR: [
-           { 
-             imageUrl: { 
-               startsWith: 'https://raw.githubusercontent.com/' 
-             } 
-           },
-           { 
-             imageUrl: { 
-               startsWith: 'PENDING_REVIEW:' 
-             } 
-           }
-         ],
-         status: 'completed'
-       }
-     } else {
-       // Only approved/uploaded images
-       generationsWhere = {
-         imageUrl: { 
-           startsWith: 'https://raw.githubusercontent.com/' 
-         },
-         status: 'completed'
-       }
-     }
+    if (status && status !== 'all') {
+      where.status = status
+    }
 
-    const [generations, generationsCount] = await Promise.all([
+    if (search) {
+      where.OR = [
+        { prompt: { contains: search, mode: 'insensitive' } }
+      ]
+    }
+
+    // Get generations with pagination
+    const [generations, total] = await Promise.all([
       prisma.avatarGeneration.findMany({
-        where: generationsWhere,
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
         select: {
           id: true,
           prompt: true,
@@ -69,11 +47,9 @@ export async function GET(request: NextRequest) {
           errorMessage: true,
           createdAt: true,
           updatedAt: true
-        },
-        orderBy: { createdAt: 'desc' },
-        take: 50 // Limit recent generations
+        }
       }),
-      prisma.avatarGeneration.count({ where: generationsWhere })
+      prisma.avatarGeneration.count({ where })
     ])
 
     // Process generations to handle review status
@@ -105,19 +81,19 @@ export async function GET(request: NextRequest) {
     })
 
     return NextResponse.json({
-      avatars: avatars,
       generations: processedGenerations,
-      stats: {
-        totalAvatars: avatars.length,
-        totalGenerations: generationsCount,
-        pendingReview: generations.filter((g: any) => g.imageUrl?.startsWith('PENDING_REVIEW:')).length
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit)
       }
     })
 
   } catch (error: any) {
     console.error('Error fetching avatar gallery:', error)
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error', details: error.message },
       { status: 500 }
     )
   }

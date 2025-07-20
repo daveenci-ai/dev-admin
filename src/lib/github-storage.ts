@@ -2,12 +2,15 @@ import { Octokit } from '@octokit/rest'
 import crypto from 'crypto'
 
 class GitHubImageStorage {
-  private owner: string
-  private repo: string
+  private owner?: string
+  private repo?: string
   private branch: string = 'main'
-  private octokit: Octokit
+  private octokit?: Octokit
+  private initialized = false
 
-  constructor() {
+  private initialize() {
+    if (this.initialized) return
+
     // Parse GITHUB_REPO environment variable (format: "owner/repo")
     const repoPath = process.env.GITHUB_REPO || 'daveenci-ai/daveenci-ai-avatar-images'
     const [owner, repo] = repoPath.split('/')
@@ -27,12 +30,16 @@ class GitHubImageStorage {
     this.octokit = new Octokit({
       auth: process.env.GITHUB_TOKEN,
     })
+
+    this.initialized = true
   }
 
   /**
    * Download image from URL and return base64 encoded content
    */
   async downloadImage(imageUrl: string): Promise<string> {
+    this.initialize()
+    
     try {
       const response = await fetch(imageUrl, {
         signal: AbortSignal.timeout(30000) // 30 second timeout
@@ -66,10 +73,12 @@ class GitHubImageStorage {
    * Check if file exists and get its SHA
    */
   async getFileInfo(path: string): Promise<{ exists: boolean; sha: string | null }> {
+    this.initialize()
+    
     try {
-      const response = await this.octokit.repos.getContent({
-        owner: this.owner,
-        repo: this.repo,
+      const response = await this.octokit!.repos.getContent({
+        owner: this.owner!,
+        repo: this.repo!,
         path: path,
         ref: this.branch
       })
@@ -90,6 +99,8 @@ class GitHubImageStorage {
    * Upload image to GitHub repository with proper conflict handling
    */
   async uploadImageWithRetry(path: string, content: string, message: string, maxRetries: number = 3): Promise<void> {
+    this.initialize()
+    
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         console.log(`📤 Upload attempt ${attempt}/${maxRetries} for: ${path}`)
@@ -98,8 +109,8 @@ class GitHubImageStorage {
         const fileInfo = await this.getFileInfo(path)
         
         const uploadParams: any = {
-          owner: this.owner,
-          repo: this.repo,
+          owner: this.owner!,
+          repo: this.repo!,
           path: path,
           message: message,
           content: content,
@@ -115,7 +126,7 @@ class GitHubImageStorage {
         }
         
         // Upload to GitHub
-        await this.octokit.repos.createOrUpdateFileContents(uploadParams)
+        await this.octokit!.repos.createOrUpdateFileContents(uploadParams)
         
         console.log(`✅ Upload successful on attempt ${attempt}`)
         return // Success, exit retry loop
@@ -144,6 +155,8 @@ class GitHubImageStorage {
    * Upload image to GitHub repository
    */
   async uploadImage(imageUrl: string, prompt: string, avatarName: string): Promise<{ url: string }> {
+    this.initialize()
+    
     try {
       console.log('📸 Downloading image from Replicate...')
       const imageBase64 = await this.downloadImage(imageUrl)
@@ -183,10 +196,12 @@ class GitHubImageStorage {
    * Test GitHub connection
    */
   async testConnection(): Promise<boolean> {
+    this.initialize()
+    
     try {
-      const response = await this.octokit.repos.get({
-        owner: this.owner,
-        repo: this.repo
+      const response = await this.octokit!.repos.get({
+        owner: this.owner!,
+        repo: this.repo!
       })
       
       console.log(`✅ GitHub connection successful: ${response.data.full_name}`)
