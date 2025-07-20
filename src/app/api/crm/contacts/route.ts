@@ -36,59 +36,67 @@ export async function GET(request: NextRequest) {
     const source = searchParams.get('source')
     const dateRange = searchParams.get('dateRange')
     const sentiment = searchParams.get('sentiment')
-
-    const skip = (page - 1) * limit
+    const contactId = searchParams.get('contactId')
 
     // Build where clause
     const where: any = {}
 
-    if (search) {
-      where.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { primaryEmail: { contains: search, mode: 'insensitive' } },
-        { company: { contains: search, mode: 'insensitive' } }
-      ]
-    }
+    // If specific contact ID is requested, only fetch that contact
+    if (contactId) {
+      where.id = parseInt(contactId)
+    } else {
+      // Apply filters only when not fetching specific contact
+      if (search) {
+        where.OR = [
+          { name: { contains: search, mode: 'insensitive' } },
+          { primaryEmail: { contains: search, mode: 'insensitive' } },
+          { company: { contains: search, mode: 'insensitive' } }
+        ]
+      }
 
-    if (status && status !== 'all') {
-      where.status = status.toUpperCase()
-    }
+      if (status && status !== 'all') {
+        where.status = status.toUpperCase()
+      }
 
-    if (source && source !== 'all') {
-      where.source = source
-    }
+      if (source && source !== 'all') {
+        where.source = source
+      }
 
-    if (sentiment && sentiment !== 'all') {
-      where.sentiment = sentiment.toUpperCase()
-    }
+      if (sentiment && sentiment !== 'all') {
+        where.sentiment = sentiment.toUpperCase()
+      }
 
-    // Date range filtering
-    if (dateRange && dateRange !== 'all') {
-      const days = parseInt(dateRange)
-      const startDate = new Date()
-      startDate.setDate(startDate.getDate() - days)
-      
-      where.createdAt = {
-        gte: startDate
+      // Date range filtering
+      if (dateRange && dateRange !== 'all') {
+        const days = parseInt(dateRange)
+        const startDate = new Date()
+        startDate.setDate(startDate.getDate() - days)
+        
+        where.createdAt = {
+          gte: startDate
+        }
       }
     }
 
+    // Check if we need full contact details (for contact details panel)
+    const includeAllTouchpoints = searchParams.get('includeAllTouchpoints') === 'true'
+    
     // Get contacts with touchpoints
     const contacts = await prisma.contact.findMany({
       where,
       include: {
         touchpoints: {
           orderBy: { createdAt: 'desc' },
-          take: 1
+          take: includeAllTouchpoints ? undefined : 1
         }
       },
       orderBy: { createdAt: 'desc' },
-      skip,
-      take: limit
+      skip: contactId ? 0 : (page - 1) * limit, // No pagination for specific contact
+      take: contactId ? 1 : limit // Only take 1 if specific contact
     })
 
-    // Get total count for pagination
-    const total = await prisma.contact.count({ where })
+    // Get total count for pagination (only if not fetching specific contact)
+    const total = contactId ? 1 : await prisma.contact.count({ where })
 
     return NextResponse.json({
       contacts,
