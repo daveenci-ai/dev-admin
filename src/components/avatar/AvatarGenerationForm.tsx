@@ -229,7 +229,6 @@ export function AvatarGenerationForm({ onGenerate, isGenerating }: AvatarGenerat
           <div className="space-y-3">
             <div className="flex items-center space-x-2">
               <Switch
-                id="randomSeed"
                 checked={useRandomSeed}
                 onCheckedChange={setUseRandomSeed}
               />
@@ -257,7 +256,6 @@ export function AvatarGenerationForm({ onGenerate, isGenerating }: AvatarGenerat
 
             <div className="flex items-center space-x-2">
               <Switch
-                id="safetyChecker"
                 checked={formData.enableSafetyChecker}
                 onCheckedChange={(checked) => setFormData(prev => ({ ...prev, enableSafetyChecker: checked }))}
               />
