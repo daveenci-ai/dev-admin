@@ -56,6 +56,7 @@ export default function CRMPage() {
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null)
   const [showContactDetails, setShowContactDetails] = useState(false)
   const [allFilteredContacts, setAllFilteredContacts] = useState<Contact[]>([])
+  const [filteredContactsCount, setFilteredContactsCount] = useState(0)
 
   useEffect(() => {
     fetchStats()
@@ -88,6 +89,19 @@ export default function CRMPage() {
       if (response.ok) {
         const data = await response.json()
         setStats(data)
+        // Set the filtered count based on current filters
+        if (statusFilter !== 'all') {
+          const statusKey = statusFilter === 'prospect' ? 'prospects' : 
+                           statusFilter === 'lead' ? 'leads' :
+                           statusFilter === 'opportunity' ? 'opportunities' :
+                           statusFilter === 'client' ? 'clients' :
+                           statusFilter === 'churned' ? 'churned' :
+                           statusFilter === 'declined' ? 'declined' :
+                           statusFilter === 'unqualified' ? 'unqualified' : 'total'
+          setFilteredContactsCount(data[statusKey] || 0)
+        } else {
+          setFilteredContactsCount(data.total)
+        }
       }
     } catch (error) {
       console.error('Error fetching stats:', error)
@@ -96,7 +110,7 @@ export default function CRMPage() {
 
   const fetchContacts = async () => {
     try {
-      // Fetch current page for display
+      setLoading(true)
       const params = new URLSearchParams({
         page: '1',
         limit: '50',
@@ -111,26 +125,12 @@ export default function CRMPage() {
       if (response.ok) {
         const data = await response.json()
         setContacts(data.contacts)
-      }
-      
-      // Fetch ALL filtered contacts for export count
-      const allParams = new URLSearchParams({
-        page: '1',
-        limit: '10000', // Get all contacts
-        search: searchTerm,
-        status: statusFilter,
-        source: sourceFilter,
-        dateRange: dateFilter,
-        sentiment: sentimentFilter
-      })
-      
-      const allResponse = await fetch(`/api/crm/contacts?${allParams}`)
-      if (allResponse.ok) {
-        const allData = await allResponse.json()
-        setAllFilteredContacts(allData.contacts)
+        // Contacts loaded successfully
       }
     } catch (error) {
       console.error('Error fetching contacts:', error)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -158,32 +158,55 @@ export default function CRMPage() {
     setSelectedContact(null)
   }
 
-  const handleExportCSV = () => {
-    // Create CSV content using ALL filtered contacts, not just displayed ones
-    const headers = ['Name', 'Email', 'Phone', 'Company', 'Status', 'Source', 'Sentiment']
-    const csvContent = [
-      headers.join(','),
-      ...allFilteredContacts.map(contact => [
-        `"${contact.name}"`,
-        `"${contact.primaryEmail}"`,
-        `"${contact.primaryPhone || ''}"`,
-        `"${contact.company || ''}"`,
-        `"${contact.status}"`,
-        `"${contact.source || ''}"`,
-        `"${contact.sentiment}"`
-      ].join(','))
-    ].join('\n')
+  const handleExportCSV = async () => {
+    try {
+      setLoading(true)
+      // Fetch ALL filtered contacts for export
+      const params = new URLSearchParams({
+        page: '1',
+        limit: '10000', // Get all filtered contacts
+        search: searchTerm,
+        status: statusFilter,
+        source: sourceFilter,
+        dateRange: dateFilter,
+        sentiment: sentimentFilter
+      })
+      
+      const response = await fetch(`/api/crm/contacts?${params}`)
+      if (response.ok) {
+        const data = await response.json()
+        
+        // Create CSV content
+        const headers = ['Name', 'Email', 'Phone', 'Company', 'Status', 'Source', 'Sentiment']
+        const csvContent = [
+          headers.join(','),
+          ...data.contacts.map((contact: Contact) => [
+            `"${contact.name}"`,
+            `"${contact.primaryEmail}"`,
+            `"${contact.primaryPhone || ''}"`,
+            `"${contact.company || ''}"`,
+            `"${contact.status}"`,
+            `"${contact.source || ''}"`,
+            `"${contact.sentiment}"`
+          ].join(','))
+        ].join('\n')
 
-    // Create and download file
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-    const link = document.createElement('a')
-    const url = URL.createObjectURL(blob)
-    link.setAttribute('href', url)
-    link.setAttribute('download', `contacts_${new Date().toISOString().split('T')[0]}.csv`)
-    link.style.visibility = 'hidden'
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+        // Create and download file
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+        const link = document.createElement('a')
+        const url = URL.createObjectURL(blob)
+        link.setAttribute('href', url)
+        link.setAttribute('download', `contacts_${new Date().toISOString().split('T')[0]}.csv`)
+        link.style.visibility = 'hidden'
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+      }
+    } catch (error) {
+      console.error('Error exporting contacts:', error)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleSort = (column: string) => {
@@ -350,7 +373,7 @@ export default function CRMPage() {
       {/* Search and Filters Row */}
       <div className="mb-6">
         {/* Search, Filters and Action Buttons in one row */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-14 gap-4">
           <div className="lg:col-span-4">
             <input
               type="text"
@@ -387,7 +410,7 @@ export default function CRMPage() {
             </select>
           </div>
           
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-2">
             <select
               value={sentimentFilter}
               onChange={(e) => setSentimentFilter(e.target.value)}
@@ -400,18 +423,18 @@ export default function CRMPage() {
             </select>
           </div>
           
-          {/* Action Buttons */}
-          <div className="lg:col-span-3 flex gap-2">
+          {/* Action Buttons - Now wider */}
+          <div className="lg:col-span-4 flex gap-2">
             <button
               onClick={handleExportCSV}
-              className="flex-1 px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 shadow-sm"
+              className="flex-1 px-5 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 shadow-sm"
             >
-              Export CSV ({allFilteredContacts.length} Contacts)
+              Export CSV ({filteredContactsCount} Contacts)
             </button>
             
             <button
               onClick={resetFilters}
-              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 shadow-sm"
+              className="flex-1 px-5 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 shadow-sm"
             >
               Reset Filters
             </button>
@@ -483,14 +506,17 @@ export default function CRMPage() {
           <tbody className="bg-white divide-y divide-gray-200">
             {loading ? (
               <tr>
-                <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
-                  Loading contacts...
+                <td colSpan={6} className="px-6 py-12 text-center">
+                  <div className="flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    <span className="ml-3 text-gray-500">Loading contacts...</span>
+                  </div>
                 </td>
               </tr>
-            ) : sortedContacts.length === 0 ? (
+            ) : contacts.length === 0 ? (
               <tr>
                 <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
-                  No contacts found. Try adjusting your search or filters.
+                  No contacts found
                 </td>
               </tr>
             ) : (
