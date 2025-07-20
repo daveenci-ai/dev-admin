@@ -38,22 +38,6 @@ export async function POST(request: NextRequest) {
       enhancedPrompt = `${avatar.triggerWord} ${validatedData.prompt}`
     }
 
-    // Create avatar generation record
-    const avatarGeneration = await prisma.avatarGeneration.create({
-      data: {
-        prompt: enhancedPrompt,
-        loraRepository: avatar.replicateModelUrl,
-        loraScale: validatedData.loraScale,
-        guidanceScale: validatedData.guidanceScale,
-        numInferenceSteps: validatedData.numInferenceSteps,
-        aspectRatio: validatedData.aspectRatio,
-        outputFormat: validatedData.outputFormat,
-        seed: validatedData.seed,
-        safetyChecker: validatedData.safetyChecker,
-        status: 'pending'
-      }
-    })
-
     // Call Replicate API
     const input = {
       prompt: enhancedPrompt,
@@ -85,17 +69,9 @@ export async function POST(request: NextRequest) {
 
     const prediction = await response.json()
 
-    // Update with prediction ID
-    await prisma.avatarGeneration.update({
-      where: { id: avatarGeneration.id },
-      data: {
-        replicateId: prediction.id,
-        status: 'processing'
-      }
-    })
-
+    // For now, we'll just return the prediction ID and let the client poll for status
+    // When it completes, we'll create the avatars_generated record
     return NextResponse.json({
-      id: avatarGeneration.id,
       predictionId: prediction.id,
       status: 'processing',
       message: 'Image generation started'

@@ -11,12 +11,8 @@ export async function GET(request: NextRequest) {
     
     const skip = (page - 1) * limit
 
-    // Build where clause for generations
+    // Build where clause for generations using existing avatars_generated table
     const where: any = {}
-    
-    if (status && status !== 'all') {
-      where.status = status
-    }
 
     if (search) {
       where.OR = [
@@ -24,9 +20,9 @@ export async function GET(request: NextRequest) {
       ]
     }
 
-    // Get generations with pagination
+    // Get generations with pagination from avatars_generated table
     const [generations, total] = await Promise.all([
-      prisma.avatarGeneration.findMany({
+      prisma.avatarGenerated.findMany({
         where,
         skip,
         take: limit,
@@ -34,49 +30,39 @@ export async function GET(request: NextRequest) {
         select: {
           id: true,
           prompt: true,
-          loraRepository: true,
-          loraScale: true,
-          guidanceScale: true,
-          numInferenceSteps: true,
-          aspectRatio: true,
-          outputFormat: true,
-          seed: true,
-          safetyChecker: true,
-          status: true,
-          imageUrl: true,
-          errorMessage: true,
+          githubImageUrl: true,
           createdAt: true,
-          updatedAt: true
+          avatar: {
+            select: {
+              id: true,
+              fullName: true,
+              triggerWord: true
+            }
+          }
         }
       }),
-      prisma.avatarGeneration.count({ where })
+      prisma.avatarGenerated.count({ where })
     ])
 
-    // Process generations to handle review status
+    // Process generations to match expected format
     const processedGenerations = generations.map((generation: any) => {
-      const isPendingReview = generation.imageUrl?.startsWith('PENDING_REVIEW:') || false
+      const isPendingReview = generation.githubImageUrl?.startsWith('PENDING_REVIEW:') || false
       const imageUrl = isPendingReview 
-        ? generation.imageUrl?.replace('PENDING_REVIEW:', '') 
-        : generation.imageUrl
+        ? generation.githubImageUrl?.replace('PENDING_REVIEW:', '') 
+        : generation.githubImageUrl
 
       return {
-        id: generation.id,
+        id: generation.id.toString(),
         prompt: generation.prompt,
-        loraRepository: generation.loraRepository,
-        loraScale: generation.loraScale,
-        guidanceScale: generation.guidanceScale,
-        numInferenceSteps: generation.numInferenceSteps,
-        aspectRatio: generation.aspectRatio,
-        outputFormat: generation.outputFormat,
-        seed: generation.seed,
-        safetyChecker: generation.safetyChecker,
-        status: generation.status,
-        imageUrl: imageUrl, // Clean URL for display
-        githubImageUrl: isPendingReview ? null : generation.imageUrl,
+        status: isPendingReview ? 'pending' : 'completed',
+        imageUrl: imageUrl,
+        githubImageUrl: isPendingReview ? null : generation.githubImageUrl,
         isPendingReview: isPendingReview,
-        errorMessage: generation.errorMessage,
         createdAt: generation.createdAt,
-        updatedAt: generation.updatedAt
+        avatar: generation.avatar ? {
+          ...generation.avatar,
+          id: generation.avatar.id.toString()
+        } : null
       }
     })
 
