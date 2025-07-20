@@ -53,6 +53,8 @@ export default function CRMPage() {
   const [sortColumn, setSortColumn] = useState<string>('')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
   const [availableSources, setAvailableSources] = useState<string[]>([])
+  const [selectedContact, setSelectedContact] = useState<Contact | null>(null)
+  const [showContactDetails, setShowContactDetails] = useState(false)
 
   useEffect(() => {
     fetchStats()
@@ -127,6 +129,44 @@ export default function CRMPage() {
     setSentimentFilter('all')
     setSortColumn('')
     setSortDirection('asc')
+  }
+
+  const handleContactClick = (contact: Contact) => {
+    setSelectedContact(contact)
+    setShowContactDetails(true)
+  }
+
+  const handleCloseContactDetails = () => {
+    setShowContactDetails(false)
+    setSelectedContact(null)
+  }
+
+  const handleExportCSV = () => {
+    // Create CSV content
+    const headers = ['Name', 'Email', 'Phone', 'Company', 'Status', 'Source', 'Sentiment']
+    const csvContent = [
+      headers.join(','),
+      ...sortedContacts.map(contact => [
+        `"${contact.name}"`,
+        `"${contact.primaryEmail}"`,
+        `"${contact.primaryPhone || ''}"`,
+        `"${contact.company || ''}"`,
+        `"${contact.status}"`,
+        `"${contact.source || ''}"`,
+        `"${contact.sentiment}"`
+      ].join(','))
+    ].join('\n')
+
+    // Create and download file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    const url = URL.createObjectURL(blob)
+    link.setAttribute('href', url)
+    link.setAttribute('download', `contacts_${new Date().toISOString().split('T')[0]}.csv`)
+    link.style.visibility = 'hidden'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
   }
 
   const handleSort = (column: string) => {
@@ -267,7 +307,8 @@ export default function CRMPage() {
   ]
 
   return (
-    <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="relative">
+      <div className={`transition-all duration-300 ${showContactDetails ? 'mr-[50%]' : 'mr-0'} px-4 sm:px-6 lg:px-8`}>
       {/* Statistics Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-6">
         {statCards.map((stat) => {
@@ -290,13 +331,27 @@ export default function CRMPage() {
         })}
       </div>
 
-      {/* Contact Count and Search */}
-      <div className="mb-6 flex flex-col md:flex-row gap-4 items-center">
-        <div className="flex items-center gap-4">
-          <div className="text-sm font-medium text-gray-700">
-            {stats.total} contacts
-          </div>
-          <div className="flex-1 min-w-80">
+      {/* Export and Search Row */}
+      <div className="mb-6 space-y-4">
+        <div className="flex justify-between items-center">
+          <button
+            onClick={handleExportCSV}
+            className="px-6 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 shadow-sm"
+          >
+            Export CSV ({stats.total} Contacts)
+          </button>
+          
+          <button
+            onClick={resetFilters}
+            className="px-6 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 shadow-sm"
+          >
+            Reset Filters
+          </button>
+        </div>
+        
+        {/* Full Width Search and Filters */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+          <div className="md:col-span-6">
             <input
               type="text"
               placeholder="Search contacts by name, email, company..."
@@ -305,48 +360,45 @@ export default function CRMPage() {
               className="w-full border border-gray-300 rounded-md px-4 py-2 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder-gray-400"
             />
           </div>
-        </div>
-        
-        <div className="flex gap-3 items-center">
-          <select
-            value={sourceFilter}
-            onChange={(e) => setSourceFilter(e.target.value)}
-            className="min-w-40 border border-gray-300 rounded-md px-4 py-2 pr-10 text-sm bg-white transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          >
-            <option value="all">All Sources</option>
-            {availableSources.map((source) => (
-              <option key={source} value={source}>{source}</option>
-            ))}
-          </select>
           
-          <select
-            value={dateFilter}
-            onChange={(e) => setDateFilter(e.target.value)}
-            className="min-w-36 border border-gray-300 rounded-md px-4 py-2 pr-10 text-sm bg-white transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          >
-            <option value="all">All Time</option>
-            <option value="7">Last 7 Days</option>
-            <option value="30">Last 30 Days</option>
-            <option value="180">Last 6 Months</option>
-          </select>
+          <div className="md:col-span-2">
+            <select
+              value={sourceFilter}
+              onChange={(e) => setSourceFilter(e.target.value)}
+              className="w-full border border-gray-300 rounded-md px-4 py-2 pr-10 text-sm bg-white transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="all">All Sources</option>
+              {availableSources.map((source) => (
+                <option key={source} value={source}>{source}</option>
+              ))}
+            </select>
+          </div>
           
-          <select
-            value={sentimentFilter}
-            onChange={(e) => setSentimentFilter(e.target.value)}
-            className="min-w-28 border border-gray-300 rounded-md px-3 py-2 pr-8 text-sm bg-white transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          >
-            <option value="all">😐 All</option>
-            <option value="good">😊 Good</option>
-            <option value="neutral">😐 Neutral</option>
-            <option value="bad">😞 Bad</option>
-          </select>
+          <div className="md:col-span-2">
+            <select
+              value={dateFilter}
+              onChange={(e) => setDateFilter(e.target.value)}
+              className="w-full border border-gray-300 rounded-md px-4 py-2 pr-10 text-sm bg-white transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="all">All Time</option>
+              <option value="7">Last 7 Days</option>
+              <option value="30">Last 30 Days</option>
+              <option value="180">Last 6 Months</option>
+            </select>
+          </div>
           
-          <button
-            onClick={resetFilters}
-            className="px-6 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 shadow-sm"
-          >
-            Reset Filters
-          </button>
+          <div className="md:col-span-2">
+            <select
+              value={sentimentFilter}
+              onChange={(e) => setSentimentFilter(e.target.value)}
+              className="w-full border border-gray-300 rounded-md px-3 py-2 pr-8 text-sm bg-white transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="all">😐 All</option>
+              <option value="good">😊 Good</option>
+              <option value="neutral">😐 Neutral</option>
+              <option value="bad">😞 Bad</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -426,7 +478,11 @@ export default function CRMPage() {
               </tr>
             ) : (
               sortedContacts.map((contact) => (
-                <tr key={contact.id} className="hover:bg-gray-50">
+                <tr 
+                  key={contact.id} 
+                  className="hover:bg-gray-50 cursor-pointer transition-colors"
+                  onClick={() => handleContactClick(contact)}
+                >
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <div className="mr-3 flex-shrink-0">
@@ -468,6 +524,139 @@ export default function CRMPage() {
           </tbody>
         </table>
       </div>
+    </div>
+
+      {/* Contact Details Sliding Panel */}
+      {showContactDetails && (
+        <>
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 z-40"
+            onClick={handleCloseContactDetails}
+          />
+          
+          {/* Sliding Panel */}
+          <div className={`fixed top-0 right-0 h-full w-1/2 bg-white shadow-2xl z-50 transform transition-transform duration-300 ${
+            showContactDetails ? 'translate-x-0' : 'translate-x-full'
+          }`}>
+            <div className="flex flex-col h-full">
+              {/* Header */}
+              <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                <h2 className="text-xl font-semibold text-gray-900">Contact Details</h2>
+                <button
+                  onClick={handleCloseContactDetails}
+                  className="p-2 hover:bg-gray-100 rounded-md transition-colors"
+                >
+                  <svg className="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              
+              {/* Content */}
+              <div className="flex-1 overflow-y-auto p-6">
+                {selectedContact && (
+                  <div className="space-y-6">
+                    {/* Contact Header */}
+                    <div className="flex items-center space-x-4">
+                      <div className="flex-shrink-0">
+                        {getSentimentIcon(selectedContact.sentiment)}
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-medium text-gray-900">{selectedContact.name}</h3>
+                        {selectedContact.company && (
+                          <p className="text-sm text-gray-500">{selectedContact.company}</p>
+                        )}
+                      </div>
+                      <div className="ml-auto">
+                        <span className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full uppercase tracking-wide ${getStatusColor(selectedContact.status)}`}>
+                          {selectedContact.status}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Contact Information */}
+                    <div className="grid grid-cols-1 gap-6">
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-900 mb-3">Contact Information</h4>
+                        <div className="space-y-3">
+                          <div>
+                            <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Primary Email</label>
+                            <p className="mt-1 text-sm text-gray-900">{selectedContact.primaryEmail}</p>
+                          </div>
+                          {selectedContact.primaryPhone && (
+                            <div>
+                              <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Phone</label>
+                              <p className="mt-1 text-sm text-gray-900">{selectedContact.primaryPhone}</p>
+                            </div>
+                          )}
+                          {selectedContact.source && (
+                            <div>
+                              <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Source</label>
+                              <p className="mt-1 text-sm text-gray-900">{selectedContact.source}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Status & Sentiment */}
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-900 mb-3">Status & Sentiment</h4>
+                        <div className="space-y-3">
+                          <div>
+                            <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Status</label>
+                            <p className="mt-1 text-sm text-gray-900">{selectedContact.status}</p>
+                          </div>
+                          <div>
+                            <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Sentiment</label>
+                            <div className="mt-1 flex items-center space-x-2">
+                              {getSentimentIcon(selectedContact.sentiment)}
+                              <span className="text-sm text-gray-900 capitalize">{selectedContact.sentiment}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Timeline */}
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-900 mb-3">Timeline</h4>
+                        <div className="space-y-3">
+                          <div>
+                            <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Created</label>
+                            <p className="mt-1 text-sm text-gray-900">
+                              {format(new Date(selectedContact.createdAt), 'PPP')}
+                            </p>
+                          </div>
+                          {selectedContact.touchpoints && selectedContact.touchpoints.length > 0 && (
+                            <div>
+                              <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Last Activity</label>
+                              <p className="mt-1 text-sm text-gray-900">
+                                {format(new Date(selectedContact.touchpoints[0].createdAt), 'PPP')}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              {/* Footer Actions */}
+              <div className="border-t border-gray-200 p-6">
+                <div className="flex space-x-3">
+                  <button className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md text-sm font-medium hover:bg-blue-700 transition-colors">
+                    Edit Contact
+                  </button>
+                  <button className="flex-1 bg-gray-100 text-gray-700 py-2 px-4 rounded-md text-sm font-medium hover:bg-gray-200 transition-colors">
+                    Add Note
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 } 
