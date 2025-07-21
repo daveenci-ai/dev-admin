@@ -243,7 +243,7 @@ export default function AvatarPage() {
           isOpen={showWorkflowModal}
           onClose={() => setShowWorkflowModal(false)}
           originalPrompt={generationData.originalPrompt || generationData.prompt}
-          optimizedPrompt={generationData.optimizedPrompt}
+          optimizedPrompts={generationData.optimizedPrompts}
           avatarName={generationData.avatar?.name || 'Unknown'}
           numImages={generationData.numImages || 1}
           stage={workflowStage}
