@@ -120,21 +120,21 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// DELETE: Remove generation from both GitHub and database
 export async function DELETE(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
-    const id = searchParams.get('id')
-
-    if (!id || isNaN(parseInt(id))) {
+    const { id } = await request.json()
+    
+    if (!id) {
       return NextResponse.json(
-        { error: 'Valid ID is required' },
+        { error: 'Generation ID is required' },
         { status: 400 }
       )
     }
 
-    const generationId = parseInt(id)
+    const generationId = BigInt(id)
 
-    // Check if generation exists in avatars_generated table
+    // First, get the generation record to retrieve the GitHub URL
     const generation = await prisma.avatarGenerated.findUnique({
       where: { id: generationId }
     })
@@ -146,14 +146,43 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
-    // Delete the generation from avatars_generated table
+    let githubDeletionError = null
+
+    // Try to delete from GitHub first (if not PENDING_REVIEW)
+    if (generation.githubImageUrl && !generation.githubImageUrl.startsWith('PENDING_REVIEW:')) {
+      try {
+        const { default: githubStorage } = await import('@/lib/github-storage')
+        console.log(`🗑️ Deleting image from GitHub: ${generation.githubImageUrl}`)
+        await githubStorage.deleteImage(generation.githubImageUrl)
+        console.log(`✅ Successfully deleted from GitHub`)
+      } catch (error: any) {
+        console.error('❌ GitHub deletion failed:', error)
+        githubDeletionError = error.message
+        // Continue with database deletion even if GitHub deletion fails
+      }
+    } else if (generation.githubImageUrl?.startsWith('PENDING_REVIEW:')) {
+      console.log('⏭️ Skipping GitHub deletion for PENDING_REVIEW image')
+    }
+
+    // Delete from database
     await prisma.avatarGenerated.delete({
       where: { id: generationId }
     })
 
-    return NextResponse.json({ 
-      message: 'Avatar generation deleted successfully' 
-    })
+    console.log(`✅ Successfully deleted from database: ${id}`)
+
+    const response: any = { 
+      message: 'Avatar generation deleted successfully',
+      deletedFromDatabase: true,
+      deletedFromGitHub: !githubDeletionError
+    }
+
+    if (githubDeletionError) {
+      response.warnings = [`GitHub deletion failed: ${githubDeletionError}`]
+    }
+
+    return NextResponse.json(response)
+    
   } catch (error) {
     console.error('Avatar deletion error:', error)
     return NextResponse.json(

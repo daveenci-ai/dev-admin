@@ -152,6 +152,64 @@ class GitHubImageStorage {
   }
 
   /**
+   * Delete image from GitHub repository
+   */
+  async deleteImage(githubUrl: string): Promise<void> {
+    this.initialize()
+    
+    try {
+      // Extract path from GitHub URL
+      // Format: https://raw.githubusercontent.com/owner/repo/branch/path
+      const urlParts = githubUrl.replace('https://raw.githubusercontent.com/', '').split('/')
+      if (urlParts.length < 4) {
+        throw new Error('Invalid GitHub URL format')
+      }
+      
+      // Skip owner, repo, and branch to get the file path
+      const path = urlParts.slice(3).join('/')
+      
+      console.log(`🗑️ Deleting image from GitHub: ${path}`)
+      
+      try {
+        // Get file info first to get the SHA (required for deletion)
+        const fileInfo = await this.octokit!.repos.getContent({
+          owner: this.owner!,
+          repo: this.repo!,
+          path: path,
+          ref: this.branch
+        })
+
+        if (Array.isArray(fileInfo.data) || fileInfo.data.type !== 'file') {
+          throw new Error('Path does not point to a file')
+        }
+
+        // Delete the file
+        await this.octokit!.repos.deleteFile({
+          owner: this.owner!,
+          repo: this.repo!,
+          path: path,
+          message: `Delete generated image: ${path}`,
+          sha: fileInfo.data.sha,
+          branch: this.branch
+        })
+
+        console.log(`✅ Image deleted from GitHub: ${path}`)
+        
+      } catch (error: any) {
+        if (error.status === 404) {
+          console.log(`⚠️ Image not found in GitHub (already deleted): ${path}`)
+          return // File doesn't exist, consider it successfully deleted
+        }
+        throw error
+      }
+      
+    } catch (error: any) {
+      console.error('Error deleting image from GitHub:', error)
+      throw new Error(`Failed to delete image from GitHub: ${error.message}`)
+    }
+  }
+
+  /**
    * Upload image to GitHub repository
    */
   async uploadImage(imageUrl: string, prompt: string, avatarName: string): Promise<{ url: string }> {
