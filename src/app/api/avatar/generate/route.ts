@@ -36,7 +36,7 @@ async function optimizePromptWithGemini(
           characteristics: "Tall and narrow, ideal for emphasizing height, subjects, and vertical elements",
           compositions: [
             "Full-Body Shot / Medium-Full Shot: Capture person from head to toe, emphasizing posture and presence",
-            "Close-Up (Face/Upper Body): Intimate shots highlighting facial expressions and upper body details", 
+            "Medium Portrait (Waist-Up): Show upper body and torso, professional and engaging composition", 
             "Environmental Portrait: Subject with enough vertical background for context without distraction"
           ]
         }
@@ -55,7 +55,7 @@ async function optimizePromptWithGemini(
           focus: "Square (Equal Sides)",  
           characteristics: "Balanced and symmetrical, forcing central composition without horizontal/vertical bias",
           compositions: [
-            "Central Composition / Isolated Subject: Draw attention to center, prominently place main subject",
+            "Central Composition / Medium Portrait: Draw attention to center with professional medium distance",
             "Abstract / Pattern Focus: Highlight textures, patterns, and balanced elements without horizon distractions", 
             "Overhead Shot (Top-Down): Create pleasingly geometric and balanced composition from above"
           ]
@@ -93,6 +93,12 @@ REQUIREMENTS FOR ALL 3 PROMPTS:
 - Keep each under 300 characters
 - Focus on visual details, lighting, and professional composition
 - Make suitable for high-quality avatar generation
+
+IMPORTANT COMPOSITION RESTRICTIONS:
+- NEVER use close-up shots, detailed close-ups, or tight facial shots
+- AVOID extreme close-ups or intimate face-only compositions
+- USE medium shots, medium portraits, full-body shots, or wide shots only
+- FOCUS on professional medium-distance photography
 
 RESPONSE FORMAT:
 OPTION1: [First composition approach prompt]
@@ -149,7 +155,7 @@ Return ONLY the three prompts in the exact format above, nothing else.
       const basePrompt = `Photorealistic image of ${triggerWord}${avatarInfo} ${originalPrompt}`
       
       return {
-        option1: `${basePrompt}, close-up portrait, professional photography, sharp focus, detailed lighting`,
+        option1: `${basePrompt}, medium portrait shot, professional photography, sharp focus, detailed lighting`,
         option2: `${basePrompt}, medium shot, cinematic composition, high quality, dramatic lighting`, 
         option3: `${basePrompt}, wide angle view, environmental context, professional photography, balanced composition`
       }
