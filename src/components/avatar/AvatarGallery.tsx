@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { format } from 'date-fns'
 import { Card, CardContent, CardFooter } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -63,6 +63,10 @@ export function AvatarGallery({ refreshTrigger, onDelete }: AvatarGalleryProps) 
     totalPages: 0
   })
 
+  // Ref to maintain search input focus
+  const searchInputRef = useRef<HTMLInputElement>(null)
+  const [wasSearchFocused, setWasSearchFocused] = useState(false)
+
   // Debounce search term
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -76,6 +80,19 @@ export function AvatarGallery({ refreshTrigger, onDelete }: AvatarGalleryProps) 
     fetchGenerations()
     fetchAvatars()
   }, [debouncedSearchTerm, selectedAvatar, timeFrame, pagination.page, refreshTrigger])
+
+  // Restore focus to search input after data updates if user was typing
+  useEffect(() => {
+    if (wasSearchFocused && searchInputRef.current && !loading) {
+      // Small delay to ensure DOM is updated
+      setTimeout(() => {
+        searchInputRef.current?.focus()
+        // Restore cursor position to end of input
+        const inputLength = searchTerm.length
+        searchInputRef.current?.setSelectionRange(inputLength, inputLength)
+      }, 50)
+    }
+  }, [loading, wasSearchFocused, searchTerm])
 
   const fetchAvatars = async () => {
     try {
@@ -196,9 +213,12 @@ export function AvatarGallery({ refreshTrigger, onDelete }: AvatarGalleryProps) 
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
           <Input
+            ref={searchInputRef}
             placeholder="Search in descriptions..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
+            onFocus={() => setWasSearchFocused(true)}
+            onBlur={() => setWasSearchFocused(false)}
             className="pl-10 h-9"
           />
         </div>
