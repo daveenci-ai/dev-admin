@@ -30,8 +30,9 @@ GEMINI_API_KEY="your_gemini_api_key_here"
 **Required for prompt optimization feature. Get your API key from [Google AI Studio](https://makersuite.google.com/app/apikey)**
 
 **Important Notes:**
-- We use **Gemini 1.5 Pro** for better stability and quality
-- The system has robust fallback if Gemini is overloaded (503 errors)
+- **Primary**: **Gemini 2.0 Flash (Experimental)** for highest quality optimization
+- **Fallback**: **Gemini 1.5 Flash** for reliability when primary model fails
+- **Final Fallback**: Enhanced manual prompt construction with avatar details
 - API quota: Free tier has daily limits, consider upgrading for production
 
 ### GitHub Storage Configuration
@@ -78,7 +79,7 @@ The new system includes a friendly user choice flow:
 ## Recent Fixes (Latest Update)
 
 ### ✅ Fixed Issues:
-- **Gemini Model**: Updated to stable `gemini-1.5-pro` from experimental version
+- **Gemini Model**: Implemented tiered approach - `gemini-2.0-flash-exp` → `gemini-1.5-flash` fallback
 - **Number of Images**: Limited to 1-4 instead of 1-8 for better performance  
 - **User Experience**: Replaced system alerts with friendly modal for prompt comparison
 - **Error Handling**: Better fallback when Gemini API is overloaded

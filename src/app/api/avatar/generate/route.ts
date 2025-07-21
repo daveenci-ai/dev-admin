@@ -17,7 +17,7 @@ const generateImageSchema = z.object({
   previewOnly: z.boolean().default(false).optional() // For getting optimized prompt only
 })
 
-// Initialize Gemini AI with stable model
+// Initialize Gemini AI with tiered model approach
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
 
 async function optimizePromptWithGemini(
@@ -26,19 +26,15 @@ async function optimizePromptWithGemini(
   avatarDescription: string | null,
   aspectRatio: string
 ): Promise<string> {
-  try {
-    // Use stable Gemini 1.5 Pro model
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" })
-    
-    // Determine photorealism based on aspect ratio
-    const isPortraitAspect = ['9:16', '3:4', '9:21'].includes(aspectRatio)
-    const photorealismInstruction = isPortraitAspect ? 
-      "Include close-up or medium shot composition for professional portrait quality." : 
-      "Focus on composition and scene setting appropriate for the aspect ratio."
+  // Determine photorealism based on aspect ratio
+  const isPortraitAspect = ['9:16', '3:4', '9:21'].includes(aspectRatio)
+  const photorealismInstruction = isPortraitAspect ? 
+    "Include close-up or medium shot composition for professional portrait quality." : 
+    "Focus on composition and scene setting appropriate for the aspect ratio."
 
-    const avatarInfo = avatarDescription ? `\n- Avatar details: ${avatarDescription}` : ''
+  const avatarInfo = avatarDescription ? `\n- Avatar details: ${avatarDescription}` : ''
 
-    const optimizationPrompt = `
+  const optimizationPrompt = `
 You are an expert AI image prompt engineer specializing in FLUX-dev-lora model optimization.
 
 INPUTS:
@@ -62,21 +58,42 @@ EXAMPLE STRUCTURE:
 Return ONLY the optimized prompt text, nothing else.
 `
 
+  // Try Gemini 2.0 Flash (Experimental) first - highest quality
+  try {
+    console.log(`🤖 Trying Gemini 2.0 Flash (Experimental)...`)
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" })
+    
     const result = await model.generateContent(optimizationPrompt)
     const response = await result.response
     const optimizedPrompt = response.text().trim()
 
-    console.log(`🤖 Gemini 1.5 Pro optimized prompt: "${optimizedPrompt}"`)
+    console.log(`✅ Gemini 2.0 Flash optimized prompt: "${optimizedPrompt}"`)
     return optimizedPrompt
 
   } catch (error: any) {
-    console.error('❌ Gemini optimization failed:', error.message || error)
+    console.warn(`⚠️ Gemini 2.0 Flash failed: ${error.message || error}`)
     
-    // Enhanced fallback with avatar description
-    const avatarInfo = avatarDescription ? `, ${avatarDescription}` : ''
-    const fallbackPrompt = `${triggerWord}${avatarInfo} ${originalPrompt}, professional photography, high quality, detailed lighting, sharp focus`
-    console.log(`🔄 Using enhanced fallback prompt: "${fallbackPrompt}"`)
-    return fallbackPrompt
+    // Fallback to Gemini 1.5 Flash - more stable
+    try {
+      console.log(`🔄 Falling back to Gemini 1.5 Flash...`)
+      const fallbackModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash" })
+      
+      const result = await fallbackModel.generateContent(optimizationPrompt)
+      const response = await result.response
+      const optimizedPrompt = response.text().trim()
+
+      console.log(`✅ Gemini 1.5 Flash optimized prompt: "${optimizedPrompt}"`)
+      return optimizedPrompt
+
+    } catch (fallbackError: any) {
+      console.error(`❌ Both Gemini models failed. 2.0: ${error.message}, 1.5: ${fallbackError.message}`)
+      
+      // Final fallback: enhanced manual prompt
+      const avatarInfo = avatarDescription ? `, ${avatarDescription}` : ''
+      const manualPrompt = `${triggerWord}${avatarInfo} ${originalPrompt}, professional photography, high quality, detailed lighting, sharp focus, cinematic composition`
+      console.log(`🔧 Using enhanced manual fallback: "${manualPrompt}"`)
+      return manualPrompt
+    }
   }
 }
 
@@ -99,8 +116,8 @@ export async function POST(request: NextRequest) {
     console.log(`📝 Avatar description: ${avatar.description || 'None'}`)
     console.log(`📝 Original prompt: "${validatedData.prompt}"`)
 
-    // Step 1: Always optimize prompt with Gemini AI
-    console.log(`🤖 Optimizing prompt with Gemini 1.5 Pro...`)
+    // Step 1: Always optimize prompt with Gemini AI (tiered approach)
+    console.log(`🤖 Optimizing prompt with Gemini AI (2.0 Flash → 1.5 Flash fallback)...`)
     const optimizedPrompt = await optimizePromptWithGemini(
       validatedData.prompt,
       avatar.triggerWord,
