@@ -5,7 +5,6 @@ import { format } from 'date-fns'
 import { Card, CardContent, CardFooter } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { 
   Image as ImageIcon, 
   Download, 
@@ -212,14 +211,15 @@ export function AvatarGallery({ refreshTrigger, onDelete }: AvatarGalleryProps) 
         {/* Search Box - Takes most space */}
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-          <Input
+          <input
             ref={searchInputRef}
+            type="text"
             placeholder="Search in descriptions..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             onFocus={() => setWasSearchFocused(true)}
             onBlur={() => setWasSearchFocused(false)}
-            className="pl-10 h-9"
+            className="w-full h-9 pl-10 pr-3 py-2 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
           />
         </div>
         
