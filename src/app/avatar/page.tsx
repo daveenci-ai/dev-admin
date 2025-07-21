@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { AvatarGenerationForm } from '@/components/avatar/AvatarGenerationForm'
 import { AvatarGallery } from '@/components/avatar/AvatarGallery'
 
@@ -73,41 +73,34 @@ export default function AvatarPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 p-8">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-2 text-gray-600">Loading avatars...</p>
-          </div>
+      <div className="h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-2 text-gray-600">Loading avatars...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-6xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">Avatar Generator</h1>
-          <p className="text-gray-600">AI-powered avatar generation with GitHub integration</p>
+    <div className="h-screen flex bg-gray-50">
+      {/* Control Panel - Fixed Width Left Side */}
+      <div className="w-96 flex-shrink-0 border-r border-gray-200 bg-white">
+        <div className="h-full overflow-y-auto p-6">
+          <AvatarGenerationForm 
+            onGenerate={handleGenerate}
+            isGenerating={loading}
+          />
         </div>
+      </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Generation Form */}
-          <div>
-            <AvatarGenerationForm 
-              onGenerate={handleGenerate}
-              isGenerating={loading}
-            />
-          </div>
-
-          {/* Gallery */}
-          <div>
-            <AvatarGallery 
-              refreshTrigger={refreshTrigger}
-              onDelete={handleDelete}
-            />
-          </div>
+      {/* Gallery - Flexible Right Side */}
+      <div className="flex-1 overflow-hidden">
+        <div className="h-full overflow-y-auto p-6">
+          <AvatarGallery 
+            refreshTrigger={refreshTrigger}
+            onDelete={handleDelete}
+          />
         </div>
       </div>
     </div>

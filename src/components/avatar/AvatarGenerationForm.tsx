@@ -22,6 +22,7 @@ export interface GenerationData {
   loraScale: number
   guidanceScale: number
   numInferenceSteps: number
+  numImages: number
   aspectRatio: string
   outputFormat: string
   seed?: number
@@ -42,11 +43,12 @@ export function AvatarGenerationForm({ onGenerate, isGenerating }: AvatarGenerat
   const [formData, setFormData] = useState<GenerationData>({
     prompt: '',
     avatarId: '',
-    loraScale: 0.8,
-    guidanceScale: 7.5,
-    numInferenceSteps: 20,
-    aspectRatio: '1:1',
-    outputFormat: 'webp',
+    loraScale: 1.0,
+    guidanceScale: 2.0,
+    numInferenceSteps: 36,
+    numImages: 4,
+    aspectRatio: '9:16',
+    outputFormat: 'jpg',
     seed: undefined,
     safetyChecker: true
   })
@@ -105,18 +107,18 @@ export function AvatarGenerationForm({ onGenerate, isGenerating }: AvatarGenerat
   ]
 
   return (
-    <Card className="w-full max-w-2xl">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+    <div className="w-full space-y-6">
+      <div className="mb-6">
+        <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2 mb-2">
           <Wand2 className="h-5 w-5" />
           Generate Avatar
-        </CardTitle>
-        <CardDescription>
+        </h2>
+        <p className="text-sm text-gray-600">
           Create AI-generated avatars using your trained models
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <form onSubmit={handleSubmit} className="space-y-6">
+        </p>
+      </div>
+      
+      <form onSubmit={handleSubmit} className="space-y-6">
           {/* Avatar Selection */}
           <div className="space-y-2">
             <Label htmlFor="avatar">Select Avatar</Label>
@@ -232,6 +234,22 @@ export function AvatarGenerationForm({ onGenerate, isGenerating }: AvatarGenerat
                 </p>
               </div>
 
+              {/* Number of Images */}
+              <div className="space-y-2">
+                <Label>Number of Images: {formData.numImages}</Label>
+                <Slider
+                  value={[formData.numImages]}
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, numImages: value[0] }))}
+                  min={1}
+                  max={8}
+                  step={1}
+                  className="w-full"
+                />
+                <p className="text-xs text-gray-500">
+                  Number of images to generate (1-8)
+                </p>
+              </div>
+
               {/* Aspect Ratio */}
               <div className="space-y-2">
                 <Label>Aspect Ratio</Label>
@@ -333,7 +351,6 @@ export function AvatarGenerationForm({ onGenerate, isGenerating }: AvatarGenerat
             )}
           </Button>
         </form>
-      </CardContent>
-    </Card>
+    </div>
   )
 } 
