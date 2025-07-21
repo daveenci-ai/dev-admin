@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Slider } from '@/components/ui/slider'
-import { Loader2, Settings, Image as ImageIcon } from 'lucide-react'
+import { Loader2, Settings, Image as ImageIcon, ChevronDown, ChevronRight } from 'lucide-react'
 
 interface AvatarGenerationFormProps {
   onGenerate: (data: GenerationData) => void
@@ -39,6 +39,7 @@ interface Avatar {
 export function AvatarGenerationForm({ onGenerate, isGenerating }: AvatarGenerationFormProps) {
   const [avatars, setAvatars] = useState<Avatar[]>([])
   const [loadingAvatars, setLoadingAvatars] = useState(true)
+  const [showAdvanced, setShowAdvanced] = useState(false)
   const [formData, setFormData] = useState<GenerationData>({
     prompt: '',
     avatarId: '',
@@ -192,120 +193,132 @@ export function AvatarGenerationForm({ onGenerate, isGenerating }: AvatarGenerat
           </select>
         </div>
 
-        {/* Advanced Settings */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Settings className="h-4 w-4" />
-              Advanced Settings
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* LoRA Scale */}
-            <div className="space-y-2">
-              <Label>LoRA Scale: {formData.loraScale}</Label>
-              <Slider
-                value={[formData.loraScale]}
-                onValueChange={(value) => setFormData(prev => ({ ...prev, loraScale: value[0] }))}
-                min={0}
-                max={1}
-                step={0.1}
-                className="w-full"
-              />
-              <p className="text-xs text-gray-500">
-                Controls the strength of the LoRA model (0.0 = base model, 1.0 = full LoRA effect)
-              </p>
-            </div>
+        {/* Collapsible Advanced Settings */}
+        <div className="space-y-2">
+          <button
+            type="button"
+            onClick={() => setShowAdvanced(!showAdvanced)}
+            className="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
+          >
+            {showAdvanced ? (
+              <ChevronDown className="h-4 w-4" />
+            ) : (
+              <ChevronRight className="h-4 w-4" />
+            )}
+            <Settings className="h-4 w-4" />
+            Advanced Settings
+          </button>
 
-            {/* Guidance Scale */}
-            <div className="space-y-2">
-              <Label>Guidance Scale: {formData.guidanceScale}</Label>
-              <Slider
-                value={[formData.guidanceScale]}
-                onValueChange={(value) => setFormData(prev => ({ ...prev, guidanceScale: value[0] }))}
-                min={1}
-                max={20}
-                step={0.5}
-                className="w-full"
-              />
-              <p className="text-xs text-gray-500">
-                How closely to follow the prompt (1-20, higher = more adherence to prompt)
-              </p>
-            </div>
-
-            {/* Inference Steps */}
-            <div className="space-y-2">
-              <Label>Inference Steps: {formData.numInferenceSteps}</Label>
-              <Slider
-                value={[formData.numInferenceSteps]}
-                onValueChange={(value) => setFormData(prev => ({ ...prev, numInferenceSteps: value[0] }))}
-                min={1}
-                max={50}
-                step={1}
-                className="w-full"
-              />
-              <p className="text-xs text-gray-500">
-                Number of denoising steps (1-50, higher = better quality but slower)
-              </p>
-            </div>
-
-            {/* Output Format */}
-            <div className="space-y-2">
-              <Label>Output Format</Label>
-              <select
-                value={formData.outputFormat}
-                onChange={(e) => setFormData(prev => ({ ...prev, outputFormat: e.target.value }))}
-                className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-              >
-                {outputFormats.map((format) => (
-                  <option key={format.value} value={format.value}>
-                    {format.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Seed Controls */}
-            <div className="space-y-3">
-              <div className="flex items-center space-x-2">
-                <Switch
-                  checked={useRandomSeed}
-                  onCheckedChange={setUseRandomSeed}
-                />
-                <Label>Use Random Seed</Label>
-              </div>
-              
-              {!useRandomSeed && (
+          {showAdvanced && (
+            <Card className="mt-3">
+              <CardContent className="pt-6 space-y-4">
+                {/* LoRA Scale */}
                 <div className="space-y-2">
-                  <Label>Seed</Label>
-                  <Input
-                    type="number"
-                    value={formData.seed || ''}
-                    onChange={(e) => setFormData(prev => ({ 
-                      ...prev, 
-                      seed: e.target.value ? parseInt(e.target.value) : undefined 
-                    }))}
-                    placeholder="Enter a number for reproducible results"
+                  <Label>LoRA Scale: {formData.loraScale}</Label>
+                  <Slider
+                    value={[formData.loraScale]}
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, loraScale: value[0] }))}
+                    min={0}
+                    max={1}
+                    step={0.1}
+                    className="w-full"
                   />
+                  <p className="text-xs text-gray-500">
+                    Controls the strength of the LoRA model (0.0 = base model, 1.0 = full LoRA effect)
+                  </p>
                 </div>
-              )}
-            </div>
 
-            {/* Safety Checker */}
-            <div className="space-y-3">
-              <div className="flex items-center space-x-2">
-                <Switch
-                  checked={formData.safetyChecker}
-                  onCheckedChange={(checked) => setFormData(prev => ({ ...prev, safetyChecker: checked }))}
-                />
-                <Label>Enable Safety Checker</Label>
-              </div>
-              <p className="text-xs text-gray-500">
-                Automatically filters potentially inappropriate content
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+                {/* Guidance Scale */}
+                <div className="space-y-2">
+                  <Label>Guidance Scale: {formData.guidanceScale}</Label>
+                  <Slider
+                    value={[formData.guidanceScale]}
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, guidanceScale: value[0] }))}
+                    min={1}
+                    max={20}
+                    step={0.5}
+                    className="w-full"
+                  />
+                  <p className="text-xs text-gray-500">
+                    How closely to follow the prompt (1-20, higher = more adherence to prompt)
+                  </p>
+                </div>
+
+                {/* Inference Steps */}
+                <div className="space-y-2">
+                  <Label>Inference Steps: {formData.numInferenceSteps}</Label>
+                  <Slider
+                    value={[formData.numInferenceSteps]}
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, numInferenceSteps: value[0] }))}
+                    min={1}
+                    max={50}
+                    step={1}
+                    className="w-full"
+                  />
+                  <p className="text-xs text-gray-500">
+                    Number of denoising steps (1-50, higher = better quality but slower)
+                  </p>
+                </div>
+
+                {/* Output Format */}
+                <div className="space-y-2">
+                  <Label>Output Format</Label>
+                  <select
+                    value={formData.outputFormat}
+                    onChange={(e) => setFormData(prev => ({ ...prev, outputFormat: e.target.value }))}
+                    className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                  >
+                    {outputFormats.map((format) => (
+                      <option key={format.value} value={format.value}>
+                        {format.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Seed Controls */}
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      checked={useRandomSeed}
+                      onCheckedChange={setUseRandomSeed}
+                    />
+                    <Label>Use Random Seed</Label>
+                  </div>
+                  
+                  {!useRandomSeed && (
+                    <div className="space-y-2">
+                      <Label>Seed</Label>
+                      <Input
+                        type="number"
+                        value={formData.seed || ''}
+                        onChange={(e) => setFormData(prev => ({ 
+                          ...prev, 
+                          seed: e.target.value ? parseInt(e.target.value) : undefined 
+                        }))}
+                        placeholder="Enter a number for reproducible results"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Safety Checker */}
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      checked={formData.safetyChecker}
+                      onCheckedChange={(checked) => setFormData(prev => ({ ...prev, safetyChecker: checked }))}
+                    />
+                    <Label>Enable Safety Checker</Label>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    Automatically filters potentially inappropriate content
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
 
         {/* Generate Button */}
         <Button 
