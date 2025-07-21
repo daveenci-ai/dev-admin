@@ -179,21 +179,38 @@ export function GenerationWorkflowModal({
 }: GenerationWorkflowModalProps) {
   const [imageApprovals, setImageApprovals] = React.useState<Record<string, boolean>>({})
 
-  // Get composition labels based on aspect ratio
-  const getCompositionLabels = (ratio: string) => {
-    switch (ratio) {
-      case '9:16': // Portrait
-        return ['Close-Up Shot', 'Full-Body Shot', 'Environmental Portrait']
-      case '16:9': // Landscape  
-        return ['Wide Shot', 'Medium Shot', 'Action Shot']
-      case '1:1': // Square
-        return ['Central Focus', 'Pattern/Abstract', 'Overhead Shot']
-      default:
-        return ['Close-Up Shot', 'Medium Shot', 'Wide Shot']
+  // Get composition labels based on actual prompt content
+  const getCompositionFromPrompt = (prompt: string) => {
+    const lowerPrompt = prompt.toLowerCase()
+    
+    if (lowerPrompt.includes('close-up') || lowerPrompt.includes('headshot') || lowerPrompt.includes('close up')) {
+      return 'Close-Up Shot'
+    } else if (lowerPrompt.includes('full-body') || lowerPrompt.includes('full body')) {
+      return 'Full-Body Shot'
+    } else if (lowerPrompt.includes('medium shot') || lowerPrompt.includes('medium-shot')) {
+      return 'Medium Shot'
+    } else if (lowerPrompt.includes('wide shot') || lowerPrompt.includes('wide-shot') || lowerPrompt.includes('wide angle')) {
+      return 'Wide Shot'
+    } else if (lowerPrompt.includes('environmental') || lowerPrompt.includes('vertical environmental')) {
+      return 'Environmental'
+    } else if (lowerPrompt.includes('action') || lowerPrompt.includes('dynamic')) {
+      return 'Action Shot'
+    } else if (lowerPrompt.includes('overhead') || lowerPrompt.includes('bird\'s eye')) {
+      return 'Overhead'
+    } else if (lowerPrompt.includes('pattern') || lowerPrompt.includes('abstract')) {
+      return 'Abstract'
+    } else if (lowerPrompt.includes('central') || lowerPrompt.includes('centered')) {
+      return 'Central Focus'
+    } else {
+      return 'Composed Shot'
     }
   }
 
-  const compositionLabels = getCompositionLabels(aspectRatio)
+  const compositionLabels = optimizedPrompts ? [
+    getCompositionFromPrompt(optimizedPrompts.option1),
+    getCompositionFromPrompt(optimizedPrompts.option2),
+    getCompositionFromPrompt(optimizedPrompts.option3)
+  ] : ['Option 1', 'Option 2', 'Option 3']
 
   const handleImageToggle = (imageId: string) => {
     setImageApprovals(prev => ({
@@ -324,7 +341,7 @@ export function GenerationWorkflowModal({
         {/* Stage 4: Image Approval */}
         {stage === 'approval' && (
           <div className="space-y-6">
-            <div className="grid grid-cols-1 gap-4">
+            <div className="grid grid-cols-4 gap-4">
               {images.map((image) => (
                 <div key={image.id} className="relative group">
                   <div 
@@ -340,7 +357,7 @@ export function GenerationWorkflowModal({
                       <img 
                         src={image.imageUrl} 
                         alt="Generated image"
-                        className="w-full h-auto object-contain max-h-64" // Reduced height for single row
+                        className="w-full h-auto object-contain aspect-square" // Fixed aspect ratio for grid
                         style={{ aspectRatio: 'auto' }} // Preserve original aspect ratio
                       />
                       <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-opacity" />
