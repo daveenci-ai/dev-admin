@@ -199,7 +199,7 @@ export async function POST(request: NextRequest) {
     const optimizedPrompts = await optimizePromptWithGemini(
       validatedData.prompt,
       avatar.triggerWord,
-      avatar.description,
+      avatar.description || undefined, // Convert null to undefined for TypeScript
       validatedData.aspectRatio
     )
 
