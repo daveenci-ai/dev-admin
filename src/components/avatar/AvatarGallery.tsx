@@ -20,7 +20,7 @@ import {
 } from 'lucide-react'
 
 interface AvatarGeneration {
-  id: number
+  id: string // Changed from number to string to match BigInt database IDs
   prompt: string
   loraRepository: string
   loraScale: number
@@ -38,15 +38,14 @@ interface AvatarGeneration {
 }
 
 interface Avatar {
-  id: string
+  id: string // Changed from number to string to match BigInt database IDs
   fullName: string
   triggerWord: string
-  description?: string
 }
 
 interface AvatarGalleryProps {
   refreshTrigger: number
-  onDelete: (id: number) => void
+  onDelete: (id: string) => void // Changed from number to string
 }
 
 export function AvatarGallery({ refreshTrigger, onDelete }: AvatarGalleryProps) {
