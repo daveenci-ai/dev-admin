@@ -128,24 +128,18 @@ export function AvatarGenerationForm({ onGenerate, isGenerating }: AvatarGenerat
                 Loading avatars...
               </div>
             ) : (
-              <Select 
-                value={formData.avatarId} 
-                onValueChange={(value) => setFormData(prev => ({ ...prev, avatarId: value }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Choose an avatar to generate with" />
-                </SelectTrigger>
-                <SelectContent>
-                  {avatars.map((avatar: any) => (
-                    <SelectItem key={avatar.id} value={avatar.id}>
-                      <div className="flex flex-col">
-                        <span className="font-medium">{avatar.fullName}</span>
-                        <span className="text-xs text-gray-500">Trigger: {avatar.triggerWord}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                          <select
+              value={formData.avatarId}
+              onChange={(e) => setFormData(prev => ({ ...prev, avatarId: e.target.value }))}
+              className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            >
+              <option value="">Choose an avatar to generate with</option>
+              {avatars.map((avatar: any) => (
+                <option key={avatar.id} value={avatar.id}>
+                  {avatar.fullName} (Trigger: {avatar.triggerWord})
+                </option>
+              ))}
+            </select>
             )}
             {selectedAvatar && (
               <div className="text-xs text-gray-600 bg-gray-50 p-2 rounded">
@@ -253,41 +247,33 @@ export function AvatarGenerationForm({ onGenerate, isGenerating }: AvatarGenerat
               {/* Aspect Ratio */}
               <div className="space-y-2">
                 <Label>Aspect Ratio</Label>
-                <Select 
-                  value={formData.aspectRatio} 
-                  onValueChange={(value) => setFormData(prev => ({ ...prev, aspectRatio: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {aspectRatios.map((ratio) => (
-                      <SelectItem key={ratio.value} value={ratio.value}>
-                        {ratio.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                              <select
+                value={formData.aspectRatio}
+                onChange={(e) => setFormData(prev => ({ ...prev, aspectRatio: e.target.value }))}
+                className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              >
+                {aspectRatios.map((ratio) => (
+                  <option key={ratio.value} value={ratio.value}>
+                    {ratio.label}
+                  </option>
+                ))}
+              </select>
               </div>
 
               {/* Output Format */}
               <div className="space-y-2">
                 <Label>Output Format</Label>
-                <Select 
-                  value={formData.outputFormat} 
-                  onValueChange={(value) => setFormData(prev => ({ ...prev, outputFormat: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {outputFormats.map((format) => (
-                      <SelectItem key={format.value} value={format.value}>
-                        {format.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                              <select
+                value={formData.outputFormat}
+                onChange={(e) => setFormData(prev => ({ ...prev, outputFormat: e.target.value }))}
+                className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              >
+                {outputFormats.map((format) => (
+                  <option key={format.value} value={format.value}>
+                    {format.label}
+                  </option>
+                ))}
+              </select>
               </div>
 
               {/* Seed Controls */}
