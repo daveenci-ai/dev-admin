@@ -17,21 +17,55 @@ const generateImageSchema = z.object({
   previewOnly: z.boolean().default(false).optional() // For getting optimized prompt only
 })
 
-// Initialize Gemini AI with tiered model approach
+// Initialize Gemini AI
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
 
 async function optimizePromptWithGemini(
   originalPrompt: string, 
   triggerWord: string, 
-  avatarDescription: string | null,
-  aspectRatio: string
-): Promise<string> {
-  // Determine photorealism based on aspect ratio
-  const isPortraitAspect = ['9:16', '3:4', '9:21'].includes(aspectRatio)
-  const photorealismInstruction = isPortraitAspect ? 
-    "Include close-up or medium shot composition for professional portrait quality." : 
-    "Focus on composition and scene setting appropriate for the aspect ratio."
+  avatarDescription?: string, 
+  aspectRatio: string = '1:1'
+): Promise<{ option1: string, option2: string, option3: string }> {
+  
+  // Define composition guidelines based on aspect ratio
+  const getCompositionGuidelines = (ratio: string) => {
+    switch (ratio) {
+      case '9:16': // Portrait
+        return {
+          focus: "Portrait (Vertical Orientation)",
+          characteristics: "Tall and narrow, ideal for emphasizing height, subjects, and vertical elements",
+          compositions: [
+            "Full-Body Shot / Medium-Full Shot: Capture person from head to toe, emphasizing posture and presence",
+            "Close-Up (Face/Upper Body): Intimate shots highlighting facial expressions and upper body details", 
+            "Environmental Portrait: Subject with enough vertical background for context without distraction"
+          ]
+        }
+      case '16:9': // Landscape  
+        return {
+          focus: "Landscape (Horizontal Orientation)",
+          characteristics: "Wide and horizontal, perfect for expansive scenes and conveying breadth",
+          compositions: [
+            "Wide Shot / Establishing Shot: Show full environment and setting for sense of place and scale",
+            "Medium Shot (Multiple Elements): Accommodate side-by-side interactions and relationships",
+            "Action Shot (Horizontal Movement): Emphasize movement across frame with leading room"
+          ]
+        }
+      case '1:1': // Square
+        return {
+          focus: "Square (Equal Sides)",  
+          characteristics: "Balanced and symmetrical, forcing central composition without horizontal/vertical bias",
+          compositions: [
+            "Central Composition / Isolated Subject: Draw attention to center, prominently place main subject",
+            "Abstract / Pattern Focus: Highlight textures, patterns, and balanced elements without horizon distractions", 
+            "Overhead Shot (Top-Down): Create pleasingly geometric and balanced composition from above"
+          ]
+        }
+      default:
+        return getCompositionGuidelines('1:1')
+    }
+  }
 
+  const guidelines = getCompositionGuidelines(aspectRatio)
   const avatarInfo = avatarDescription ? `\n- Avatar details: ${avatarDescription}` : ''
 
   const optimizationPrompt = `
@@ -40,62 +74,85 @@ You are an expert AI image prompt engineer specializing in FLUX-dev-lora model o
 INPUTS:
 - Original prompt: "${originalPrompt}"
 - Trigger word (MUST include): "${triggerWord}"${avatarInfo}
-- Aspect ratio: ${aspectRatio}
+- Aspect ratio: ${aspectRatio} (${guidelines.focus})
+- Composition focus: ${guidelines.characteristics}
 
-REQUIREMENTS:
-1. ALWAYS start with "Photorealistic image of" in the prompt
-2. ALWAYS include the trigger word "${triggerWord}" naturally in the prompt
-3. Incorporate avatar description details if provided to enhance authenticity  
-4. Enhance the prompt for photorealism and professional quality
-5. ${photorealismInstruction}
-6. Add professional photography terms (lighting, composition, quality)
-7. Keep it detailed but under 300 characters for optimal processing
-8. Focus on visual details, lighting, and professional composition
-9. Make it suitable for high-quality avatar generation
+TASK: Create 3 different photorealistic prompt variations, each focusing on a different composition approach:
 
-EXAMPLE STRUCTURE:
-"Photorealistic image of ${triggerWord} [avatar_description_elements] ${originalPrompt}, professional photography, high quality, detailed lighting, sharp focus, [composition_terms]"
+COMPOSITION OPTIONS FOR ${guidelines.focus}:
+1. ${guidelines.compositions[0]}
+2. ${guidelines.compositions[1]} 
+3. ${guidelines.compositions[2]}
 
-MANDATORY: The response MUST start with "Photorealistic image of" followed by the trigger word and enhanced description.
+REQUIREMENTS FOR ALL 3 PROMPTS:
+- ALWAYS start with "Photorealistic image of"
+- ALWAYS include the trigger word "${triggerWord}" naturally
+- Each prompt should emphasize a different composition approach from the list above
+- Incorporate avatar description details if provided
+- Add professional photography terms (lighting, composition, quality)
+- Keep each under 300 characters
+- Focus on visual details, lighting, and professional composition
+- Make suitable for high-quality avatar generation
 
-Return ONLY the optimized prompt text, nothing else.
+RESPONSE FORMAT:
+OPTION1: [First composition approach prompt]
+OPTION2: [Second composition approach prompt]  
+OPTION3: [Third composition approach prompt]
+
+Return ONLY the three prompts in the exact format above, nothing else.
 `
 
-  // Try Gemini 2.0 Flash (Experimental) first - highest quality
+  // Try Gemini 2.5 Pro first
   try {
-    console.log(`🤖 Trying Gemini 2.5 Pro (Experimental)...`)
+    console.log(`🤖 Trying Gemini 2.5 Pro for 3 prompt options...`)
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" })
     
     const result = await model.generateContent(optimizationPrompt)
     const response = await result.response
-    const optimizedPrompt = response.text().trim()
+    const text = response.text().trim()
 
-    console.log(`✅ Gemini 2.0 Flash optimized prompt: "${optimizedPrompt}"`)
-    return optimizedPrompt
+    // Parse the 3 options from response
+    const lines = text.split('\n').filter(line => line.trim())
+    const option1 = lines.find(line => line.startsWith('OPTION1:'))?.replace('OPTION1:', '').trim() || ''
+    const option2 = lines.find(line => line.startsWith('OPTION2:'))?.replace('OPTION2:', '').trim() || ''
+    const option3 = lines.find(line => line.startsWith('OPTION3:'))?.replace('OPTION3:', '').trim() || ''
+
+    console.log(`✅ Gemini 2.5 Pro generated 3 prompt options`)
+    return { option1, option2, option3 }
 
   } catch (error: any) {
-    console.warn(`⚠️ Gemini 2.0 Flash failed: ${error.message || error}`)
+    console.warn(`⚠️ Gemini 2.5 Pro failed: ${error.message || error}`)
     
-    // Fallback to Gemini 1.5 Flash - more stable
+    // Fallback to Gemini 2.5 Flash
     try {
       console.log(`🔄 Falling back to Gemini 2.5 Flash...`)
       const fallbackModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash" })
       
       const result = await fallbackModel.generateContent(optimizationPrompt)
       const response = await result.response
-      const optimizedPrompt = response.text().trim()
+      const text = response.text().trim()
 
-      console.log(`✅ Gemini 1.5 Flash optimized prompt: "${optimizedPrompt}"`)
-      return optimizedPrompt
+      // Parse the 3 options from response
+      const lines = text.split('\n').filter(line => line.trim())
+      const option1 = lines.find(line => line.startsWith('OPTION1:'))?.replace('OPTION1:', '').trim() || ''
+      const option2 = lines.find(line => line.startsWith('OPTION2:'))?.replace('OPTION2:', '').trim() || ''
+      const option3 = lines.find(line => line.startsWith('OPTION3:'))?.replace('OPTION3:', '').trim() || ''
+
+      console.log(`✅ Gemini 2.5 Flash generated 3 prompt options`)
+      return { option1, option2, option3 }
 
     } catch (fallbackError: any) {
-      console.error(`❌ Both Gemini models failed. 2.0: ${error.message}, 1.5: ${fallbackError.message}`)
+      console.error(`❌ Both Gemini models failed. Pro: ${error.message}, Flash: ${fallbackError.message}`)
       
-      // Final fallback: enhanced manual prompt
+      // Final fallback: create 3 manual variations
       const avatarInfo = avatarDescription ? `, ${avatarDescription}` : ''
-      const manualPrompt = `Photorealistic image of ${triggerWord}${avatarInfo} ${originalPrompt}, professional photography, high quality, detailed lighting, sharp focus, cinematic composition`
-      console.log(`🔧 Using enhanced manual fallback: "${manualPrompt}"`)
-      return manualPrompt
+      const basePrompt = `Photorealistic image of ${triggerWord}${avatarInfo} ${originalPrompt}`
+      
+      return {
+        option1: `${basePrompt}, close-up portrait, professional photography, sharp focus, detailed lighting`,
+        option2: `${basePrompt}, medium shot, cinematic composition, high quality, dramatic lighting`, 
+        option3: `${basePrompt}, wide angle view, environmental context, professional photography, balanced composition`
+      }
     }
   }
 }
@@ -138,18 +195,18 @@ export async function POST(request: NextRequest) {
     console.log(`📦 Extracted LoRA version ID: ${loraVersionId}`)
 
     // Step 1: Always optimize prompt with Gemini AI (tiered approach)
-    console.log(`🤖 Optimizing prompt with Gemini AI (2.0 Flash → 1.5 Flash fallback)...`)
-    const optimizedPrompt = await optimizePromptWithGemini(
+    console.log(`🤖 Optimizing prompt with Gemini AI (2.5 Pro → 2.5 Flash fallback)...`)
+    const optimizedPrompts = await optimizePromptWithGemini(
       validatedData.prompt,
       avatar.triggerWord,
       avatar.description,
       validatedData.aspectRatio
     )
 
-    // If this is preview mode, just return the optimized prompt
+    // If this is preview mode, just return the optimized prompts
     if (validatedData.previewOnly) {
       return NextResponse.json({
-        optimizedPrompt: optimizedPrompt,
+        optimizedPrompts: optimizedPrompts,
         originalPrompt: validatedData.prompt,
         avatar: {
           id: avatar.id.toString(),
@@ -168,7 +225,7 @@ export async function POST(request: NextRequest) {
       
       // Prepare Replicate input with correct parameter names
       const input = {
-        prompt: optimizedPrompt,
+        prompt: optimizedPrompts.option1, // Use the first optimized prompt for generation
         lora_weights: loraVersionId, // Use extracted version ID, not full URL
         lora_scale: validatedData.loraScale,
         guidance_scale: validatedData.guidanceScale,
@@ -207,7 +264,7 @@ export async function POST(request: NextRequest) {
         const avatarGeneration = await prisma.avatarGenerated.create({
           data: {
             avatarId: BigInt(validatedData.avatarId),
-            prompt: optimizedPrompt,
+            prompt: optimizedPrompts.option1, // Use the first optimized prompt for record
             githubImageUrl: `PENDING_REVIEW:${prediction.id}`, // Temporary, will be updated with actual URL
           }
         })
@@ -216,7 +273,7 @@ export async function POST(request: NextRequest) {
           id: avatarGeneration.id.toString(),
           replicateId: prediction.id,
           status: 'processing',
-          prompt: optimizedPrompt,
+          prompt: optimizedPrompts.option1, // Use the first optimized prompt for record
           avatarId: validatedData.avatarId,
           githubImageUrl: avatarGeneration.githubImageUrl,
           predictionId: prediction.id // Add this for polling
@@ -232,7 +289,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       message: `${imageGenerations.length} images started generating`,
       generations: imageGenerations,
-      optimizedPrompt: optimizedPrompt,
+      optimizedPrompt: optimizedPrompts, // Return the optimized prompts
       originalPrompt: validatedData.prompt,
       avatar: {
         id: avatar.id.toString(),

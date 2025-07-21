@@ -45,7 +45,7 @@ export default function AvatarPage() {
         // Update generation data and move to prompt selection
         setGenerationData({
           ...data,
-          optimizedPrompt: result.optimizedPrompt,
+          optimizedPrompts: result.optimizedPrompts,
           originalPrompt: result.originalPrompt,
           avatar: result.avatar
         })
@@ -63,17 +63,26 @@ export default function AvatarPage() {
   }
 
   // Handle prompt choice and start image generation
-  const handlePromptChoice = async (useOptimized: boolean) => {
-    console.log('🎯 User chose:', useOptimized ? 'optimized' : 'original')
+  const handlePromptChoice = async (promptType: 'original' | 'option1' | 'option2' | 'option3') => {
+    console.log('🎯 User chose prompt type:', promptType)
     
     setWorkflowStage('generating')
 
     try {
-      const finalPrompt = useOptimized ? generationData.optimizedPrompt : generationData.originalPrompt
+      let finalPrompt: string
+      
+      if (promptType === 'original') {
+        finalPrompt = generationData.originalPrompt
+      } else {
+        finalPrompt = generationData.optimizedPrompts[promptType]
+      }
+      
+      console.log('🎨 Using prompt:', finalPrompt)
+      
       const requestData = { ...generationData, prompt: finalPrompt, previewOnly: false }
       
       // Clean up temporary fields
-      delete requestData.optimizedPrompt
+      delete requestData.optimizedPrompts
       delete requestData.originalPrompt
       delete requestData.avatar
 

@@ -179,17 +179,17 @@ export function AvatarGenerationForm({ onGenerate, isGenerating }: AvatarGenerat
 
         {/* Aspect Ratio */}
         <div className="space-y-2">
-          <Label>Aspect Ratio</Label>
+          <label className="text-sm font-medium text-gray-700">
+            Aspect Ratio
+          </label>
           <select
             value={formData.aspectRatio}
             onChange={(e) => setFormData(prev => ({ ...prev, aspectRatio: e.target.value }))}
-            className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            className="w-full h-10 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
           >
-            {aspectRatios.map((ratio) => (
-              <option key={ratio.value} value={ratio.value}>
-                {ratio.label}
-              </option>
-            ))}
+            <option value="9:16">Portrait (9:16)</option>
+            <option value="1:1">Square (1:1)</option>
+            <option value="16:9">Landscape (16:9)</option>
           </select>
         </div>
 

@@ -152,12 +152,12 @@ interface GenerationWorkflowModalProps {
   isOpen: boolean
   onClose: () => void
   originalPrompt: string
-  optimizedPrompt?: string
+  optimizedPrompts?: { option1: string, option2: string, option3: string }
   avatarName: string
   numImages: number
   stage: WorkflowStage
   images?: GenerationImage[]
-  onPromptChoice: (useOptimized: boolean) => void
+  onPromptChoice: (promptType: 'original' | 'option1' | 'option2' | 'option3') => void
   onImageApprovals: (approvals: Array<{id: string, approved: boolean}>) => void
   isGenerating?: boolean
 }
@@ -166,7 +166,7 @@ export function GenerationWorkflowModal({
   isOpen,
   onClose,
   originalPrompt,
-  optimizedPrompt,
+  optimizedPrompts,
   avatarName,
   numImages,
   stage,
@@ -234,28 +234,79 @@ export function GenerationWorkflowModal({
         {/* Stage 2: Prompt Selection */}
         {stage === 'prompt-selection' && (
           <div className="space-y-4 mb-6">
-            <div className="border border-gray-200 rounded-lg p-4">
+            <div className="text-sm text-gray-600 mb-4 text-center">
+              💡 Hover over a prompt to select it and continue with generation
+            </div>
+            
+            {/* Original Prompt Card */}
+            <div 
+              className="border border-gray-200 rounded-lg p-4 cursor-pointer transition-all duration-200 hover:border-blue-400 hover:bg-blue-50 hover:shadow-md"
+              onMouseEnter={() => {
+                // Add a small delay to prevent accidental selections
+                setTimeout(() => {
+                  onPromptChoice('original')
+                }, 500)
+              }}
+            >
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-sm font-medium text-gray-700">📝 Your Original Prompt</span>
+                <span className="text-xs text-gray-500">(hover to select)</span>
               </div>
               <p className="text-gray-800 text-sm leading-relaxed">"{originalPrompt}"</p>
             </div>
 
-            <div className="border border-blue-200 rounded-lg p-4 bg-blue-50">
+            {/* Optimized Prompt Card */}
+            <div 
+              className="border border-blue-200 rounded-lg p-4 bg-blue-50 cursor-pointer transition-all duration-200 hover:border-blue-500 hover:bg-blue-100 hover:shadow-md"
+              onMouseEnter={() => {
+                // Add a small delay to prevent accidental selections  
+                setTimeout(() => {
+                  onPromptChoice('option1')
+                }, 500)
+              }}
+            >
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-sm font-medium text-blue-700">🤖 AI Optimized Prompt</span>
                 <span className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded">Recommended</span>
+                <span className="text-xs text-blue-600">(hover to select)</span>
               </div>
-              <p className="text-blue-800 text-sm leading-relaxed">"{optimizedPrompt}"</p>
+              <p className="text-blue-800 text-sm leading-relaxed">"{optimizedPrompts?.option1}"</p>
             </div>
 
-            <div className="flex gap-3 pt-4">
-              <Button variant="outline" onClick={() => onPromptChoice(false)} className="flex-1">
-                Use Original
-              </Button>
-              <Button onClick={() => onPromptChoice(true)} className="flex-1 bg-blue-600 hover:bg-blue-700">
-                Use AI Optimized
-              </Button>
+            {/* Optimized Prompt Card */}
+            <div 
+              className="border border-blue-200 rounded-lg p-4 bg-blue-50 cursor-pointer transition-all duration-200 hover:border-blue-500 hover:bg-blue-100 hover:shadow-md"
+              onMouseEnter={() => {
+                // Add a small delay to prevent accidental selections  
+                setTimeout(() => {
+                  onPromptChoice('option2')
+                }, 500)
+              }}
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-sm font-medium text-blue-700">🤖 AI Optimized Prompt</span>
+                <span className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded">Recommended</span>
+                <span className="text-xs text-blue-600">(hover to select)</span>
+              </div>
+              <p className="text-blue-800 text-sm leading-relaxed">"{optimizedPrompts?.option2}"</p>
+            </div>
+
+            {/* Optimized Prompt Card */}
+            <div 
+              className="border border-blue-200 rounded-lg p-4 bg-blue-50 cursor-pointer transition-all duration-200 hover:border-blue-500 hover:bg-blue-100 hover:shadow-md"
+              onMouseEnter={() => {
+                // Add a small delay to prevent accidental selections  
+                setTimeout(() => {
+                  onPromptChoice('option3')
+                }, 500)
+              }}
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-sm font-medium text-blue-700">🤖 AI Optimized Prompt</span>
+                <span className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded">Recommended</span>
+                <span className="text-xs text-blue-600">(hover to select)</span>
+              </div>
+              <p className="text-blue-800 text-sm leading-relaxed">"{optimizedPrompts?.option3}"</p>
             </div>
           </div>
         )}
