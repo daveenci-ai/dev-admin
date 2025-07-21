@@ -200,12 +200,12 @@ export async function POST(request: NextRequest) {
         const prediction = await response.json()
         console.log(`✅ Replicate prediction ${i + 1} created:`, prediction.id)
 
-        // Create record in existing avatars_generated table
+        // Create record in existing avatars_generated table with placeholder
         const avatarGeneration = await prisma.avatarGenerated.create({
           data: {
             avatarId: BigInt(validatedData.avatarId),
             prompt: optimizedPrompt,
-            githubImageUrl: `PENDING_REVIEW:${prediction.id}`, // Will be updated when image is ready
+            githubImageUrl: `PENDING_REVIEW:${prediction.id}`, // Temporary, will be updated with actual URL
           }
         })
 
@@ -215,7 +215,8 @@ export async function POST(request: NextRequest) {
           status: 'processing',
           prompt: optimizedPrompt,
           avatarId: validatedData.avatarId,
-          githubImageUrl: avatarGeneration.githubImageUrl
+          githubImageUrl: avatarGeneration.githubImageUrl,
+          predictionId: prediction.id // Add this for polling
         })
 
       } catch (error: any) {
