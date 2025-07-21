@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { AvatarGenerationForm } from '@/components/avatar/AvatarGenerationForm'
 import { AvatarGallery } from '@/components/avatar/AvatarGallery'
+import { PromptComparisonModal } from '@/components/ui/modal'
 
 export default function AvatarPage() {
   const [avatars, setAvatars] = useState([])
@@ -10,6 +11,10 @@ export default function AvatarPage() {
   const [loading, setLoading] = useState(true)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
   const [activeGenerations, setActiveGenerations] = useState<any[]>([])
+  
+  // Modal state for prompt comparison
+  const [showPromptModal, setShowPromptModal] = useState(false)
+  const [pendingGeneration, setPendingGeneration] = useState<any>(null)
 
   const fetchData = async () => {
     try {
@@ -32,39 +37,103 @@ export default function AvatarPage() {
     fetchData() // Refresh data after generation
   }
 
+  // Step 1: Get optimized prompt and show modal
   const handleGenerate = async (data: any) => {
     try {
-      console.log('🚀 Starting avatar generation with data:', data)
+      console.log('🚀 Getting optimized prompt for:', data)
+      
+      // First call to get the optimized prompt only (preview mode)
       const response = await fetch('/api/avatar/generate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          ...data,
+          previewOnly: true // Only get optimized prompt, don't generate images yet
+        }),
       })
 
       if (response.ok) {
         const result = await response.json()
-        console.log('✅ Generation response:', result)
+        console.log('✅ Got optimization result:', result)
+        
+        // Store the generation data and show modal
+        setPendingGeneration({
+          ...data,
+          optimizedPrompt: result.optimizedPrompt,
+          originalPrompt: result.originalPrompt,
+          avatar: result.avatar
+        })
+        setShowPromptModal(true)
+        
+      } else {
+        const errorData = await response.text()
+        console.error('❌ Optimization failed:', errorData)
+        alert('Failed to optimize prompt. Please try again.')
+      }
+    } catch (error) {
+      console.error('❌ Error getting optimization:', error)
+      alert('Network error. Please try again.')
+    }
+  }
+
+  // Step 2: Proceed with actual generation based on user choice
+  const handlePromptChoice = async (useOptimized: boolean) => {
+    setShowPromptModal(false)
+    
+    if (!pendingGeneration) return
+    
+    try {
+      // Use either original or optimized prompt
+      const finalPrompt = useOptimized ? pendingGeneration.optimizedPrompt : pendingGeneration.originalPrompt
+      
+      console.log(`🎨 Proceeding with ${useOptimized ? 'optimized' : 'original'} prompt:`, finalPrompt)
+      
+      // Create the final generation request with the chosen prompt
+      const generationData = {
+        ...pendingGeneration,
+        prompt: finalPrompt,
+        previewOnly: false // This time we want actual generation
+      }
+      
+      // Remove the avatar object from the request (it's just for display)
+      delete generationData.optimizedPrompt
+      delete generationData.originalPrompt
+      delete generationData.avatar
+      
+      const response = await fetch('/api/avatar/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(generationData),
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        console.log('✅ Final generation started:', result)
         
         // Track active generations for progress monitoring
         setActiveGenerations(result.generations || [])
         
-        // Show success message with optimized prompt
-        alert(`🎨 Generating ${result.generations?.length || 1} images!\n\n` +
-              `Original: "${result.originalPrompt}"\n\n` +
-              `Optimized: "${result.optimizedPrompt}"`)
+        // Show success message
+        const generationCount = result.generations?.length || 0
+        console.log(`🎉 Started generating ${generationCount} images!`)
         
         // Trigger refresh to show new generations
         setRefreshTrigger(prev => prev + 1)
+        
       } else {
         const errorData = await response.text()
-        console.error('❌ Generation failed:', errorData)
+        console.error('❌ Final generation failed:', errorData)
         alert('Generation failed. Please check the console for details.')
       }
     } catch (error) {
-      console.error('❌ Error starting generation:', error)
+      console.error('❌ Error in final generation:', error)
       alert('Network error. Please try again.')
+    } finally {
+      setPendingGeneration(null)
     }
   }
 
@@ -117,6 +186,22 @@ export default function AvatarPage() {
           />
         </div>
       </div>
+
+      {/* Prompt Comparison Modal */}
+      {pendingGeneration && (
+        <PromptComparisonModal
+          isOpen={showPromptModal}
+          onClose={() => {
+            setShowPromptModal(false)
+            setPendingGeneration(null)
+          }}
+          originalPrompt={pendingGeneration.originalPrompt}
+          optimizedPrompt={pendingGeneration.optimizedPrompt}
+          avatarName={pendingGeneration.avatar?.name || 'Unknown'}
+          numImages={pendingGeneration.numImages || 1}
+          onProceed={handlePromptChoice}
+        />
+      )}
     </div>
   )
 }

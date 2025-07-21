@@ -168,12 +168,12 @@ export function AvatarGenerationForm({ onGenerate, isGenerating }: AvatarGenerat
             value={[formData.numImages]}
             onValueChange={(value) => setFormData(prev => ({ ...prev, numImages: value[0] }))}
             min={1}
-            max={8}
+            max={4}
             step={1}
             className="w-full"
           />
           <p className="text-xs text-gray-500">
-            Number of images to generate (1-8)
+            Number of images to generate (1-4)
           </p>
         </div>
 

@@ -9,14 +9,15 @@ const generateImageSchema = z.object({
   loraScale: z.number().min(0).max(1).default(1.0),
   guidanceScale: z.number().min(1).max(20).default(2.0),
   numInferenceSteps: z.number().min(1).max(50).default(36),
-  numImages: z.number().min(1).max(8).default(4),
+  numImages: z.number().min(1).max(4).default(4),
   aspectRatio: z.enum(['1:1', '16:9', '9:16', '4:3', '3:4', '21:9', '9:21']).default('9:16'),
   outputFormat: z.enum(['webp', 'jpg', 'png']).default('jpg'),
   seed: z.number().optional(),
-  safetyChecker: z.boolean().default(true)
+  safetyChecker: z.boolean().default(true),
+  previewOnly: z.boolean().default(false).optional() // For getting optimized prompt only
 })
 
-// Initialize Gemini AI
+// Initialize Gemini AI with stable model
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
 
 async function optimizePromptWithGemini(
@@ -26,7 +27,8 @@ async function optimizePromptWithGemini(
   aspectRatio: string
 ): Promise<string> {
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" })
+    // Use stable Gemini 1.5 Pro model
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" })
     
     // Determine photorealism based on aspect ratio
     const isPortraitAspect = ['9:16', '3:4', '9:21'].includes(aspectRatio)
@@ -34,22 +36,28 @@ async function optimizePromptWithGemini(
       "Include close-up or medium shot composition for professional portrait quality." : 
       "Focus on composition and scene setting appropriate for the aspect ratio."
 
+    const avatarInfo = avatarDescription ? `\n- Avatar details: ${avatarDescription}` : ''
+
     const optimizationPrompt = `
-You are an expert AI image prompt engineer. Optimize this prompt for FLUX-dev-lora model generation.
+You are an expert AI image prompt engineer specializing in FLUX-dev-lora model optimization.
 
 INPUTS:
 - Original prompt: "${originalPrompt}"
-- Trigger word (MUST include): "${triggerWord}"
-- Avatar description: ${avatarDescription || 'No additional description'}
+- Trigger word (MUST include): "${triggerWord}"${avatarInfo}
 - Aspect ratio: ${aspectRatio}
 
 REQUIREMENTS:
 1. ALWAYS include the trigger word "${triggerWord}" naturally in the prompt
-2. Enhance the prompt for photorealism and quality
-3. ${photorealismInstruction}
-4. Keep it concise but descriptive (under 200 characters)
-5. Focus on visual details, lighting, and composition
-6. Make it suitable for professional avatar generation
+2. Incorporate avatar description details if provided to enhance authenticity  
+3. Enhance the prompt for photorealism and professional quality
+4. ${photorealismInstruction}
+5. Add professional photography terms (lighting, composition, quality)
+6. Keep it detailed but under 300 characters for optimal processing
+7. Focus on visual details, lighting, and professional composition
+8. Make it suitable for high-quality avatar generation
+
+EXAMPLE STRUCTURE:
+"${triggerWord} [avatar_description_elements] ${originalPrompt}, professional photography, high quality, detailed lighting, sharp focus, [composition_terms]"
 
 Return ONLY the optimized prompt text, nothing else.
 `
@@ -58,14 +66,16 @@ Return ONLY the optimized prompt text, nothing else.
     const response = await result.response
     const optimizedPrompt = response.text().trim()
 
-    console.log(`🤖 Gemini optimized prompt: "${optimizedPrompt}"`)
+    console.log(`🤖 Gemini 1.5 Pro optimized prompt: "${optimizedPrompt}"`)
     return optimizedPrompt
 
-  } catch (error) {
-    console.error('❌ Gemini optimization failed:', error)
-    // Fallback: enhance prompt manually if Gemini fails
-    const fallbackPrompt = `${triggerWord} ${originalPrompt}, professional photography, high quality, detailed`
-    console.log(`🔄 Using fallback prompt: "${fallbackPrompt}"`)
+  } catch (error: any) {
+    console.error('❌ Gemini optimization failed:', error.message || error)
+    
+    // Enhanced fallback with avatar description
+    const avatarInfo = avatarDescription ? `, ${avatarDescription}` : ''
+    const fallbackPrompt = `${triggerWord}${avatarInfo} ${originalPrompt}, professional photography, high quality, detailed lighting, sharp focus`
+    console.log(`🔄 Using enhanced fallback prompt: "${fallbackPrompt}"`)
     return fallbackPrompt
   }
 }
@@ -84,13 +94,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Avatar not found' }, { status: 404 })
     }
 
-    console.log(`🎨 Generating ${validatedData.numImages} images with avatar: "${avatar.fullName}"`)
-    console.log(`📦 Using Replicate model: ${avatar.replicateModelUrl}`)
+    console.log(`🎨 ${validatedData.previewOnly ? 'Getting prompt optimization' : `Generating ${validatedData.numImages} images`} with avatar: "${avatar.fullName}"`)
     console.log(`🎯 Trigger word: ${avatar.triggerWord}`)
+    console.log(`📝 Avatar description: ${avatar.description || 'None'}`)
     console.log(`📝 Original prompt: "${validatedData.prompt}"`)
 
-    // Step 1: Optimize prompt with Gemini AI
-    console.log(`🤖 Optimizing prompt with Gemini AI...`)
+    // Step 1: Always optimize prompt with Gemini AI
+    console.log(`🤖 Optimizing prompt with Gemini 1.5 Pro...`)
     const optimizedPrompt = await optimizePromptWithGemini(
       validatedData.prompt,
       avatar.triggerWord,
@@ -98,13 +108,27 @@ export async function POST(request: NextRequest) {
       validatedData.aspectRatio
     )
 
+    // If this is preview mode, just return the optimized prompt
+    if (validatedData.previewOnly) {
+      return NextResponse.json({
+        optimizedPrompt: optimizedPrompt,
+        originalPrompt: validatedData.prompt,
+        avatar: {
+          id: avatar.id.toString(),
+          name: avatar.fullName,
+          triggerWord: avatar.triggerWord,
+          description: avatar.description
+        }
+      })
+    }
+
     // Step 2: Generate multiple images via Replicate
     const imageGenerations = []
     
     for (let i = 0; i < validatedData.numImages; i++) {
       console.log(`🖼️  Starting generation ${i + 1}/${validatedData.numImages}`)
       
-      // Prepare Replicate input
+      // Prepare Replicate input with correct parameter names
       const input = {
         prompt: optimizedPrompt,
         lora_weights: avatar.replicateModelUrl,
@@ -117,6 +141,8 @@ export async function POST(request: NextRequest) {
         ...(validatedData.seed && { seed: validatedData.seed + i }) // Increment seed for variety
       }
 
+      console.log(`📋 Replicate input for image ${i + 1}:`, JSON.stringify(input, null, 2))
+
       // Call Replicate API
       const response = await fetch('https://api.replicate.com/v1/predictions', {
         method: 'POST',
@@ -125,13 +151,14 @@ export async function POST(request: NextRequest) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          version: process.env.REPLICATE_MODEL_VERSION,
+          version: process.env.REPLICATE_MODEL_VERSION || 'black-forest-labs/flux-dev-lora',
           input: input
         })
       })
 
       if (!response.ok) {
-        console.error(`❌ Replicate API error for image ${i + 1}: ${response.statusText}`)
+        const errorText = await response.text()
+        console.error(`❌ Replicate API error for image ${i + 1}:`, response.status, errorText)
         continue // Skip this image and continue with others
       }
 
@@ -173,7 +200,8 @@ export async function POST(request: NextRequest) {
       avatar: {
         id: avatar.id.toString(),
         name: avatar.fullName,
-        triggerWord: avatar.triggerWord
+        triggerWord: avatar.triggerWord,
+        description: avatar.description
       }
     })
 
