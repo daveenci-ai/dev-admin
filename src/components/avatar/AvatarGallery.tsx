@@ -6,7 +6,6 @@ import { Card, CardContent, CardFooter } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { 
   Image as ImageIcon, 
   Download, 
@@ -17,7 +16,7 @@ import {
   Clock,
   CheckCircle,
   XCircle,
-  Settings
+  Calendar
 } from 'lucide-react'
 
 interface AvatarGeneration {
@@ -38,6 +37,13 @@ interface AvatarGeneration {
   completedAt: string | null
 }
 
+interface Avatar {
+  id: string
+  fullName: string
+  triggerWord: string
+  description?: string
+}
+
 interface AvatarGalleryProps {
   refreshTrigger: number
   onDelete: (id: number) => void
@@ -45,10 +51,11 @@ interface AvatarGalleryProps {
 
 export function AvatarGallery({ refreshTrigger, onDelete }: AvatarGalleryProps) {
   const [generations, setGenerations] = useState<AvatarGeneration[]>([])
+  const [avatars, setAvatars] = useState<Avatar[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
-  const [statusFilter, setStatusFilter] = useState('all')
-  const [showFilters, setShowFilters] = useState(false)
+  const [selectedAvatar, setSelectedAvatar] = useState('all')
+  const [timeFrame, setTimeFrame] = useState('all')
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 12,
@@ -58,7 +65,18 @@ export function AvatarGallery({ refreshTrigger, onDelete }: AvatarGalleryProps) 
 
   useEffect(() => {
     fetchGenerations()
-  }, [searchTerm, statusFilter, pagination.page, refreshTrigger])
+    fetchAvatars()
+  }, [searchTerm, selectedAvatar, timeFrame, pagination.page, refreshTrigger])
+
+  const fetchAvatars = async () => {
+    try {
+      const response = await fetch('/api/avatar')
+      const data = await response.json()
+      setAvatars(data.avatars || [])
+    } catch (error) {
+      console.error('Failed to fetch avatars:', error)
+    }
+  }
 
   const fetchGenerations = async () => {
     setLoading(true)
@@ -67,7 +85,8 @@ export function AvatarGallery({ refreshTrigger, onDelete }: AvatarGalleryProps) 
         page: pagination.page.toString(),
         limit: pagination.limit.toString(),
         search: searchTerm,
-        status: statusFilter
+        avatar: selectedAvatar,
+        timeframe: timeFrame
       })
 
       const response = await fetch(`/api/avatar/gallery?${params}`)
@@ -119,6 +138,13 @@ export function AvatarGallery({ refreshTrigger, onDelete }: AvatarGalleryProps) 
     }
   }
 
+  const timeFrameOptions = [
+    { value: 'all', label: 'All Time' },
+    { value: '7d', label: 'Last 7 Days' },
+    { value: '30d', label: 'Last 30 Days' },
+    { value: '3m', label: 'Last 3 Months' }
+  ]
+
   if (loading) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -141,48 +167,62 @@ export function AvatarGallery({ refreshTrigger, onDelete }: AvatarGalleryProps) 
 
   return (
     <div className="space-y-6">
-      {/* Filter Toggle */}
-      <div className="flex items-center justify-between">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setShowFilters(!showFilters)}
-          className="flex items-center gap-2"
-        >
-          <Settings className="h-4 w-4" />
-          {showFilters ? 'Hide Filters' : 'Show Filters'}
-        </Button>
-        <div className="text-sm text-gray-500">
-          {generations.length} avatar{generations.length !== 1 ? 's' : ''}
+      {/* Always Visible Filters */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
+        {/* Avatar Filter */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-gray-700">Avatar</label>
+          <select 
+            value={selectedAvatar} 
+            onChange={(e) => setSelectedAvatar(e.target.value)}
+            className="w-full h-10 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          >
+            <option value="all">All Avatars</option>
+            {avatars.map((avatar) => (
+              <option key={avatar.id} value={avatar.id}>
+                {avatar.fullName}
+              </option>
+            ))}
+          </select>
         </div>
-      </div>
 
-      {/* Filters */}
-      {showFilters && (
-        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between p-4 bg-gray-50 rounded-lg">
-          <div className="relative flex-1 max-w-md">
+        {/* Search Box */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-gray-700">Search</label>
+          <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
             <Input
-              placeholder="Search avatars..."
+              placeholder="Search in descriptions..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
             />
           </div>
-          
+        </div>
+        
+        {/* TimeFrame Filter */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-gray-700">Time Frame</label>
           <select 
-            value={statusFilter} 
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="w-[150px] h-10 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            value={timeFrame} 
+            onChange={(e) => setTimeFrame(e.target.value)}
+            className="w-full h-10 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
           >
-            <option value="all">All Status</option>
-            <option value="completed">Completed</option>
-            <option value="processing">Processing</option>
-            <option value="pending">Pending</option>
-            <option value="failed">Failed</option>
+            {timeFrameOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
           </select>
         </div>
-      )}
+      </div>
+
+      {/* Results Count */}
+      <div className="flex items-center justify-between">
+        <div className="text-sm text-gray-600">
+          {generations.length} avatar{generations.length !== 1 ? 's' : ''} found
+        </div>
+      </div>
 
       {/* Gallery Grid */}
       {generations.length === 0 ? (
@@ -191,7 +231,7 @@ export function AvatarGallery({ refreshTrigger, onDelete }: AvatarGalleryProps) 
             <ImageIcon className="mx-auto h-12 w-12 text-gray-400 mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">No avatars found</h3>
             <p className="text-gray-500">
-              {searchTerm || statusFilter !== 'all' 
+              {searchTerm || selectedAvatar !== 'all' || timeFrame !== 'all'
                 ? 'Try adjusting your search or filter criteria'
                 : 'Generate your first avatar to get started'
               }
@@ -249,7 +289,7 @@ export function AvatarGallery({ refreshTrigger, onDelete }: AvatarGalleryProps) 
                   <div className="flex items-center justify-between text-xs text-gray-500">
                     <span>{format(new Date(generation.createdAt), 'MMM dd, HH:mm')}</span>
                     <div className="flex items-center gap-1">
-                      <Settings className="h-3 w-3" />
+                      <Calendar className="h-3 w-3" />
                       <span>{generation.aspectRatio}</span>
                     </div>
                   </div>

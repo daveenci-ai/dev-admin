@@ -4,12 +4,11 @@ import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Slider } from '@/components/ui/slider'
-import { Loader2, Wand2, Settings, Palette, Image as ImageIcon } from 'lucide-react'
+import { Loader2, Settings, Image as ImageIcon } from 'lucide-react'
 
 interface AvatarGenerationFormProps {
   onGenerate: (data: GenerationData) => void
@@ -108,27 +107,17 @@ export function AvatarGenerationForm({ onGenerate, isGenerating }: AvatarGenerat
 
   return (
     <div className="w-full space-y-6">
-      <div className="mb-6">
-        <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2 mb-2">
-          <Wand2 className="h-5 w-5" />
-          Generate Avatar
-        </h2>
-        <p className="text-sm text-gray-600">
-          Create AI-generated avatars using your trained models
-        </p>
-      </div>
-      
       <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Avatar Selection */}
-          <div className="space-y-2">
-            <Label htmlFor="avatar">Select Avatar</Label>
-            {loadingAvatars ? (
-              <div className="flex items-center gap-2 text-sm text-gray-500">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Loading avatars...
-              </div>
-            ) : (
-                          <select
+        {/* Select Avatar */}
+        <div className="space-y-2">
+          <Label htmlFor="avatar">Select Avatar</Label>
+          {loadingAvatars ? (
+            <div className="flex items-center gap-2 text-sm text-gray-500">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading avatars...
+            </div>
+          ) : (
+            <select
               value={formData.avatarId}
               onChange={(e) => setFormData(prev => ({ ...prev, avatarId: e.target.value }))}
               className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
@@ -140,130 +129,130 @@ export function AvatarGenerationForm({ onGenerate, isGenerating }: AvatarGenerat
                 </option>
               ))}
             </select>
-            )}
-            {selectedAvatar && (
-              <div className="text-xs text-gray-600 bg-gray-50 p-2 rounded">
-                <strong>Selected:</strong> {selectedAvatar.fullName} | 
-                <strong> Trigger:</strong> {selectedAvatar.triggerWord}
-                {selectedAvatar.description && (
-                  <>
-                    <br />
-                    <strong>Description:</strong> {selectedAvatar.description}
-                  </>
-                )}
-              </div>
-            )}
-          </div>
+          )}
+          {selectedAvatar && (
+            <div className="text-xs text-gray-600 bg-gray-50 p-2 rounded">
+              <strong>Selected:</strong> {selectedAvatar.fullName} | 
+              <strong> Trigger:</strong> {selectedAvatar.triggerWord}
+              {selectedAvatar.description && (
+                <>
+                  <br />
+                  <strong>Description:</strong> {selectedAvatar.description}
+                </>
+              )}
+            </div>
+          )}
+        </div>
 
-          {/* Prompt */}
-          <div className="space-y-2">
-            <Label htmlFor="prompt">Prompt</Label>
-            <Textarea
-              placeholder={selectedAvatar ? 
-                `Describe your image. The trigger word "${selectedAvatar.triggerWord}" will be automatically added if not included.` :
-                "Select an avatar first, then describe your image..."
-              }
-              value={formData.prompt}
-              onChange={(e) => setFormData(prev => ({ ...prev, prompt: e.target.value }))}
-              className="min-h-[100px]"
-              disabled={!formData.avatarId}
-              required
-            />
-          </div>
+        {/* Enter Your Prompt */}
+        <div className="space-y-2">
+          <Label htmlFor="prompt">Enter Your Prompt</Label>
+          <Textarea
+            placeholder={selectedAvatar ? 
+              `Describe your image. The trigger word "${selectedAvatar.triggerWord}" will be automatically added if not included.` :
+              "Select an avatar first, then describe your image..."
+            }
+            value={formData.prompt}
+            onChange={(e) => setFormData(prev => ({ ...prev, prompt: e.target.value }))}
+            className="min-h-[100px]"
+            disabled={!formData.avatarId}
+            required
+          />
+        </div>
 
-          {/* Advanced Settings */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <Settings className="h-4 w-4" />
-                Advanced Settings
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* LoRA Scale */}
-              <div className="space-y-2">
-                <Label>LoRA Scale: {formData.loraScale}</Label>
-                <Slider
-                  value={[formData.loraScale]}
-                  onValueChange={(value) => setFormData(prev => ({ ...prev, loraScale: value[0] }))}
-                  min={0}
-                  max={1}
-                  step={0.1}
-                  className="w-full"
-                />
-                <p className="text-xs text-gray-500">
-                  Controls the strength of the LoRA model (0.0 = base model, 1.0 = full LoRA effect)
-                </p>
-              </div>
+        {/* Number of Images */}
+        <div className="space-y-2">
+          <Label>Number of Images: {formData.numImages}</Label>
+          <Slider
+            value={[formData.numImages]}
+            onValueChange={(value) => setFormData(prev => ({ ...prev, numImages: value[0] }))}
+            min={1}
+            max={8}
+            step={1}
+            className="w-full"
+          />
+          <p className="text-xs text-gray-500">
+            Number of images to generate (1-8)
+          </p>
+        </div>
 
-              {/* Guidance Scale */}
-              <div className="space-y-2">
-                <Label>Guidance Scale: {formData.guidanceScale}</Label>
-                <Slider
-                  value={[formData.guidanceScale]}
-                  onValueChange={(value) => setFormData(prev => ({ ...prev, guidanceScale: value[0] }))}
-                  min={1}
-                  max={20}
-                  step={0.5}
-                  className="w-full"
-                />
-                <p className="text-xs text-gray-500">
-                  How closely to follow the prompt (1-20, higher = more adherence to prompt)
-                </p>
-              </div>
+        {/* Aspect Ratio */}
+        <div className="space-y-2">
+          <Label>Aspect Ratio</Label>
+          <select
+            value={formData.aspectRatio}
+            onChange={(e) => setFormData(prev => ({ ...prev, aspectRatio: e.target.value }))}
+            className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          >
+            {aspectRatios.map((ratio) => (
+              <option key={ratio.value} value={ratio.value}>
+                {ratio.label}
+              </option>
+            ))}
+          </select>
+        </div>
 
-              {/* Inference Steps */}
-              <div className="space-y-2">
-                <Label>Inference Steps: {formData.numInferenceSteps}</Label>
-                <Slider
-                  value={[formData.numInferenceSteps]}
-                  onValueChange={(value) => setFormData(prev => ({ ...prev, numInferenceSteps: value[0] }))}
-                  min={1}
-                  max={50}
-                  step={1}
-                  className="w-full"
-                />
-                <p className="text-xs text-gray-500">
-                  Number of denoising steps (1-50, higher = better quality but slower)
-                </p>
-              </div>
+        {/* Advanced Settings */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Settings className="h-4 w-4" />
+              Advanced Settings
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* LoRA Scale */}
+            <div className="space-y-2">
+              <Label>LoRA Scale: {formData.loraScale}</Label>
+              <Slider
+                value={[formData.loraScale]}
+                onValueChange={(value) => setFormData(prev => ({ ...prev, loraScale: value[0] }))}
+                min={0}
+                max={1}
+                step={0.1}
+                className="w-full"
+              />
+              <p className="text-xs text-gray-500">
+                Controls the strength of the LoRA model (0.0 = base model, 1.0 = full LoRA effect)
+              </p>
+            </div>
 
-              {/* Number of Images */}
-              <div className="space-y-2">
-                <Label>Number of Images: {formData.numImages}</Label>
-                <Slider
-                  value={[formData.numImages]}
-                  onValueChange={(value) => setFormData(prev => ({ ...prev, numImages: value[0] }))}
-                  min={1}
-                  max={8}
-                  step={1}
-                  className="w-full"
-                />
-                <p className="text-xs text-gray-500">
-                  Number of images to generate (1-8)
-                </p>
-              </div>
+            {/* Guidance Scale */}
+            <div className="space-y-2">
+              <Label>Guidance Scale: {formData.guidanceScale}</Label>
+              <Slider
+                value={[formData.guidanceScale]}
+                onValueChange={(value) => setFormData(prev => ({ ...prev, guidanceScale: value[0] }))}
+                min={1}
+                max={20}
+                step={0.5}
+                className="w-full"
+              />
+              <p className="text-xs text-gray-500">
+                How closely to follow the prompt (1-20, higher = more adherence to prompt)
+              </p>
+            </div>
 
-              {/* Aspect Ratio */}
-              <div className="space-y-2">
-                <Label>Aspect Ratio</Label>
-                              <select
-                value={formData.aspectRatio}
-                onChange={(e) => setFormData(prev => ({ ...prev, aspectRatio: e.target.value }))}
-                className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-              >
-                {aspectRatios.map((ratio) => (
-                  <option key={ratio.value} value={ratio.value}>
-                    {ratio.label}
-                  </option>
-                ))}
-              </select>
-              </div>
+            {/* Inference Steps */}
+            <div className="space-y-2">
+              <Label>Inference Steps: {formData.numInferenceSteps}</Label>
+              <Slider
+                value={[formData.numInferenceSteps]}
+                onValueChange={(value) => setFormData(prev => ({ ...prev, numInferenceSteps: value[0] }))}
+                min={1}
+                max={50}
+                step={1}
+                className="w-full"
+              />
+              <p className="text-xs text-gray-500">
+                Number of denoising steps (1-50, higher = better quality but slower)
+              </p>
+            </div>
 
-              {/* Output Format */}
-              <div className="space-y-2">
-                <Label>Output Format</Label>
-                              <select
+            {/* Output Format */}
+            <div className="space-y-2">
+              <Label>Output Format</Label>
+              <select
                 value={formData.outputFormat}
                 onChange={(e) => setFormData(prev => ({ ...prev, outputFormat: e.target.value }))}
                 className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
@@ -274,69 +263,69 @@ export function AvatarGenerationForm({ onGenerate, isGenerating }: AvatarGenerat
                   </option>
                 ))}
               </select>
-              </div>
+            </div>
 
-              {/* Seed Controls */}
-              <div className="space-y-3">
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    checked={useRandomSeed}
-                    onCheckedChange={setUseRandomSeed}
+            {/* Seed Controls */}
+            <div className="space-y-3">
+              <div className="flex items-center space-x-2">
+                <Switch
+                  checked={useRandomSeed}
+                  onCheckedChange={setUseRandomSeed}
+                />
+                <Label>Use Random Seed</Label>
+              </div>
+              
+              {!useRandomSeed && (
+                <div className="space-y-2">
+                  <Label>Seed</Label>
+                  <Input
+                    type="number"
+                    value={formData.seed || ''}
+                    onChange={(e) => setFormData(prev => ({ 
+                      ...prev, 
+                      seed: e.target.value ? parseInt(e.target.value) : undefined 
+                    }))}
+                    placeholder="Enter a number for reproducible results"
                   />
-                  <Label>Use Random Seed</Label>
                 </div>
-                
-                {!useRandomSeed && (
-                  <div className="space-y-2">
-                    <Label>Seed</Label>
-                    <Input
-                      type="number"
-                      value={formData.seed || ''}
-                      onChange={(e) => setFormData(prev => ({ 
-                        ...prev, 
-                        seed: e.target.value ? parseInt(e.target.value) : undefined 
-                      }))}
-                      placeholder="Enter a number for reproducible results"
-                    />
-                  </div>
-                )}
-              </div>
+              )}
+            </div>
 
-              {/* Safety Checker */}
-              <div className="space-y-3">
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    checked={formData.safetyChecker}
-                    onCheckedChange={(checked) => setFormData(prev => ({ ...prev, safetyChecker: checked }))}
-                  />
-                  <Label>Enable Safety Checker</Label>
-                </div>
-                <p className="text-xs text-gray-500">
-                  Automatically filters potentially inappropriate content
-                </p>
+            {/* Safety Checker */}
+            <div className="space-y-3">
+              <div className="flex items-center space-x-2">
+                <Switch
+                  checked={formData.safetyChecker}
+                  onCheckedChange={(checked) => setFormData(prev => ({ ...prev, safetyChecker: checked }))}
+                />
+                <Label>Enable Safety Checker</Label>
               </div>
-            </CardContent>
-          </Card>
+              <p className="text-xs text-gray-500">
+                Automatically filters potentially inappropriate content
+              </p>
+            </div>
+          </CardContent>
+        </Card>
 
-          {/* Generate Button */}
-          <Button 
-            type="submit" 
-            disabled={isGenerating || !formData.avatarId || !formData.prompt.trim()}
-            className="w-full"
-          >
-            {isGenerating ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Generating...
-              </>
-            ) : (
-              <>
-                <ImageIcon className="mr-2 h-4 w-4" />
-                Generate Avatar
-              </>
-            )}
-          </Button>
-        </form>
+        {/* Generate Button */}
+        <Button 
+          type="submit" 
+          disabled={isGenerating || !formData.avatarId || !formData.prompt.trim()}
+          className="w-full"
+        >
+          {isGenerating ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Generating...
+            </>
+          ) : (
+            <>
+              <ImageIcon className="mr-2 h-4 w-4" />
+              Generate Avatar
+            </>
+          )}
+        </Button>
+      </form>
     </div>
   )
 } 
