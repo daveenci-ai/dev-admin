@@ -9,6 +9,7 @@ export default function AvatarPage() {
   const [generations, setGenerations] = useState([])
   const [loading, setLoading] = useState(true)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
+  const [activeGenerations, setActiveGenerations] = useState<any[]>([])
 
   const fetchData = async () => {
     try {
@@ -33,6 +34,7 @@ export default function AvatarPage() {
 
   const handleGenerate = async (data: any) => {
     try {
+      console.log('🚀 Starting avatar generation with data:', data)
       const response = await fetch('/api/avatar/generate', {
         method: 'POST',
         headers: {
@@ -43,14 +45,26 @@ export default function AvatarPage() {
 
       if (response.ok) {
         const result = await response.json()
-        console.log('Generation started:', result)
-        // Trigger refresh
+        console.log('✅ Generation response:', result)
+        
+        // Track active generations for progress monitoring
+        setActiveGenerations(result.generations || [])
+        
+        // Show success message with optimized prompt
+        alert(`🎨 Generating ${result.generations?.length || 1} images!\n\n` +
+              `Original: "${result.originalPrompt}"\n\n` +
+              `Optimized: "${result.optimizedPrompt}"`)
+        
+        // Trigger refresh to show new generations
         setRefreshTrigger(prev => prev + 1)
       } else {
-        console.error('Generation failed:', await response.text())
+        const errorData = await response.text()
+        console.error('❌ Generation failed:', errorData)
+        alert('Generation failed. Please check the console for details.')
       }
     } catch (error) {
-      console.error('Error starting generation:', error)
+      console.error('❌ Error starting generation:', error)
+      alert('Network error. Please try again.')
     }
   }
 
@@ -61,13 +75,13 @@ export default function AvatarPage() {
       })
 
       if (response.ok) {
-        console.log('Generation deleted:', id)
+        console.log('✅ Generation deleted:', id)
         setRefreshTrigger(prev => prev + 1)
       } else {
-        console.error('Delete failed:', await response.text())
+        console.error('❌ Delete failed:', await response.text())
       }
     } catch (error) {
-      console.error('Error deleting generation:', error)
+      console.error('❌ Error deleting generation:', error)
     }
   }
 
@@ -89,7 +103,7 @@ export default function AvatarPage() {
         <div className="h-full overflow-y-auto p-6">
           <AvatarGenerationForm 
             onGenerate={handleGenerate}
-            isGenerating={loading}
+            isGenerating={activeGenerations.length > 0}
           />
         </div>
       </div>

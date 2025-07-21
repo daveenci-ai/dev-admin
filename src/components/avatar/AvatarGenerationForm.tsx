@@ -323,7 +323,7 @@ export function AvatarGenerationForm({ onGenerate, isGenerating }: AvatarGenerat
         {/* Generate Button */}
         <Button 
           type="submit" 
-          disabled={isGenerating || !formData.avatarId || !formData.prompt.trim()}
+          disabled={isGenerating || !formData.avatarId || formData.prompt.trim().length < 10}
           className="w-full"
         >
           {isGenerating ? (
