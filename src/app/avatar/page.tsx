@@ -123,14 +123,15 @@ export default function AvatarPage() {
           console.log(`📊 Status: ${completedImages.length} completed, ${stillProcessing.length} processing`)
 
           if (completedImages.length > 0) {
-            // Update images for approval stage
-            const images = completedImages.map((gen: any) => ({
+            // Instead of going to approval stage, automatically approve all images
+            console.log('✅ Auto-approving all completed images...')
+            
+            const approvals = completedImages.map((gen: any) => ({
               id: gen.id,
-              imageUrl: gen.imageUrl
+              approved: true // Automatically approve all images
             }))
             
-            setGeneratedImages(images)
-            setWorkflowStage('approval')
+            await handleImageApprovals(approvals)
             clearInterval(pollInterval)
           }
         }
@@ -163,7 +164,14 @@ export default function AvatarPage() {
         console.log('✅ Approvals processed:', result)
         
         const approvedCount = approvals.filter(a => a.approved).length
-        alert(`${approvedCount} image${approvedCount !== 1 ? 's' : ''} approved and added to gallery!`)
+        const totalCount = approvals.length
+        
+        // Show success message
+        if (approvedCount === totalCount) {
+          alert(`🎉 All ${approvedCount} image${approvedCount !== 1 ? 's' : ''} generated successfully and added to gallery!`)
+        } else {
+          alert(`${approvedCount} of ${totalCount} image${totalCount !== 1 ? 's' : ''} approved and added to gallery!`)
+        }
         
         // Close modal and refresh gallery
         setShowWorkflowModal(false)

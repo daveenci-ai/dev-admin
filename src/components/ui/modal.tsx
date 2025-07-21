@@ -275,7 +275,7 @@ export function GenerationWorkflowModal({
         {/* Stage 4: Image Approval */}
         {stage === 'approval' && (
           <div className="space-y-6">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {images.map((image) => (
                 <div key={image.id} className="relative group">
                   <div 
@@ -287,25 +287,28 @@ export function GenerationWorkflowModal({
                     )}
                     onClick={() => handleImageToggle(image.id)}
                   >
-                    <img 
-                      src={image.imageUrl} 
-                      alt="Generated image"
-                      className="w-full h-48 object-cover"
-                    />
-                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-opacity" />
-                    
-                    {/* Selection indicator */}
-                    <div className={cn(
-                      "absolute top-2 right-2 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all",
-                      imageApprovals[image.id]
-                        ? "bg-green-500 border-green-500"
-                        : "bg-white border-gray-300"
-                    )}>
-                      {imageApprovals[image.id] && <Check className="h-4 w-4 text-white" />}
+                    <div className="relative w-full">
+                      <img 
+                        src={image.imageUrl} 
+                        alt="Generated image"
+                        className="w-full h-auto object-contain max-h-96" // Changed to show full image
+                        style={{ aspectRatio: 'auto' }} // Preserve original aspect ratio
+                      />
+                      <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-opacity" />
+                      
+                      {/* Selection indicator */}
+                      <div className={cn(
+                        "absolute top-2 right-2 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all",
+                        imageApprovals[image.id]
+                          ? "bg-green-500 border-green-500"
+                          : "bg-white border-gray-300"
+                      )}>
+                        {imageApprovals[image.id] && <Check className="h-4 w-4 text-white" />}
+                      </div>
                     </div>
                   </div>
                   
-                  <p className="text-xs text-gray-500 mt-1 text-center">
+                  <p className="text-xs text-gray-500 mt-2 text-center">
                     Click to {imageApprovals[image.id] ? 'deselect' : 'select'}
                   </p>
                 </div>

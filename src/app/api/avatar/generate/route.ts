@@ -43,17 +43,20 @@ INPUTS:
 - Aspect ratio: ${aspectRatio}
 
 REQUIREMENTS:
-1. ALWAYS include the trigger word "${triggerWord}" naturally in the prompt
-2. Incorporate avatar description details if provided to enhance authenticity  
-3. Enhance the prompt for photorealism and professional quality
-4. ${photorealismInstruction}
-5. Add professional photography terms (lighting, composition, quality)
-6. Keep it detailed but under 300 characters for optimal processing
-7. Focus on visual details, lighting, and professional composition
-8. Make it suitable for high-quality avatar generation
+1. ALWAYS start with "Photorealistic image of" in the prompt
+2. ALWAYS include the trigger word "${triggerWord}" naturally in the prompt
+3. Incorporate avatar description details if provided to enhance authenticity  
+4. Enhance the prompt for photorealism and professional quality
+5. ${photorealismInstruction}
+6. Add professional photography terms (lighting, composition, quality)
+7. Keep it detailed but under 300 characters for optimal processing
+8. Focus on visual details, lighting, and professional composition
+9. Make it suitable for high-quality avatar generation
 
 EXAMPLE STRUCTURE:
-"${triggerWord} [avatar_description_elements] ${originalPrompt}, professional photography, high quality, detailed lighting, sharp focus, [composition_terms]"
+"Photorealistic image of ${triggerWord} [avatar_description_elements] ${originalPrompt}, professional photography, high quality, detailed lighting, sharp focus, [composition_terms]"
+
+MANDATORY: The response MUST start with "Photorealistic image of" followed by the trigger word and enhanced description.
 
 Return ONLY the optimized prompt text, nothing else.
 `
@@ -90,7 +93,7 @@ Return ONLY the optimized prompt text, nothing else.
       
       // Final fallback: enhanced manual prompt
       const avatarInfo = avatarDescription ? `, ${avatarDescription}` : ''
-      const manualPrompt = `${triggerWord}${avatarInfo} ${originalPrompt}, professional photography, high quality, detailed lighting, sharp focus, cinematic composition`
+      const manualPrompt = `Photorealistic image of ${triggerWord}${avatarInfo} ${originalPrompt}, professional photography, high quality, detailed lighting, sharp focus, cinematic composition`
       console.log(`🔧 Using enhanced manual fallback: "${manualPrompt}"`)
       return manualPrompt
     }
