@@ -132,15 +132,16 @@ export default function AvatarPage() {
           console.log(`📊 Status: ${completedImages.length} completed, ${stillProcessing.length} processing`)
 
           if (completedImages.length > 0) {
-            // Instead of going to approval stage, automatically approve all images
-            console.log('✅ Auto-approving all completed images...')
+            // Show approval modal with completed images
+            console.log('✅ Images completed, showing approval modal...')
             
-            const approvals = completedImages.map((gen: any) => ({
+            const images = completedImages.map((gen: any) => ({
               id: gen.id,
-              approved: true // Automatically approve all images
+              imageUrl: gen.imageUrl
             }))
             
-            await handleImageApprovals(approvals)
+            setGeneratedImages(images)
+            setWorkflowStage('approval')
             clearInterval(pollInterval)
           }
         }
