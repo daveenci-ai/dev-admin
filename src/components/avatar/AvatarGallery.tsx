@@ -54,6 +54,7 @@ export function AvatarGallery({ refreshTrigger, onDelete }: AvatarGalleryProps) 
   const [avatars, setAvatars] = useState<Avatar[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('')
   const [selectedAvatar, setSelectedAvatar] = useState('all')
   const [timeFrame, setTimeFrame] = useState('all')
   const [pagination, setPagination] = useState({
@@ -63,10 +64,19 @@ export function AvatarGallery({ refreshTrigger, onDelete }: AvatarGalleryProps) 
     totalPages: 0
   })
 
+  // Debounce search term
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm)
+    }, 300)
+
+    return () => clearTimeout(timer)
+  }, [searchTerm])
+
   useEffect(() => {
     fetchGenerations()
     fetchAvatars()
-  }, [searchTerm, selectedAvatar, timeFrame, pagination.page, refreshTrigger])
+  }, [debouncedSearchTerm, selectedAvatar, timeFrame, pagination.page, refreshTrigger])
 
   const fetchAvatars = async () => {
     try {
@@ -84,7 +94,7 @@ export function AvatarGallery({ refreshTrigger, onDelete }: AvatarGalleryProps) 
       const params = new URLSearchParams({
         page: pagination.page.toString(),
         limit: pagination.limit.toString(),
-        search: searchTerm,
+        search: debouncedSearchTerm,
         avatar: selectedAvatar,
         timeframe: timeFrame
       })
@@ -166,55 +176,46 @@ export function AvatarGallery({ refreshTrigger, onDelete }: AvatarGalleryProps) 
   }
 
   return (
-    <div className="space-y-6">
-      {/* Always Visible Filters */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
+    <div className="space-y-4">
+      {/* Compact Filters */}
+      <div className="flex gap-3 items-center p-3 bg-gray-50 rounded-lg">
         {/* Avatar Filter */}
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-gray-700">Avatar</label>
-          <select 
-            value={selectedAvatar} 
-            onChange={(e) => setSelectedAvatar(e.target.value)}
-            className="w-full h-10 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-          >
-            <option value="all">All Avatars</option>
-            {avatars.map((avatar) => (
-              <option key={avatar.id} value={avatar.id}>
-                {avatar.fullName}
-              </option>
-            ))}
-          </select>
-        </div>
+        <select 
+          value={selectedAvatar} 
+          onChange={(e) => setSelectedAvatar(e.target.value)}
+          className="h-9 rounded-md border border-gray-300 bg-white px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 min-w-[140px]"
+        >
+          <option value="all">All Avatars</option>
+          {avatars.map((avatar) => (
+            <option key={avatar.id} value={avatar.id}>
+              {avatar.fullName}
+            </option>
+          ))}
+        </select>
 
-        {/* Search Box */}
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-gray-700">Search</label>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-            <Input
-              placeholder="Search in descriptions..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-          </div>
+        {/* Search Box - Takes most space */}
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+          <Input
+            placeholder="Search in descriptions..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10 h-9"
+          />
         </div>
         
         {/* TimeFrame Filter */}
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-gray-700">Time Frame</label>
-          <select 
-            value={timeFrame} 
-            onChange={(e) => setTimeFrame(e.target.value)}
-            className="w-full h-10 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-          >
-            {timeFrameOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </div>
+        <select 
+          value={timeFrame} 
+          onChange={(e) => setTimeFrame(e.target.value)}
+          className="h-9 rounded-md border border-gray-300 bg-white px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 min-w-[130px]"
+        >
+          {timeFrameOptions.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
       </div>
 
       {/* Results Count */}
@@ -231,7 +232,7 @@ export function AvatarGallery({ refreshTrigger, onDelete }: AvatarGalleryProps) 
             <ImageIcon className="mx-auto h-12 w-12 text-gray-400 mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">No avatars found</h3>
             <p className="text-gray-500">
-              {searchTerm || selectedAvatar !== 'all' || timeFrame !== 'all'
+              {debouncedSearchTerm || selectedAvatar !== 'all' || timeFrame !== 'all'
                 ? 'Try adjusting your search or filter criteria'
                 : 'Generate your first avatar to get started'
               }

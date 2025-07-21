@@ -7,17 +7,48 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '12')
     const search = searchParams.get('search') || ''
-    const status = searchParams.get('status') || 'all'
+    const avatar = searchParams.get('avatar') || 'all'
+    const timeframe = searchParams.get('timeframe') || 'all'
     
     const skip = (page - 1) * limit
 
     // Build where clause for generations using existing avatars_generated table
     const where: any = {}
 
+    // Search in prompt
     if (search) {
       where.OR = [
         { prompt: { contains: search, mode: 'insensitive' } }
       ]
+    }
+
+    // Filter by specific avatar
+    if (avatar !== 'all') {
+      where.avatarId = parseInt(avatar)
+    }
+
+    // Filter by timeframe based on creation date
+    if (timeframe !== 'all') {
+      const now = new Date()
+      let startDate: Date
+
+      switch (timeframe) {
+        case '7d':
+          startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+          break
+        case '30d':
+          startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+          break
+        case '3m':
+          startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000)
+          break
+        default:
+          startDate = new Date(0) // Beginning of time
+      }
+
+      where.createdAt = {
+        gte: startDate
+      }
     }
 
     // Get generations with pagination from avatars_generated table
@@ -62,7 +93,11 @@ export async function GET(request: NextRequest) {
         avatar: generation.avatar ? {
           ...generation.avatar,
           id: generation.avatar.id.toString()
-        } : null
+        } : null,
+        // Add additional fields for compatibility
+        loraRepository: generation.avatar?.fullName || 'Unknown',
+        aspectRatio: '9:16', // Default aspect ratio
+        errorMessage: null
       }
     })
 
@@ -99,8 +134,8 @@ export async function DELETE(request: NextRequest) {
 
     const generationId = parseInt(id)
 
-    // Check if generation exists
-    const generation = await prisma.avatarGeneration.findUnique({
+    // Check if generation exists in avatars_generated table
+    const generation = await prisma.avatarGenerated.findUnique({
       where: { id: generationId }
     })
 
@@ -111,8 +146,8 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
-    // Delete the generation
-    await prisma.avatarGeneration.delete({
+    // Delete the generation from avatars_generated table
+    await prisma.avatarGenerated.delete({
       where: { id: generationId }
     })
 
