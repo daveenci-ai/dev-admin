@@ -225,7 +225,7 @@ export async function POST(request: NextRequest) {
 
       // Prepare Replicate input with correct parameter names
       const input = {
-        prompt: optimizedPrompts.option1, // Use the first optimized prompt for generation
+        prompt: validatedData.prompt, // Use the user-selected prompt (original or optimized)
         lora_weights: loraVersionId, // Use extracted version ID, not full URL
         lora_scale: validatedData.loraScale,
         guidance_scale: validatedData.guidanceScale,
@@ -263,7 +263,7 @@ export async function POST(request: NextRequest) {
           const avatarGeneration = await prisma.avatarGenerated.create({
             data: {
               avatarId: BigInt(validatedData.avatarId),
-              prompt: optimizedPrompts.option1, // Use the first optimized prompt for record
+              prompt: validatedData.prompt, // Use the user-selected prompt for record
               githubImageUrl: `PENDING_REVIEW:${prediction.id}`, // Temporary, will be updated with actual URL
             }
           })
@@ -272,7 +272,7 @@ export async function POST(request: NextRequest) {
             id: avatarGeneration.id.toString(),
             replicateId: prediction.id,
             status: 'processing',
-            prompt: optimizedPrompts.option1, // Use the first optimized prompt for record
+            prompt: validatedData.prompt, // Use the user-selected prompt for record
             avatarId: validatedData.avatarId,
             githubImageUrl: avatarGeneration.githubImageUrl,
             predictionId: prediction.id // Add this for polling

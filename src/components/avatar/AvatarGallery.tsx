@@ -298,7 +298,7 @@ export function AvatarGallery({ refreshTrigger, onDelete }: AvatarGalleryProps) 
               <CardFooter className="p-4">
                 <div className="w-full space-y-3">
                   <div>
-                    <h3 className="font-medium text-sm truncate" title={generation.prompt}>
+                    <h3 className="font-medium text-sm line-clamp-3 leading-relaxed" title={generation.prompt}>
                       {generation.prompt}
                     </h3>
                     <p className="text-xs text-gray-500 truncate">
