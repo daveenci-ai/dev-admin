@@ -13,7 +13,14 @@ export async function GET(request: NextRequest) {
     const skip = (page - 1) * limit
 
     // Build where clause for generations using existing avatars_generated table
-    const where: any = {}
+    const where: any = {
+      // Only show approved images (not pending review)
+      githubImageUrl: {
+        not: {
+          startsWith: 'PENDING_REVIEW:'
+        }
+      }
+    }
 
     // Search in prompt
     if (search) {

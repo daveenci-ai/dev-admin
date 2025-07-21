@@ -221,8 +221,8 @@ export async function POST(request: NextRequest) {
     const imageGenerations = []
     
     for (let i = 0; i < validatedData.numImages; i++) {
-      console.log(`🖼️  Starting generation ${i + 1}/${validatedData.numImages}`)
-      
+      console.log(`🎨 Starting generation ${i + 1} of ${validatedData.numImages}`)
+
       // Prepare Replicate input with correct parameter names
       const input = {
         prompt: optimizedPrompts.option1, // Use the first optimized prompt for generation
@@ -254,34 +254,34 @@ export async function POST(request: NextRequest) {
         if (!response.ok) {
           const errorText = await response.text()
           console.error(`❌ Replicate API error for image ${i + 1}:`, errorText)
-          continue // Skip this generation and try the next one
-        }
+          // Log error but still continue to try creating the database record
+        } else {
+          const prediction = await response.json()
+          console.log(`✅ Replicate prediction ${i + 1} created:`, prediction.id)
 
-        const prediction = await response.json()
-        console.log(`✅ Replicate prediction ${i + 1} created:`, prediction.id)
+          // Create record in existing avatars_generated table with placeholder
+          const avatarGeneration = await prisma.avatarGenerated.create({
+            data: {
+              avatarId: BigInt(validatedData.avatarId),
+              prompt: optimizedPrompts.option1, // Use the first optimized prompt for record
+              githubImageUrl: `PENDING_REVIEW:${prediction.id}`, // Temporary, will be updated with actual URL
+            }
+          })
 
-        // Create record in existing avatars_generated table with placeholder
-        const avatarGeneration = await prisma.avatarGenerated.create({
-          data: {
-            avatarId: BigInt(validatedData.avatarId),
+          imageGenerations.push({
+            id: avatarGeneration.id.toString(),
+            replicateId: prediction.id,
+            status: 'processing',
             prompt: optimizedPrompts.option1, // Use the first optimized prompt for record
-            githubImageUrl: `PENDING_REVIEW:${prediction.id}`, // Temporary, will be updated with actual URL
-          }
-        })
-
-        imageGenerations.push({
-          id: avatarGeneration.id.toString(),
-          replicateId: prediction.id,
-          status: 'processing',
-          prompt: optimizedPrompts.option1, // Use the first optimized prompt for record
-          avatarId: validatedData.avatarId,
-          githubImageUrl: avatarGeneration.githubImageUrl,
-          predictionId: prediction.id // Add this for polling
-        })
+            avatarId: validatedData.avatarId,
+            githubImageUrl: avatarGeneration.githubImageUrl,
+            predictionId: prediction.id // Add this for polling
+          })
+        }
 
       } catch (error: any) {
         console.error(`❌ Avatar generation error for image ${i + 1}:`, error)
-        // Continue with other generations even if one fails
+        // Log error but continue with other generations
       }
     }
 

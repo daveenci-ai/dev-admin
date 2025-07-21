@@ -52,12 +52,12 @@ export default function AvatarPage() {
         setWorkflowStage('prompt-selection')
       } else {
         console.error('❌ Failed to optimize prompt')
-        alert('Failed to optimize prompt. Please try again.')
+        console.error('Failed to optimize prompt. Please try again.')
         setShowWorkflowModal(false)
       }
     } catch (error: any) {
       console.error('❌ Error optimizing prompt:', error)
-      alert(`Error optimizing prompt: ${error.message}`)
+      console.error(`Error optimizing prompt: ${error.message}`)
       setShowWorkflowModal(false)
     }
   }
@@ -102,12 +102,12 @@ export default function AvatarPage() {
         }
       } else {
         console.error('❌ Failed to start generation')
-        alert('Failed to start image generation. Please try again.')
+        console.error('Failed to start image generation. Please try again.')
         setShowWorkflowModal(false)
       }
     } catch (error: any) {
       console.error('❌ Error starting generation:', error)
-      alert(`Error starting generation: ${error.message}`)
+      console.error(`Error starting generation: ${error.message}`)
       setShowWorkflowModal(false)
     }
   }
@@ -176,11 +176,11 @@ export default function AvatarPage() {
         const approvedCount = approvals.filter(a => a.approved).length
         const totalCount = approvals.length
         
-        // Show success message
+        // Log success message instead of showing popup
         if (approvedCount === totalCount) {
-          alert(`🎉 All ${approvedCount} image${approvedCount !== 1 ? 's' : ''} generated successfully and added to gallery!`)
+          console.log(`🎉 All ${approvedCount} image${approvedCount !== 1 ? 's' : ''} generated successfully and added to gallery!`)
         } else {
-          alert(`${approvedCount} of ${totalCount} image${totalCount !== 1 ? 's' : ''} approved and added to gallery!`)
+          console.log(`${approvedCount} of ${totalCount} image${totalCount !== 1 ? 's' : ''} approved and added to gallery!`)
         }
         
         // Close modal and refresh gallery
@@ -188,11 +188,13 @@ export default function AvatarPage() {
         setRefreshTrigger(prev => prev + 1)
       } else {
         console.error('❌ Failed to process approvals')
-        alert('Failed to process image approvals. Please try again.')
+        // Remove alert, just log error
+        console.error('Failed to process image approvals. Please try again.')
       }
     } catch (error: any) {
       console.error('❌ Error processing approvals:', error)
-      alert(`Error processing approvals: ${error.message}`)
+      // Remove alert, just log error
+      console.error(`Error processing approvals: ${error.message}`)
     }
   }
 
@@ -247,6 +249,7 @@ export default function AvatarPage() {
           optimizedPrompts={generationData.optimizedPrompts}
           avatarName={generationData.avatar?.name || 'Unknown'}
           numImages={generationData.numImages || 1}
+          aspectRatio={generationData.aspectRatio || '1:1'}
           stage={workflowStage}
           images={generatedImages}
           onPromptChoice={handlePromptChoice}

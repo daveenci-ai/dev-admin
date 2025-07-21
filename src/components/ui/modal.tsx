@@ -155,6 +155,7 @@ interface GenerationWorkflowModalProps {
   optimizedPrompts?: { option1: string, option2: string, option3: string }
   avatarName: string
   numImages: number
+  aspectRatio?: string
   stage: WorkflowStage
   images?: GenerationImage[]
   onPromptChoice: (promptType: 'original' | 'option1' | 'option2' | 'option3') => void
@@ -169,6 +170,7 @@ export function GenerationWorkflowModal({
   optimizedPrompts,
   avatarName,
   numImages,
+  aspectRatio = '1:1',
   stage,
   images = [],
   onPromptChoice,
@@ -176,6 +178,22 @@ export function GenerationWorkflowModal({
   isGenerating = false
 }: GenerationWorkflowModalProps) {
   const [imageApprovals, setImageApprovals] = React.useState<Record<string, boolean>>({})
+
+  // Get composition labels based on aspect ratio
+  const getCompositionLabels = (ratio: string) => {
+    switch (ratio) {
+      case '9:16': // Portrait
+        return ['Close-Up Shot', 'Full-Body Shot', 'Environmental Portrait']
+      case '16:9': // Landscape  
+        return ['Wide Shot', 'Medium Shot', 'Action Shot']
+      case '1:1': // Square
+        return ['Central Focus', 'Pattern/Abstract', 'Overhead Shot']
+      default:
+        return ['Close-Up Shot', 'Medium Shot', 'Wide Shot']
+    }
+  }
+
+  const compositionLabels = getCompositionLabels(aspectRatio)
 
   const handleImageToggle = (imageId: string) => {
     setImageApprovals(prev => ({
@@ -235,76 +253,56 @@ export function GenerationWorkflowModal({
         {stage === 'prompt-selection' && (
           <div className="space-y-4 mb-6">
             <div className="text-sm text-gray-600 mb-4 text-center">
-              💡 Hover over a prompt to select it and continue with generation
+              💡 Click on a prompt to select it and continue with generation
             </div>
             
             {/* Original Prompt Card */}
             <div 
               className="border border-gray-200 rounded-lg p-4 cursor-pointer transition-all duration-200 hover:border-blue-400 hover:bg-blue-50 hover:shadow-md"
-              onMouseEnter={() => {
-                // Add a small delay to prevent accidental selections
-                setTimeout(() => {
-                  onPromptChoice('original')
-                }, 500)
-              }}
+              onClick={() => onPromptChoice('original')}
             >
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-sm font-medium text-gray-700">📝 Your Original Prompt</span>
-                <span className="text-xs text-gray-500">(hover to select)</span>
+                <span className="text-xs text-gray-500">(click to select)</span>
               </div>
               <p className="text-gray-800 text-sm leading-relaxed">"{originalPrompt}"</p>
             </div>
 
-            {/* Optimized Prompt Card */}
+            {/* Optimized Prompt Card 1 */}
             <div 
               className="border border-blue-200 rounded-lg p-4 bg-blue-50 cursor-pointer transition-all duration-200 hover:border-blue-500 hover:bg-blue-100 hover:shadow-md"
-              onMouseEnter={() => {
-                // Add a small delay to prevent accidental selections  
-                setTimeout(() => {
-                  onPromptChoice('option1')
-                }, 500)
-              }}
+              onClick={() => onPromptChoice('option1')}
             >
               <div className="flex items-center gap-2 mb-2">
-                <span className="text-sm font-medium text-blue-700">🤖 AI Optimized Prompt</span>
-                <span className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded">Recommended</span>
-                <span className="text-xs text-blue-600">(hover to select)</span>
+                <span className="text-sm font-medium text-blue-700">🤖 AI Optimized Prompt #1</span>
+                <span className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded">{compositionLabels[0]}</span>
+                <span className="text-xs text-blue-600">(click to select)</span>
               </div>
               <p className="text-blue-800 text-sm leading-relaxed">"{optimizedPrompts?.option1}"</p>
             </div>
 
-            {/* Optimized Prompt Card */}
+            {/* Optimized Prompt Card 2 */}
             <div 
               className="border border-blue-200 rounded-lg p-4 bg-blue-50 cursor-pointer transition-all duration-200 hover:border-blue-500 hover:bg-blue-100 hover:shadow-md"
-              onMouseEnter={() => {
-                // Add a small delay to prevent accidental selections  
-                setTimeout(() => {
-                  onPromptChoice('option2')
-                }, 500)
-              }}
+              onClick={() => onPromptChoice('option2')}
             >
               <div className="flex items-center gap-2 mb-2">
-                <span className="text-sm font-medium text-blue-700">🤖 AI Optimized Prompt</span>
-                <span className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded">Recommended</span>
-                <span className="text-xs text-blue-600">(hover to select)</span>
+                <span className="text-sm font-medium text-blue-700">🤖 AI Optimized Prompt #2</span>
+                <span className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded">{compositionLabels[1]}</span>
+                <span className="text-xs text-blue-600">(click to select)</span>
               </div>
               <p className="text-blue-800 text-sm leading-relaxed">"{optimizedPrompts?.option2}"</p>
             </div>
 
-            {/* Optimized Prompt Card */}
+            {/* Optimized Prompt Card 3 */}
             <div 
               className="border border-blue-200 rounded-lg p-4 bg-blue-50 cursor-pointer transition-all duration-200 hover:border-blue-500 hover:bg-blue-100 hover:shadow-md"
-              onMouseEnter={() => {
-                // Add a small delay to prevent accidental selections  
-                setTimeout(() => {
-                  onPromptChoice('option3')
-                }, 500)
-              }}
+              onClick={() => onPromptChoice('option3')}
             >
               <div className="flex items-center gap-2 mb-2">
-                <span className="text-sm font-medium text-blue-700">🤖 AI Optimized Prompt</span>
-                <span className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded">Recommended</span>
-                <span className="text-xs text-blue-600">(hover to select)</span>
+                <span className="text-sm font-medium text-blue-700">🤖 AI Optimized Prompt #3</span>
+                <span className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded">{compositionLabels[2]}</span>
+                <span className="text-xs text-blue-600">(click to select)</span>
               </div>
               <p className="text-blue-800 text-sm leading-relaxed">"{optimizedPrompts?.option3}"</p>
             </div>
@@ -326,7 +324,7 @@ export function GenerationWorkflowModal({
         {/* Stage 4: Image Approval */}
         {stage === 'approval' && (
           <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 gap-4">
               {images.map((image) => (
                 <div key={image.id} className="relative group">
                   <div 
@@ -342,7 +340,7 @@ export function GenerationWorkflowModal({
                       <img 
                         src={image.imageUrl} 
                         alt="Generated image"
-                        className="w-full h-auto object-contain max-h-96" // Changed to show full image
+                        className="w-full h-auto object-contain max-h-64" // Reduced height for single row
                         style={{ aspectRatio: 'auto' }} // Preserve original aspect ratio
                       />
                       <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-opacity" />
