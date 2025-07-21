@@ -60,8 +60,8 @@ Return ONLY the optimized prompt text, nothing else.
 
   // Try Gemini 2.0 Flash (Experimental) first - highest quality
   try {
-    console.log(`🤖 Trying Gemini 2.0 Flash (Experimental)...`)
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" })
+    console.log(`🤖 Trying Gemini 2.5 Pro (Experimental)...`)
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" })
     
     const result = await model.generateContent(optimizationPrompt)
     const response = await result.response
@@ -75,8 +75,8 @@ Return ONLY the optimized prompt text, nothing else.
     
     // Fallback to Gemini 1.5 Flash - more stable
     try {
-      console.log(`🔄 Falling back to Gemini 1.5 Flash...`)
-      const fallbackModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash" })
+      console.log(`🔄 Falling back to Gemini 2.5 Flash...`)
+      const fallbackModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash" })
       
       const result = await fallbackModel.generateContent(optimizationPrompt)
       const response = await result.response
@@ -115,6 +115,24 @@ export async function POST(request: NextRequest) {
     console.log(`🎯 Trigger word: ${avatar.triggerWord}`)
     console.log(`📝 Avatar description: ${avatar.description || 'None'}`)
     console.log(`📝 Original prompt: "${validatedData.prompt}"`)
+    console.log(`🔗 Replicate model URL: ${avatar.replicateModelUrl}`)
+
+    // Extract version ID from full Replicate URL
+    // URL format: https://replicate.com/daveenci/astridwmn/versions/109fcb3d676fac1f2a4b45d126abf39f0b57bc42b1f04870f63679f61b0b6134
+    const extractVersionId = (url: string): string => {
+      const match = url.match(/\/versions\/([a-f0-9]+)/)
+      if (match && match[1]) {
+        return match[1]
+      }
+      // If it's already just a version ID, return as is
+      if (/^[a-f0-9]{64}$/.test(url)) {
+        return url
+      }
+      throw new Error(`Invalid Replicate model URL format: ${url}`)
+    }
+
+    const loraVersionId = extractVersionId(avatar.replicateModelUrl)
+    console.log(`📦 Extracted LoRA version ID: ${loraVersionId}`)
 
     // Step 1: Always optimize prompt with Gemini AI (tiered approach)
     console.log(`🤖 Optimizing prompt with Gemini AI (2.0 Flash → 1.5 Flash fallback)...`)
@@ -148,7 +166,7 @@ export async function POST(request: NextRequest) {
       // Prepare Replicate input with correct parameter names
       const input = {
         prompt: optimizedPrompt,
-        lora_weights: avatar.replicateModelUrl,
+        lora_weights: loraVersionId, // Use extracted version ID, not full URL
         lora_scale: validatedData.loraScale,
         guidance_scale: validatedData.guidanceScale,
         num_inference_steps: validatedData.numInferenceSteps,
