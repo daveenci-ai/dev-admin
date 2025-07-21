@@ -39,42 +39,47 @@ export default function AvatarPage() {
 
   // Step 1: Get optimized prompt and show modal
   const handleGenerate = async (data: any) => {
+    console.log('🚀 Starting avatar generation process...')
+    
+    // Show modal immediately with loading state
+    setPendingGeneration({
+      ...data,
+      optimizedPrompt: '', // Will be filled when API responds
+      originalPrompt: data.prompt,
+      avatar: { name: 'Loading...' } // Temporary, will be updated
+    })
+    setShowPromptModal(true)
+
     try {
-      console.log('🚀 Getting optimized prompt for:', data)
-      
-      // First call to get the optimized prompt only (preview mode)
       const response = await fetch('/api/avatar/generate', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ...data,
-          previewOnly: true // Only get optimized prompt, don't generate images yet
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...data, previewOnly: true }),
       })
 
       if (response.ok) {
         const result = await response.json()
-        console.log('✅ Got optimization result:', result)
+        console.log('✅ Got optimized prompt:', result.optimizedPrompt)
         
-        // Store the generation data and show modal
+        // Update modal with actual data
         setPendingGeneration({
           ...data,
           optimizedPrompt: result.optimizedPrompt,
           originalPrompt: result.originalPrompt,
           avatar: result.avatar
         })
-        setShowPromptModal(true)
-        
       } else {
-        const errorData = await response.text()
-        console.error('❌ Optimization failed:', errorData)
-        alert('Failed to optimize prompt. Please try again.')
+        console.error('❌ Failed to optimize prompt')
+        const errorData = await response.json()
+        alert(`Failed to optimize prompt: ${errorData.error || 'Unknown error'}`)
+        setShowPromptModal(false)
+        setPendingGeneration(null)
       }
-    } catch (error) {
-      console.error('❌ Error getting optimization:', error)
-      alert('Network error. Please try again.')
+    } catch (error: any) {
+      console.error('❌ Error optimizing prompt:', error)
+      alert(`Error optimizing prompt: ${error.message}`)
+      setShowPromptModal(false)
+      setPendingGeneration(null)
     }
   }
 
@@ -200,6 +205,7 @@ export default function AvatarPage() {
           avatarName={pendingGeneration.avatar?.name || 'Unknown'}
           numImages={pendingGeneration.numImages || 1}
           onProceed={handlePromptChoice}
+          isLoading={!pendingGeneration.optimizedPrompt} // Show loading if no optimized prompt yet
         />
       )}
     </div>

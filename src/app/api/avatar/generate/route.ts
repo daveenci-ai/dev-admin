@@ -178,52 +178,50 @@ export async function POST(request: NextRequest) {
 
       console.log(`📋 Replicate input for image ${i + 1}:`, JSON.stringify(input, null, 2))
 
-      // Call Replicate API
-      const response = await fetch('https://api.replicate.com/v1/predictions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Token ${process.env.REPLICATE_API_TOKEN}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          version: process.env.REPLICATE_MODEL_VERSION || 'black-forest-labs/flux-dev-lora',
-          input: input
+      try {
+        const response = await fetch('https://api.replicate.com/v1/predictions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Token ${process.env.REPLICATE_API_TOKEN}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            version: loraVersionId,
+            input: input
+          }),
         })
-      })
 
-      if (!response.ok) {
-        const errorText = await response.text()
-        console.error(`❌ Replicate API error for image ${i + 1}:`, response.status, errorText)
-        continue // Skip this image and continue with others
-      }
-
-      const prediction = await response.json()
-      
-      // Create generation record in database for tracking
-      const generationRecord = await prisma.avatarGeneration.create({
-        data: {
-          prompt: optimizedPrompt,
-          loraRepository: avatar.fullName,
-          loraScale: validatedData.loraScale,
-          guidanceScale: validatedData.guidanceScale,
-          numInferenceSteps: validatedData.numInferenceSteps,
-          aspectRatio: validatedData.aspectRatio,
-          outputFormat: validatedData.outputFormat,
-          safetyChecker: validatedData.safetyChecker,
-          seed: validatedData.seed ? validatedData.seed + i : null,
-          status: 'processing',
-          replicateId: prediction.id,
-          imageUrl: null // Will be updated when complete
+        if (!response.ok) {
+          const errorText = await response.text()
+          console.error(`❌ Replicate API error for image ${i + 1}:`, errorText)
+          continue // Skip this generation and try the next one
         }
-      })
 
-      imageGenerations.push({
-        id: generationRecord.id,
-        replicateId: prediction.id,
-        status: 'processing'
-      })
+        const prediction = await response.json()
+        console.log(`✅ Replicate prediction ${i + 1} created:`, prediction.id)
 
-      console.log(`✅ Generation ${i + 1} started with ID: ${generationRecord.id}`)
+        // Create record in existing avatars_generated table
+        const avatarGeneration = await prisma.avatarGenerated.create({
+          data: {
+            avatarId: BigInt(validatedData.avatarId),
+            prompt: optimizedPrompt,
+            githubImageUrl: `PENDING_REVIEW:${prediction.id}`, // Will be updated when image is ready
+          }
+        })
+
+        imageGenerations.push({
+          id: avatarGeneration.id.toString(),
+          replicateId: prediction.id,
+          status: 'processing',
+          prompt: optimizedPrompt,
+          avatarId: validatedData.avatarId,
+          githubImageUrl: avatarGeneration.githubImageUrl
+        })
+
+      } catch (error: any) {
+        console.error(`❌ Avatar generation error for image ${i + 1}:`, error)
+        // Continue with other generations even if one fails
+      }
     }
 
     // Return results
