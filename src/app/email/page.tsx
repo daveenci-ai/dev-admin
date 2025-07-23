@@ -32,6 +32,8 @@ interface ZohoAccount {
   isOrganizationAccount: boolean;
   accountCreatedTime: string;
   isActive: boolean;
+  mailboxName?: string;
+  mailboxEmail?: string;
 }
 
 export default function EmailPage() {
@@ -42,6 +44,7 @@ export default function EmailPage() {
   const [isComposeOpen, setIsComposeOpen] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedMailbox, setSelectedMailbox] = useState<string>('all');
 
   // Compose form state
   const [composeForm, setComposeForm] = useState({
@@ -156,6 +159,12 @@ export default function EmailPage() {
     return new Date(timestamp).toLocaleString();
   };
 
+  // Handle mailbox filter selection
+  const handleMailboxClick = (mailboxEmail: string) => {
+    setSelectedMailbox(mailboxEmail);
+    // TODO: Filter emails based on selected mailbox
+  };
+
   // Load data on component mount
   useEffect(() => {
     fetchAccounts();
@@ -164,34 +173,8 @@ export default function EmailPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Email Management</h1>
-            <p className="text-gray-600">Manage your Zoho Mail inbox and send emails</p>
-          </div>
-          <div className="flex gap-3">
-            <Button 
-              onClick={() => {
-                fetchAccounts();
-                fetchEmails();
-                fetchStats();
-              }} 
-              disabled={isLoading} 
-              variant="outline"
-            >
-              <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
-            <Button onClick={() => setIsComposeOpen(true)}>
-              <Send className="w-4 h-4 mr-2" />
-              Compose
-            </Button>
-          </div>
-        </div>
-
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Error Alert */}
         {error && (
           <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4 flex items-center">
@@ -203,42 +186,79 @@ export default function EmailPage() {
           </div>
         )}
 
-        {/* Zoho Mail Accounts */}
+        {/* Action Buttons */}
+        <div className="flex justify-end gap-3 mb-6">
+          <Button 
+            onClick={() => {
+              fetchAccounts();
+              fetchEmails();
+              fetchStats();
+            }} 
+            disabled={isLoading} 
+            variant="outline"
+          >
+            <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+          <Button onClick={() => setIsComposeOpen(true)}>
+            <Send className="w-4 h-4 mr-2" />
+            Compose
+          </Button>
+        </div>
+
+        {/* Mailbox Filter Cards */}
         {accounts.length > 0 && (
-          <div className="mb-8">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Zoho Mail Accounts</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-              {accounts.map((account) => (
-                <Card key={account.accountId} className="p-4">
-                  <div className="text-center">
-                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-3">
-                      <span className="text-white font-bold text-lg">
-                        {account.displayName?.charAt(0) || account.accountName?.charAt(0) || 'Z'}
-                      </span>
-                    </div>
-                    <h3 className="font-medium text-gray-900 text-sm mb-1 truncate" title={account.displayName || account.accountName}>
-                      {account.displayName || account.accountName}
-                    </h3>
-                    <p className="text-xs text-gray-600 mb-2 truncate" title={account.primaryEmailAddress}>
-                      {account.primaryEmailAddress}
-                    </p>
-                    <div className="flex items-center justify-center gap-2">
-                      <Badge 
-                        variant={account.isActive ? "default" : "secondary"} 
-                        className="text-xs px-2 py-1"
-                      >
-                        {account.isActive ? "Active" : "Inactive"}
-                      </Badge>
-                      {account.isOrganizationAccount && (
-                        <Badge variant="outline" className="text-xs px-2 py-1">
-                          Org
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                </Card>
-              ))}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+            {/* All Mailboxes Card */}
+            <div 
+              onClick={() => handleMailboxClick('all')}
+              className={`bg-white p-4 rounded-lg shadow-sm border border-gray-200 transition-all duration-200 cursor-pointer border-b-2 ${
+                selectedMailbox === 'all'
+                  ? 'bg-gray-50 border-gray-400' 
+                  : 'hover:bg-gray-50 border-b-gray-400'
+              }`}
+            >
+              <div className="text-xl font-bold text-gray-600 mb-1">{accounts.length}</div>
+              <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">ALL MAILBOXES</div>
+              <div className="text-xs text-gray-400">Total</div>
             </div>
+
+            {/* Individual Mailbox Cards */}
+            {accounts.map((account) => {
+              const isActive = selectedMailbox === account.primaryEmailAddress;
+              const mailboxName = account.mailboxName || account.displayName || account.accountName;
+              const colors = {
+                'anton.osipov@daveenci.ai': { color: 'text-blue-600', bgColor: 'hover:bg-blue-50', borderColor: 'border-b-blue-500', activeBg: 'bg-blue-50', activeBorder: 'border-blue-500' },
+                'astrid@daveenci.ai': { color: 'text-purple-600', bgColor: 'hover:bg-purple-50', borderColor: 'border-b-purple-500', activeBg: 'bg-purple-50', activeBorder: 'border-purple-500' },
+                'hello@daveenci.ai': { color: 'text-green-600', bgColor: 'hover:bg-green-50', borderColor: 'border-b-green-500', activeBg: 'bg-green-50', activeBorder: 'border-green-500' },
+                'support@daveenci.ai': { color: 'text-yellow-600', bgColor: 'hover:bg-yellow-50', borderColor: 'border-b-yellow-500', activeBg: 'bg-yellow-50', activeBorder: 'border-yellow-500' },
+                'ops@daveenci.ai': { color: 'text-red-600', bgColor: 'hover:bg-red-50', borderColor: 'border-b-red-500', activeBg: 'bg-red-50', activeBorder: 'border-red-500' }
+              };
+              
+              const colorScheme = colors[account.primaryEmailAddress as keyof typeof colors] || colors['anton.osipov@daveenci.ai'];
+              
+              return (
+                <div 
+                  key={account.accountId}
+                  onClick={() => handleMailboxClick(account.primaryEmailAddress)}
+                  className={`bg-white p-4 rounded-lg shadow-sm border border-gray-200 transition-all duration-200 cursor-pointer border-b-2 ${
+                    isActive 
+                      ? `${colorScheme.activeBg} ${colorScheme.activeBorder}` 
+                      : `${colorScheme.bgColor} ${colorScheme.borderColor}`
+                  }`}
+                >
+                  <div className={`text-xl font-bold ${colorScheme.color} mb-1`}>
+                    {account.isActive ? '1' : '0'}
+                  </div>
+                  <div className="text-xs font-medium text-gray-500 uppercase tracking-wide truncate">
+                    {mailboxName?.toUpperCase() || 'MAILBOX'}
+                  </div>
+                  <div className="text-xs text-gray-400 truncate" title={account.primaryEmailAddress}>
+                    {account.primaryEmailAddress}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
 
