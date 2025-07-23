@@ -18,6 +18,8 @@ interface EmailMessage {
   flag?: string;
   mailboxEmail?: string;
   mailboxName?: string;
+  isRead?: boolean;
+  flagInfo?: string;
 }
 
 interface EmailStats {
@@ -327,46 +329,57 @@ export default function EmailPage() {
                   // Sort by date, newest first
                   return b.receivedTime - a.receivedTime;
                 })
-                .map((email) => (
-                <div
-                  key={email.messageId}
-                  className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="font-medium text-gray-900 truncate">
-                          {email.subject || 'No Subject'}
-                        </h3>
-                        {email.flag && (
-                          <Badge variant="outline" className="text-xs">
-                            {email.flag}
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="text-sm text-gray-600 mb-2">
-                        From: {email.fromAddress}
-                      </p>
-                      {email.summary && (
-                        <p className="text-sm text-gray-500 line-clamp-2">
-                          {email.summary}
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex flex-col items-end text-sm text-gray-500 ml-4">
-                      <div className="flex items-center mb-1">
-                        <Clock className="w-4 h-4 mr-1" />
-                        {formatDate(email.receivedTime)}
-                      </div>
-                      {email.mailboxName && (
-                        <div className="text-xs text-gray-400">
-                          {email.mailboxName}
+                .map((email) => {
+                  const isUnread = email.isRead === false || email.flagInfo?.includes('unread');
+                  
+                  return (
+                    <div
+                      key={email.messageId}
+                      className={`border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors ${
+                        isUnread ? 'bg-blue-50 border-blue-200' : 'bg-white'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            {isUnread && (
+                              <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" title="Unread email" />
+                            )}
+                            <h3 className={`${isUnread ? 'font-bold' : 'font-medium'} text-gray-900 truncate`}>
+                              {email.subject || 'No Subject'}
+                            </h3>
+                            {email.flag && (
+                              <Badge variant="outline" className="text-xs">
+                                {email.flag}
+                              </Badge>
+                            )}
+                          </div>
+                          <p className={`text-sm text-gray-600 mb-2 ${isUnread ? 'font-medium' : ''}`}>
+                            From: {email.fromAddress}
+                          </p>
+                          {email.summary && (
+                            <p className="text-sm text-gray-500 line-clamp-2">
+                              {email.summary}
+                            </p>
+                          )}
                         </div>
-                      )}
+                        <div className="flex flex-col items-end text-sm text-gray-500 ml-4">
+                          <div className="flex items-center mb-1">
+                            <Clock className="w-4 h-4 mr-1" />
+                            <span className={isUnread ? 'font-medium text-gray-700' : ''}>
+                              {formatDate(email.receivedTime)}
+                            </span>
+                          </div>
+                          {email.mailboxName && (
+                            <div className="text-xs text-gray-400">
+                              {email.mailboxName}
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              ))}
+                  );
+                })}
             </div>
           )}
         </Card>

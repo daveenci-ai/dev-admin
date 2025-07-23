@@ -24,7 +24,7 @@ const getMailboxConfigs = (): MailboxConfig[] => {
       clientSecret: process.env.ZOHO_ANTON_CLIENT_SECRET,
       refreshToken: process.env.ZOHO_ANTON_REFRESH_TOKEN,
       accountId: process.env.ZOHO_ANTON_ACCOUNT_ID || '',
-      folderId: process.env.ZOHO_ANTON_FOLDER_ID_INBOX || ''
+      folderId: '' // Will be discovered dynamically
     });
   }
   
@@ -37,7 +37,7 @@ const getMailboxConfigs = (): MailboxConfig[] => {
       clientSecret: process.env.ZOHO_ASTRID_CLIENT_SECRET,
       refreshToken: process.env.ZOHO_ASTRID_REFRESH_TOKEN,
       accountId: process.env.ZOHO_ASTRID_ACCOUNT_ID || '',
-      folderId: process.env.ZOHO_ASTRID_FOLDER_ID_INBOX || ''
+      folderId: '' // Will be discovered dynamically
     });
   }
   
@@ -50,7 +50,7 @@ const getMailboxConfigs = (): MailboxConfig[] => {
       clientSecret: process.env.ZOHO_HELLO_CLIENT_SECRET,
       refreshToken: process.env.ZOHO_HELLO_REFRESH_TOKEN,
       accountId: process.env.ZOHO_HELLO_ACCOUNT_ID || '',
-      folderId: process.env.ZOHO_HELLO_FOLDER_ID_INBOX || ''
+      folderId: '' // Will be discovered dynamically
     });
   }
   
@@ -63,7 +63,7 @@ const getMailboxConfigs = (): MailboxConfig[] => {
       clientSecret: process.env.ZOHO_SUPPORT_CLIENT_SECRET,
       refreshToken: process.env.ZOHO_SUPPORT_REFRESH_TOKEN,
       accountId: process.env.ZOHO_SUPPORT_ACCOUNT_ID || '',
-      folderId: process.env.ZOHO_SUPPORT_FOLDER_ID_INBOX || ''
+      folderId: '' // Will be discovered dynamically
     });
   }
   
@@ -76,7 +76,7 @@ const getMailboxConfigs = (): MailboxConfig[] => {
       clientSecret: process.env.ZOHO_OPS_CLIENT_SECRET,
       refreshToken: process.env.ZOHO_OPS_REFRESH_TOKEN,
       accountId: process.env.ZOHO_OPS_ACCOUNT_ID || '',
-      folderId: process.env.ZOHO_OPS_FOLDER_ID_INBOX || ''
+      folderId: '' // Will be discovered dynamically
     });
   }
   
@@ -413,16 +413,34 @@ async function getFolderStatsForMailbox(config: MailboxConfig) {
     console.log(`[Zoho-${config.name}] Folder stats response:`, JSON.stringify(response.data, null, 2));
     
     const folders = response.data?.data || [];
-    const inboxFolder = folders.find((f: any) => f.folderName === 'Inbox');
+    
+    // Find inbox folder by name (could be "Inbox", "INBOX", etc.)
+    const inboxFolder = folders.find((f: any) => 
+      f.folderName?.toLowerCase() === 'inbox' || 
+      f.folderName === 'Inbox' ||
+      f.folderName === 'INBOX' ||
+      f.isSystemFolder === true ||
+      f.folderType === 'inbox'
+    );
+    
+    console.log(`[Zoho-${config.name}] Found inbox folder:`, JSON.stringify(inboxFolder, null, 2));
+    console.log(`[Zoho-${config.name}] All folders:`, folders.map((f: any) => ({ name: f.folderName, type: f.folderType, system: f.isSystemFolder, id: f.folderId, messageCount: f.messageCount, unreadCount: f.unreadCount })));
+    
+    // Update the config with the correct inbox folder ID for future use
+    if (inboxFolder && inboxFolder.folderId) {
+      config.folderId = inboxFolder.folderId;
+      console.log(`[Zoho-${config.name}] Updated folder ID to: ${config.folderId}`);
+    }
     
     return {
       totalEmails: inboxFolder?.messageCount || 0,
       unreadEmails: inboxFolder?.unreadCount || 0,
-      folders
+      folders,
+      inboxFolderId: inboxFolder?.folderId
     };
   } catch (error) {
     console.error(`[Zoho-${config.name}] Error fetching folder stats:`, error);
-    return { totalEmails: 0, unreadEmails: 0, folders: [] };
+    return { totalEmails: 0, unreadEmails: 0, folders: [], inboxFolderId: null };
   }
 }
 
@@ -537,12 +555,24 @@ export async function getEmailStats() {
 async function fetchEmailsForMailbox(config: MailboxConfig, limit = 10) {
   console.log(`[Zoho-${config.name}] Fetching emails for ${config.email}...`);
   
+  // If no folder ID is set, get folder stats first to find the inbox
+  if (!config.folderId) {
+    console.log(`[Zoho-${config.name}] No folder ID set, getting folder stats first...`);
+    const folderStats = await getFolderStatsForMailbox(config);
+    if (!folderStats.inboxFolderId) {
+      throw new Error(`Could not find inbox folder for ${config.email}`);
+    }
+    config.folderId = folderStats.inboxFolderId;
+  }
+
   if (!config.accountId || !config.folderId) {
     throw new Error(`Missing account or folder ID for ${config.email}`);
   }
 
   const token = await getAccessToken(config);
   const url = `https://mail.zoho.com/api/accounts/${config.accountId}/messages/view?folderId=${config.folderId}&limit=${limit}`;
+  
+  console.log(`[Zoho-${config.name}] Fetching emails from URL: ${url}`);
   
   try {
     const { data } = await axios.get(url, {
@@ -551,11 +581,25 @@ async function fetchEmailsForMailbox(config: MailboxConfig, limit = 10) {
       }
     });
     
-    // Add mailbox information to each email
+    console.log(`[Zoho-${config.name}] Raw email data:`, JSON.stringify(data, null, 2));
+    
+    // Add mailbox information and read status to each email
     if (data?.data && Array.isArray(data.data)) {
       data.data.forEach((email: any) => {
         email.mailboxName = config.name;
         email.mailboxEmail = config.email;
+        
+        // Determine read status from various possible fields
+        email.isRead = email.isRead !== false && 
+                      !email.flag?.includes('unread') && 
+                      !email.flagInfo?.includes('unread') &&
+                      email.readStatus !== false &&
+                      email.status !== 'unread';
+        
+        // Extract flag information for debugging
+        email.flagInfo = email.flag || email.flagInfo || '';
+        
+        console.log(`[Zoho-${config.name}] Email ${email.messageId}: isRead=${email.isRead}, flag=${email.flag}, flagInfo=${email.flagInfo}`);
       });
     }
     
@@ -564,6 +608,12 @@ async function fetchEmailsForMailbox(config: MailboxConfig, limit = 10) {
     return data?.data || [];
   } catch (error) {
     console.error(`[Zoho-${config.name}] Error fetching emails:`, error);
+    
+    if (axios.isAxiosError(error)) {
+      console.error(`[Zoho-${config.name}] Response status:`, error.response?.status);
+      console.error(`[Zoho-${config.name}] Response data:`, error.response?.data);
+    }
+    
     return [];
   }
 }
