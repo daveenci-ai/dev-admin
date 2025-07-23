@@ -396,6 +396,121 @@ export async function getAllAccounts() {
   };
 }
 
+// Get folder statistics for a specific mailbox
+async function getFolderStatsForMailbox(config: MailboxConfig) {
+  console.log(`[Zoho-${config.name}] Getting folder stats for ${config.email}...`);
+  
+  const token = await getAccessToken(config);
+  const url = `https://mail.zoho.com/api/accounts/${config.accountId}/folders`;
+  
+  try {
+    const response = await axios.get(url, {
+      headers: {
+        Authorization: `Zoho-oauthtoken ${token}`
+      }
+    });
+    
+    console.log(`[Zoho-${config.name}] Folder stats response:`, JSON.stringify(response.data, null, 2));
+    
+    const folders = response.data?.data || [];
+    const inboxFolder = folders.find((f: any) => f.folderName === 'Inbox');
+    
+    return {
+      totalEmails: inboxFolder?.messageCount || 0,
+      unreadEmails: inboxFolder?.unreadCount || 0,
+      folders
+    };
+  } catch (error) {
+    console.error(`[Zoho-${config.name}] Error fetching folder stats:`, error);
+    return { totalEmails: 0, unreadEmails: 0, folders: [] };
+  }
+}
+
+// Get all accounts with folder statistics
+export async function getAllAccountsWithStats() {
+  console.log('[Zoho] Starting getAllAccountsWithStats for all mailboxes...');
+  
+  const mailboxConfigs = getMailboxConfigs();
+  console.log('[Zoho] Found mailbox configurations:', mailboxConfigs.length);
+  
+  if (mailboxConfigs.length === 0) {
+    console.log('[Zoho] No mailbox configurations found, trying legacy credentials...');
+    
+    // Try legacy approach if no new configs
+    if (ZOHO_CLIENT_ID && ZOHO_CLIENT_SECRET && ZOHO_REFRESH_TOKEN) {
+      const legacyConfig: MailboxConfig = {
+        name: 'Legacy Account',
+        email: 'legacy@daveenci.ai',
+        clientId: ZOHO_CLIENT_ID,
+        clientSecret: ZOHO_CLIENT_SECRET,
+        refreshToken: ZOHO_REFRESH_TOKEN,
+        accountId: ZOHO_ACCOUNT_ID || '',
+        folderId: ZOHO_FOLDER_ID || ''
+      };
+      
+      const legacyAccounts = await getAccountsForMailbox(legacyConfig);
+      const legacyStats = await getFolderStatsForMailbox(legacyConfig);
+      
+      // Add stats to legacy accounts
+      if (Array.isArray(legacyAccounts)) {
+        legacyAccounts.forEach((account: any) => {
+          account.totalEmails = legacyStats.totalEmails;
+          account.unreadEmails = legacyStats.unreadEmails;
+        });
+      }
+      
+      return { data: legacyAccounts };
+    } else {
+      throw new Error('No Zoho Mail configurations found');
+    }
+  }
+  
+  const allAccounts: any[] = [];
+  const errors: string[] = [];
+  
+  // Fetch accounts and stats from each mailbox
+  for (const config of mailboxConfigs) {
+    try {
+      console.log(`[Zoho] Fetching accounts and stats for ${config.email}...`);
+      
+      // Get accounts and folder stats in parallel
+      const [accounts, folderStats] = await Promise.all([
+        getAccountsForMailbox(config),
+        getFolderStatsForMailbox(config)
+      ]);
+      
+      // Add folder stats to accounts
+      if (Array.isArray(accounts)) {
+        accounts.forEach((account: any) => {
+          account.totalEmails = folderStats.totalEmails;
+          account.unreadEmails = folderStats.unreadEmails;
+        });
+        allAccounts.push(...accounts);
+      } else if (accounts) {
+        accounts.totalEmails = folderStats.totalEmails;
+        accounts.unreadEmails = folderStats.unreadEmails;
+        allAccounts.push(accounts);
+      }
+    } catch (error) {
+      const errorMsg = `Failed to fetch accounts/stats for ${config.email}: ${error instanceof Error ? error.message : 'Unknown error'}`;
+      console.error('[Zoho]', errorMsg);
+      errors.push(errorMsg);
+    }
+  }
+  
+  console.log('[Zoho] Total accounts found across all mailboxes:', allAccounts.length);
+  console.log('[Zoho] Errors encountered:', errors.length);
+  
+  if (allAccounts.length === 0 && errors.length > 0) {
+    throw new Error(`Failed to fetch accounts from any mailbox: ${errors.join('; ')}`);
+  }
+  
+  return { 
+    data: allAccounts,
+    errors: errors.length > 0 ? errors : undefined
+  };
+}
+
 // Get email statistics
 export async function getEmailStats() {
   if (!ZOHO_ACCOUNT_ID) {
@@ -416,4 +531,99 @@ export async function getEmailStats() {
     console.error('[Zoho] Error fetching email stats:', error);
     throw new Error('Failed to fetch email statistics');
   }
+} 
+
+// Fetch emails from a specific mailbox
+async function fetchEmailsForMailbox(config: MailboxConfig, limit = 10) {
+  console.log(`[Zoho-${config.name}] Fetching emails for ${config.email}...`);
+  
+  if (!config.accountId || !config.folderId) {
+    throw new Error(`Missing account or folder ID for ${config.email}`);
+  }
+
+  const token = await getAccessToken(config);
+  const url = `https://mail.zoho.com/api/accounts/${config.accountId}/messages/view?folderId=${config.folderId}&limit=${limit}`;
+  
+  try {
+    const { data } = await axios.get(url, {
+      headers: {
+        Authorization: `Zoho-oauthtoken ${token}`
+      }
+    });
+    
+    // Add mailbox information to each email
+    if (data?.data && Array.isArray(data.data)) {
+      data.data.forEach((email: any) => {
+        email.mailboxName = config.name;
+        email.mailboxEmail = config.email;
+      });
+    }
+    
+    console.log(`[Zoho-${config.name}] Found ${data?.data?.length || 0} emails`);
+    
+    return data?.data || [];
+  } catch (error) {
+    console.error(`[Zoho-${config.name}] Error fetching emails:`, error);
+    return [];
+  }
+}
+
+// Fetch emails from all configured mailboxes
+export async function fetchAllInboxMessages(limit = 10) {
+  console.log('[Zoho] Starting fetchAllInboxMessages for all mailboxes...');
+  
+  const mailboxConfigs = getMailboxConfigs();
+  console.log('[Zoho] Found mailbox configurations:', mailboxConfigs.length);
+  
+  if (mailboxConfigs.length === 0) {
+    console.log('[Zoho] No mailbox configurations found, trying legacy...');
+    
+    // Fall back to legacy single mailbox
+    if (ZOHO_CLIENT_ID && ZOHO_CLIENT_SECRET && ZOHO_REFRESH_TOKEN && ZOHO_ACCOUNT_ID && ZOHO_FOLDER_ID) {
+      const legacyConfig: MailboxConfig = {
+        name: 'Legacy Account',
+        email: 'legacy@daveenci.ai',
+        clientId: ZOHO_CLIENT_ID,
+        clientSecret: ZOHO_CLIENT_SECRET,
+        refreshToken: ZOHO_REFRESH_TOKEN,
+        accountId: ZOHO_ACCOUNT_ID,
+        folderId: ZOHO_FOLDER_ID
+      };
+      
+      const legacyEmails = await fetchEmailsForMailbox(legacyConfig, limit);
+      return { data: legacyEmails };
+    } else {
+      throw new Error('No email configurations found');
+    }
+  }
+  
+  const allEmails: any[] = [];
+  const errors: string[] = [];
+  
+  // Fetch emails from each mailbox
+  for (const config of mailboxConfigs) {
+    try {
+      const emails = await fetchEmailsForMailbox(config, limit);
+      allEmails.push(...emails);
+    } catch (error) {
+      const errorMsg = `Failed to fetch emails for ${config.email}: ${error instanceof Error ? error.message : 'Unknown error'}`;
+      console.error('[Zoho]', errorMsg);
+      errors.push(errorMsg);
+    }
+  }
+  
+  // Sort all emails by date (newest first)
+  allEmails.sort((a, b) => {
+    const timeA = a.receivedTime || 0;
+    const timeB = b.receivedTime || 0;
+    return timeB - timeA;
+  });
+  
+  console.log('[Zoho] Total emails found across all mailboxes:', allEmails.length);
+  console.log('[Zoho] Errors encountered:', errors.length);
+  
+  return { 
+    data: allEmails,
+    errors: errors.length > 0 ? errors : undefined
+  };
 } 

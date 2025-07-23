@@ -16,6 +16,8 @@ interface EmailMessage {
   receivedTime: number;
   summary: string;
   flag?: string;
+  mailboxEmail?: string;
+  mailboxName?: string;
 }
 
 interface EmailStats {
@@ -34,6 +36,8 @@ interface ZohoAccount {
   isActive: boolean;
   mailboxName?: string;
   mailboxEmail?: string;
+  unreadEmails?: number;
+  totalEmails?: number;
 }
 
 export default function EmailPage() {
@@ -44,7 +48,7 @@ export default function EmailPage() {
   const [isComposeOpen, setIsComposeOpen] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedMailbox, setSelectedMailbox] = useState<string>('all');
+  const [selectedMailbox, setSelectedMailbox] = useState<string>('');
 
   // Compose form state
   const [composeForm, setComposeForm] = useState({
@@ -208,21 +212,7 @@ export default function EmailPage() {
 
         {/* Mailbox Filter Cards */}
         {accounts.length > 0 && (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
-            {/* All Mailboxes Card */}
-            <div 
-              onClick={() => handleMailboxClick('all')}
-              className={`bg-white p-4 rounded-lg shadow-sm border border-gray-200 transition-all duration-200 cursor-pointer border-b-2 ${
-                selectedMailbox === 'all'
-                  ? 'bg-gray-50 border-gray-400' 
-                  : 'hover:bg-gray-50 border-b-gray-400'
-              }`}
-            >
-              <div className="text-xl font-bold text-gray-600 mb-1">{accounts.length}</div>
-              <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">ALL MAILBOXES</div>
-              <div className="text-xs text-gray-400">Total</div>
-            </div>
-
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
             {/* Individual Mailbox Cards */}
             {accounts.map((account) => {
               const isActive = selectedMailbox === account.primaryEmailAddress;
@@ -237,6 +227,10 @@ export default function EmailPage() {
               
               const colorScheme = colors[account.primaryEmailAddress as keyof typeof colors] || colors['anton.osipov@daveenci.ai'];
               
+              // Get email stats for this mailbox (placeholder - will be updated with real data)
+              const unreadCount = account.unreadEmails || 0;
+              const totalCount = account.totalEmails || 0;
+              
               return (
                 <div 
                   key={account.accountId}
@@ -248,7 +242,7 @@ export default function EmailPage() {
                   }`}
                 >
                   <div className={`text-xl font-bold ${colorScheme.color} mb-1`}>
-                    {account.isActive ? '1' : '0'}
+                    {unreadCount}/{totalCount}
                   </div>
                   <div className="text-xs font-medium text-gray-500 uppercase tracking-wide truncate">
                     {mailboxName?.toUpperCase() || 'MAILBOX'}
@@ -323,7 +317,17 @@ export default function EmailPage() {
             </div>
           ) : (
             <div className="space-y-4">
-              {emails.map((email) => (
+              {emails
+                .filter(email => {
+                  // Filter by selected mailbox, or show all if none selected
+                  if (!selectedMailbox) return true;
+                  return email.mailboxEmail === selectedMailbox;
+                })
+                .sort((a, b) => {
+                  // Sort by date, newest first
+                  return b.receivedTime - a.receivedTime;
+                })
+                .map((email) => (
                 <div
                   key={email.messageId}
                   className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
@@ -349,9 +353,16 @@ export default function EmailPage() {
                         </p>
                       )}
                     </div>
-                    <div className="flex items-center text-sm text-gray-500 ml-4">
-                      <Clock className="w-4 h-4 mr-1" />
-                      {formatDate(email.receivedTime)}
+                    <div className="flex flex-col items-end text-sm text-gray-500 ml-4">
+                      <div className="flex items-center mb-1">
+                        <Clock className="w-4 h-4 mr-1" />
+                        {formatDate(email.receivedTime)}
+                      </div>
+                      {email.mailboxName && (
+                        <div className="text-xs text-gray-400">
+                          {email.mailboxName}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

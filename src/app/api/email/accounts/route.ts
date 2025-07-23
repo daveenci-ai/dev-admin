@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAllAccounts } from '@/lib/zohoMail';
+import { getAllAccountsWithStats } from '@/lib/zohoMail';
 
 // Force dynamic rendering for this route
 export const dynamic = 'force-dynamic';
@@ -10,8 +10,8 @@ export async function GET(request: NextRequest) {
   console.log('[API] Request method:', request.method);
   
   try {
-    console.log('[API] Calling getAllAccounts...');
-    const accounts = await getAllAccounts();
+    console.log('[API] Calling getAllAccountsWithStats...');
+    const accounts = await getAllAccountsWithStats();
     
     console.log('[API] getAllAccounts returned:', JSON.stringify(accounts, null, 2));
     console.log('[API] accounts.data type:', typeof accounts?.data);
