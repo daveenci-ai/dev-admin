@@ -7,13 +7,13 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Modal } from '@/components/ui/modal';
-import { Mail, Send, RefreshCw, Inbox, Clock, AlertCircle } from 'lucide-react';
+import { Mail, Send, RefreshCw, Inbox, Clock, AlertCircle, Reply, Archive, Trash2 } from 'lucide-react';
 
 interface EmailMessage {
   messageId: string;
   subject: string;
   fromAddress: string;
-  receivedTime: number;
+  receivedTime: number | string;
   summary: string;
   flag?: string;
   mailboxEmail?: string;
@@ -51,6 +51,8 @@ export default function EmailPage() {
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedMailbox, setSelectedMailbox] = useState<string>('');
+  const [isReplyOpen, setIsReplyOpen] = useState(false);
+  const [replyingToEmail, setReplyingToEmail] = useState<EmailMessage | null>(null);
 
   // Compose form state
   const [composeForm, setComposeForm] = useState({
@@ -59,6 +61,14 @@ export default function EmailPage() {
     content: '',
     cc: '',
     bcc: ''
+  });
+
+  // Reply form state  
+  const [replyForm, setReplyForm] = useState({
+    to: '',
+    subject: '',
+    content: '',
+    originalEmail: ''
   });
 
   // Fetch emails
@@ -161,14 +171,136 @@ export default function EmailPage() {
   };
 
   // Format date
-  const formatDate = (timestamp: number) => {
-    return new Date(timestamp).toLocaleString();
+  const formatDate = (timestamp: number | string) => {
+    if (!timestamp) return 'No Date';
+    
+    try {
+      // Handle different timestamp formats
+      let date: Date;
+      
+      if (typeof timestamp === 'string') {
+        date = new Date(timestamp);
+      } else if (typeof timestamp === 'number') {
+        // If timestamp is in seconds, convert to milliseconds
+        date = timestamp > 9999999999 ? new Date(timestamp) : new Date(timestamp * 1000);
+      } else {
+        return 'Invalid Date';
+      }
+      
+      if (isNaN(date.getTime())) {
+        return 'Invalid Date';
+      }
+      
+      // Format as relative time for recent emails
+      const now = new Date();
+      const diffMs = now.getTime() - date.getTime();
+      const diffHours = diffMs / (1000 * 60 * 60);
+      const diffDays = diffMs / (1000 * 60 * 60 * 24);
+      
+      if (diffHours < 1) {
+        const diffMins = Math.floor(diffMs / (1000 * 60));
+        return `${diffMins} min${diffMins !== 1 ? 's' : ''} ago`;
+      } else if (diffHours < 24) {
+        const hours = Math.floor(diffHours);
+        return `${hours} hour${hours !== 1 ? 's' : ''} ago`;
+      } else if (diffDays < 7) {
+        const days = Math.floor(diffDays);
+        return `${days} day${days !== 1 ? 's' : ''} ago`;
+      } else {
+        return date.toLocaleDateString();
+      }
+    } catch (error) {
+      console.error('Error formatting date:', timestamp, error);
+      return 'Date Error';
+    }
   };
 
   // Handle mailbox filter selection
   const handleMailboxClick = (mailboxEmail: string) => {
-    setSelectedMailbox(mailboxEmail);
-    // TODO: Filter emails based on selected mailbox
+    // If clicking the same mailbox, deselect it (show all emails)
+    if (selectedMailbox === mailboxEmail) {
+      setSelectedMailbox('');
+    } else {
+      setSelectedMailbox(mailboxEmail);
+    }
+  };
+
+  // Handle email actions
+  const handleReply = (email: EmailMessage) => {
+    setReplyingToEmail(email);
+    setReplyForm({
+      to: email.fromAddress,
+      subject: email.subject?.startsWith('Re:') ? email.subject : `Re: ${email.subject}`,
+      content: '',
+      originalEmail: `\n\n--- Original Message ---\nFrom: ${email.fromAddress}\nSubject: ${email.subject}\nDate: ${formatDate(email.receivedTime)}\n\n${email.summary || ''}`
+    });
+    setIsReplyOpen(true);
+  };
+
+  const handleArchive = async (email: EmailMessage) => {
+    try {
+      // TODO: Implement archive functionality
+      console.log('Archiving email:', email.messageId);
+      // For now, just remove from UI
+      setEmails(emails.filter(e => e.messageId !== email.messageId));
+    } catch (error) {
+      console.error('Error archiving email:', error);
+      setError('Failed to archive email');
+    }
+  };
+
+  const handleTrash = async (email: EmailMessage) => {
+    try {
+      // TODO: Implement trash functionality  
+      console.log('Trashing email:', email.messageId);
+      // For now, just remove from UI
+      setEmails(emails.filter(e => e.messageId !== email.messageId));
+    } catch (error) {
+      console.error('Error trashing email:', error);
+      setError('Failed to delete email');
+    }
+  };
+
+  // Send reply
+  const sendReply = async () => {
+    if (!replyForm.to || !replyForm.subject || !replyForm.content) {
+      setError('Please fill in all required fields');
+      return;
+    }
+
+    try {
+      setIsSending(true);
+      setError(null);
+
+      const response = await fetch('/api/email/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          to: replyForm.to,
+          subject: replyForm.subject,
+          content: replyForm.content + replyForm.originalEmail
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setIsReplyOpen(false);
+        setReplyingToEmail(null);
+        setReplyForm({ to: '', subject: '', content: '', originalEmail: '' });
+        // Refresh emails to show the sent reply
+        fetchEmails();
+      } else {
+        setError(result.error || 'Failed to send reply');
+      }
+    } catch (err) {
+      setError('Failed to send reply');
+      console.error('Error sending reply:', err);
+    } finally {
+      setIsSending(false);
+    }
   };
 
   // Load data on component mount
@@ -192,8 +324,8 @@ export default function EmailPage() {
           </div>
         )}
 
-        {/* Action Buttons */}
-        <div className="flex justify-end gap-3 mb-6">
+        {/* Refresh Button - Keep minimal */}
+        <div className="flex justify-end mb-6">
           <Button 
             onClick={() => {
               fetchAccounts();
@@ -202,13 +334,9 @@ export default function EmailPage() {
             }} 
             disabled={isLoading} 
             variant="outline"
+            size="sm"
           >
-            <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
-          <Button onClick={() => setIsComposeOpen(true)}>
-            <Send className="w-4 h-4 mr-2" />
-            Compose
+            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
           </Button>
         </div>
 
@@ -327,7 +455,9 @@ export default function EmailPage() {
                 })
                 .sort((a, b) => {
                   // Sort by date, newest first
-                  return b.receivedTime - a.receivedTime;
+                  const timeA = typeof a.receivedTime === 'string' ? new Date(a.receivedTime).getTime() : a.receivedTime;
+                  const timeB = typeof b.receivedTime === 'string' ? new Date(b.receivedTime).getTime() : b.receivedTime;
+                  return timeB - timeA;
                 })
                 .map((email) => {
                   const isUnread = email.isRead === false || email.flagInfo?.includes('unread');
@@ -358,10 +488,50 @@ export default function EmailPage() {
                             From: {email.fromAddress}
                           </p>
                           {email.summary && (
-                            <p className="text-sm text-gray-500 line-clamp-2">
+                            <p className="text-sm text-gray-500 line-clamp-2 mb-3">
                               {email.summary}
                             </p>
                           )}
+                          
+                          {/* Email Action Buttons */}
+                          <div className="flex gap-2 mt-3">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleReply(email);
+                              }}
+                              className="text-xs px-3 py-1 h-7"
+                            >
+                              <Reply className="w-3 h-3 mr-1" />
+                              Reply
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleArchive(email);
+                              }}
+                              className="text-xs px-3 py-1 h-7"
+                            >
+                              <Archive className="w-3 h-3 mr-1" />
+                              Archive
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleTrash(email);
+                              }}
+                              className="text-xs px-3 py-1 h-7 text-red-600 hover:text-red-700 hover:bg-red-50"
+                            >
+                              <Trash2 className="w-3 h-3 mr-1" />
+                              Trash
+                            </Button>
+                          </div>
                         </div>
                         <div className="flex flex-col items-end text-sm text-gray-500 ml-4">
                           <div className="flex items-center mb-1">
@@ -384,99 +554,89 @@ export default function EmailPage() {
           )}
         </Card>
 
-        {/* Compose Email Modal */}
+                {/* Reply Email Modal */}
         <Modal 
-          isOpen={isComposeOpen} 
-          onClose={() => setIsComposeOpen(false)}
+          isOpen={isReplyOpen} 
+          onClose={() => setIsReplyOpen(false)}
         >
-          <div className="p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-6">Compose Email</h2>
-            <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                To *
-              </label>
-              <Input
-                type="email"
-                placeholder="recipient@example.com"
-                value={composeForm.to}
-                onChange={(e) => setComposeForm({ ...composeForm, to: e.target.value })}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  CC
-                </label>
-                <Input
-                  type="email"
-                  placeholder="cc@example.com"
-                  value={composeForm.cc}
-                  onChange={(e) => setComposeForm({ ...composeForm, cc: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  BCC
-                </label>
-                <Input
-                  type="email"
-                  placeholder="bcc@example.com"
-                  value={composeForm.bcc}
-                  onChange={(e) => setComposeForm({ ...composeForm, bcc: e.target.value })}
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Subject *
-              </label>
-              <Input
-                placeholder="Email subject"
-                value={composeForm.subject}
-                onChange={(e) => setComposeForm({ ...composeForm, subject: e.target.value })}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Message *
-              </label>
-              <Textarea
-                placeholder="Type your message here..."
-                rows={6}
-                value={composeForm.content}
-                onChange={(e) => setComposeForm({ ...composeForm, content: e.target.value })}
-              />
-            </div>
-
-            <div className="flex justify-end gap-3 pt-4">
-              <Button 
-                variant="outline" 
-                onClick={() => setIsComposeOpen(false)}
-                disabled={isSending}
-              >
-                Cancel
-              </Button>
-              <Button onClick={sendEmail} disabled={isSending}>
-                {isSending ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                    Sending...
-                  </>
-                ) : (
-                  <>
-                    <Send className="w-4 h-4 mr-2" />
-                    Send Email
-                  </>
+          <div className="p-6 max-w-4xl">
+            <h2 className="text-xl font-semibold text-gray-900 mb-6">Reply to Email</h2>
+            
+            {/* Original Email Display */}
+            {replyingToEmail && (
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
+                <h3 className="font-medium text-gray-900 mb-2">{replyingToEmail.subject}</h3>
+                <p className="text-sm text-gray-600 mb-2">From: {replyingToEmail.fromAddress}</p>
+                <p className="text-sm text-gray-600 mb-2">Date: {formatDate(replyingToEmail.receivedTime)}</p>
+                {replyingToEmail.summary && (
+                  <div className="mt-3 p-3 bg-white rounded border">
+                    <p className="text-sm text-gray-700">{replyingToEmail.summary}</p>
+                  </div>
                 )}
-              </Button>
-                         </div>
-           </div>
-         </div>
-         </Modal>
+              </div>
+            )}
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  To *
+                </label>
+                <Input
+                  type="email"
+                  value={replyForm.to}
+                  onChange={(e) => setReplyForm({ ...replyForm, to: e.target.value })}
+                  disabled
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Subject *
+                </label>
+                <Input
+                  value={replyForm.subject}
+                  onChange={(e) => setReplyForm({ ...replyForm, subject: e.target.value })}
+                  disabled
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Your Reply *
+                </label>
+                <Textarea
+                  placeholder="Type your reply here..."
+                  rows={8}
+                  value={replyForm.content}
+                  onChange={(e) => setReplyForm({ ...replyForm, content: e.target.value })}
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setIsReplyOpen(false)}
+                  disabled={isSending}
+                >
+                  Cancel
+                </Button>
+                <Button onClick={sendReply} disabled={isSending}>
+                  {isSending ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                      Sending...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-4 h-4 mr-2" />
+                      Send Reply
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </Modal>
       </div>
     </div>
   );
