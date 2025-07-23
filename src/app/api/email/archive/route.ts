@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
   console.log('[API] /api/email/archive - Starting request');
   
   try {
-    const { messageId } = await request.json();
+    const { messageId, mailboxEmail } = await request.json();
     
     if (!messageId) {
       return NextResponse.json(
@@ -17,9 +17,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('[API] Archiving email with ID:', messageId);
+    console.log('[API] Archiving email with ID:', messageId, 'from mailbox:', mailboxEmail);
     
-    const result = await archiveEmail(messageId);
+    const result = await archiveEmail(messageId, mailboxEmail);
     
     console.log('[API] Email archived successfully:', result);
     

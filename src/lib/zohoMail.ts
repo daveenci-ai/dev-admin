@@ -288,77 +288,104 @@ export async function sendEmail(emailData: {
   }
 }
 
-// Delete an email
+// Move email to trash (multi-mailbox version)
+export async function moveEmailToTrash(messageId: string, mailboxEmail?: string) {
+  console.log(`[Zoho] Moving email ${messageId} to trash, mailbox: ${mailboxEmail}`);
+  
+  const mailboxConfigs = getMailboxConfigs();
+  if (mailboxConfigs.length === 0) {
+    throw new Error('No Zoho Mail configurations found');
+  }
+
+  // Try each mailbox until we find the one that contains this email
+  for (const config of mailboxConfigs) {
+    // Skip if we know the specific mailbox and this isn't it
+    if (mailboxEmail && config.email !== mailboxEmail) {
+      continue;
+    }
+
+    try {
+      console.log(`[Zoho-${config.name}] Attempting to move email ${messageId} to trash`);
+      
+      const token = await getAccessToken(config);
+      const url = `https://mail.zoho.com/api/accounts/${config.accountId}/messages/${messageId}/move`;
+      
+      const { data } = await axios.put(url, {
+        destinationFolder: 'Trash'
+      }, {
+        headers: {
+          Authorization: `Zoho-oauthtoken ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      console.log(`[Zoho-${config.name}] Successfully moved email ${messageId} to trash`);
+      return data;
+    } catch (error: any) {
+      console.log(`[Zoho-${config.name}] Failed to move email ${messageId}: ${error.message}`);
+      
+      // If we specified a mailbox and it failed, throw the error
+      if (mailboxEmail && config.email === mailboxEmail) {
+        throw new Error(`Failed to move email to trash in ${config.name}: ${error.message}`);
+      }
+      // Otherwise, continue trying other mailboxes
+    }
+  }
+  
+  throw new Error('Failed to move email to trash - email not found in any configured mailbox');
+}
+
+// Archive an email (multi-mailbox version)
+export async function archiveEmail(messageId: string, mailboxEmail?: string) {
+  console.log(`[Zoho] Archiving email ${messageId}, mailbox: ${mailboxEmail}`);
+  
+  const mailboxConfigs = getMailboxConfigs();
+  if (mailboxConfigs.length === 0) {
+    throw new Error('No Zoho Mail configurations found');
+  }
+
+  // Try each mailbox until we find the one that contains this email
+  for (const config of mailboxConfigs) {
+    // Skip if we know the specific mailbox and this isn't it
+    if (mailboxEmail && config.email !== mailboxEmail) {
+      continue;
+    }
+
+    try {
+      console.log(`[Zoho-${config.name}] Attempting to archive email ${messageId}`);
+      
+      const token = await getAccessToken(config);
+      const url = `https://mail.zoho.com/api/accounts/${config.accountId}/messages/${messageId}/move`;
+      
+      const { data } = await axios.put(url, {
+        destinationFolder: 'Archive'
+      }, {
+        headers: {
+          Authorization: `Zoho-oauthtoken ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      console.log(`[Zoho-${config.name}] Successfully archived email ${messageId}`);
+      return data;
+    } catch (error: any) {
+      console.log(`[Zoho-${config.name}] Failed to archive email ${messageId}: ${error.message}`);
+      
+      // If we specified a mailbox and it failed, throw the error
+      if (mailboxEmail && config.email === mailboxEmail) {
+        throw new Error(`Failed to archive email in ${config.name}: ${error.message}`);
+      }
+      // Otherwise, continue trying other mailboxes
+    }
+  }
+  
+  throw new Error('Failed to archive email - email not found in any configured mailbox');
+}
+
+// Legacy delete function (for backward compatibility)
 export async function deleteEmail(messageId: string) {
-  if (!ZOHO_ACCOUNT_ID) {
-    throw new Error('Missing Zoho account ID in environment variables');
-  }
-
-  const token = await getLegacyAccessToken();
-  const url = `https://mail.zoho.com/api/accounts/${ZOHO_ACCOUNT_ID}/messages/${messageId}`;
-  
-  try {
-    const { data } = await axios.delete(url, {
-      headers: {
-        Authorization: `Zoho-oauthtoken ${token}`
-      }
-    });
-    return data;
-  } catch (error) {
-    console.error('[Zoho] Error deleting email:', error);
-    throw new Error('Failed to delete email');
-  }
-}
-
-// Move email to trash
-export async function moveEmailToTrash(messageId: string) {
-  if (!ZOHO_ACCOUNT_ID) {
-    throw new Error('Missing Zoho account ID in environment variables');
-  }
-
-  const token = await getLegacyAccessToken();
-  // Move to trash folder
-  const url = `https://mail.zoho.com/api/accounts/${ZOHO_ACCOUNT_ID}/messages/${messageId}/move`;
-  
-  try {
-    const { data } = await axios.put(url, {
-      destinationFolder: 'Trash'
-    }, {
-      headers: {
-        Authorization: `Zoho-oauthtoken ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
-    return data;
-  } catch (error) {
-    console.error('[Zoho] Error moving email to trash:', error);
-    throw new Error('Failed to move email to trash');
-  }
-}
-
-// Archive an email
-export async function archiveEmail(messageId: string) {
-  if (!ZOHO_ACCOUNT_ID) {
-    throw new Error('Missing Zoho account ID in environment variables');
-  }
-
-  const token = await getLegacyAccessToken();
-  const url = `https://mail.zoho.com/api/accounts/${ZOHO_ACCOUNT_ID}/messages/${messageId}/move`;
-  
-  try {
-    const { data } = await axios.put(url, {
-      destinationFolder: 'Archive'
-    }, {
-      headers: {
-        Authorization: `Zoho-oauthtoken ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
-    return data;
-  } catch (error) {
-    console.error('[Zoho] Error archiving email:', error);
-    throw new Error('Failed to archive email');
-  }
+  // Use moveEmailToTrash as the default delete action
+  return moveEmailToTrash(messageId);
 }
 
 // Get accounts from a specific mailbox

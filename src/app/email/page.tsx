@@ -294,7 +294,8 @@ export default function EmailPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          messageId: email.messageId
+          messageId: email.messageId,
+          mailboxEmail: email.mailboxEmail
         }),
       });
 
@@ -332,7 +333,8 @@ export default function EmailPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          messageId: email.messageId
+          messageId: email.messageId,
+          mailboxEmail: email.mailboxEmail
         }),
       });
 

@@ -8,7 +8,7 @@ export async function DELETE(request: NextRequest) {
   console.log('[API] /api/email/delete - Starting request');
   
   try {
-    const { messageId } = await request.json();
+    const { messageId, mailboxEmail } = await request.json();
     
     if (!messageId) {
       return NextResponse.json(
@@ -17,9 +17,9 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    console.log('[API] Deleting email with ID:', messageId);
+    console.log('[API] Deleting email with ID:', messageId, 'from mailbox:', mailboxEmail);
     
-    const result = await moveEmailToTrash(messageId);
+    const result = await moveEmailToTrash(messageId, mailboxEmail);
     
     console.log('[API] Email deleted successfully:', result);
     
