@@ -71,6 +71,16 @@ export default function EmailPage() {
     originalEmail: ''
   });
 
+  // Count emails by mailbox
+  const getEmailCountsForMailbox = (mailboxEmail: string) => {
+    const mailboxEmails = emails.filter(email => email.mailboxEmail === mailboxEmail);
+    const unreadEmails = mailboxEmails.filter(email => email.isRead === false || email.flagInfo?.includes('unread'));
+    return {
+      total: mailboxEmails.length,
+      unread: unreadEmails.length
+    };
+  };
+
   // Fetch emails
   const fetchEmails = async () => {
     try {
@@ -245,10 +255,10 @@ export default function EmailPage() {
 
   const handleArchive = async (email: EmailMessage) => {
     try {
-      // TODO: Implement archive functionality
       console.log('Archiving email:', email.messageId);
-      // For now, just remove from UI
-      setEmails(emails.filter(e => e.messageId !== email.messageId));
+      // Remove from UI immediately  
+      setEmails(prevEmails => prevEmails.filter(e => e.messageId !== email.messageId));
+      // TODO: Implement actual API call to archive the email
     } catch (error) {
       console.error('Error archiving email:', error);
       setError('Failed to archive email');
@@ -257,10 +267,10 @@ export default function EmailPage() {
 
   const handleTrash = async (email: EmailMessage) => {
     try {
-      // TODO: Implement trash functionality  
       console.log('Trashing email:', email.messageId);
-      // For now, just remove from UI
-      setEmails(emails.filter(e => e.messageId !== email.messageId));
+      // Remove from UI immediately
+      setEmails(prevEmails => prevEmails.filter(e => e.messageId !== email.messageId));
+      // TODO: Implement actual API call to trash the email
     } catch (error) {
       console.error('Error trashing email:', error);
       setError('Failed to delete email');
@@ -350,8 +360,10 @@ export default function EmailPage() {
               const colorScheme = colors[account.primaryEmailAddress as keyof typeof colors] || colors['anton.osipov@daveenci.ai'];
               
               // Get email stats for this mailbox (placeholder - will be updated with real data)
-                             const unreadCount = account.unreadEmails || 0;
-               const totalCount = account.totalEmails || 0;
+                             // Get actual email counts from loaded emails
+               const emailCounts = getEmailCountsForMailbox(account.primaryEmailAddress);
+               const unreadCount = emailCounts.unread;
+               const totalCount = emailCounts.total;
                console.log(`[Frontend] Card for ${account.primaryEmailAddress}: unread=${unreadCount}, total=${totalCount}`, account);
               
               return (
@@ -504,9 +516,9 @@ export default function EmailPage() {
                           <div className="flex flex-col items-end text-sm text-gray-500">
                             <div className="flex items-center mb-1">
                               <Clock className="w-4 h-4 mr-1" />
-                              <span className={isUnread ? 'font-medium text-gray-700' : ''}>
-                                Raw: {String(email.receivedTime)}
-                              </span>
+                                                          <span className={isUnread ? 'font-medium text-gray-700' : ''}>
+                              {formatDate(email.receivedTime)}
+                            </span>
                             </div>
                             {email.mailboxName && (
                               <div className="text-xs text-gray-400">
