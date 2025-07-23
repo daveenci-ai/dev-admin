@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Modal } from '@/components/ui/modal';
-import { Mail, Send, RefreshCw, Inbox, Clock, AlertCircle, Reply, Archive, Trash2 } from 'lucide-react';
+import { Mail, Send, RefreshCw, Inbox, Clock, AlertCircle, Reply, Archive, Trash2, Shield } from 'lucide-react';
 
 interface EmailMessage {
   messageId: string;
@@ -318,6 +318,45 @@ export default function EmailPage() {
     } catch (error) {
       console.error('[Archive] Error archiving email:', error);
       setError('Failed to archive email');
+    }
+  };
+
+  const handleSpam = async (email: EmailMessage) => {
+    try {
+      console.log('[Spam] Marking email as spam:', email.messageId);
+      console.log('[Spam] Current emails count before:', emails.length);
+      
+      // Call API to actually mark the email as spam in Zoho
+      const response = await fetch('/api/email/spam', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messageId: email.messageId,
+          mailboxEmail: email.mailboxEmail
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        console.log('[Spam] Email marked as spam in Zoho successfully');
+        
+        // Remove from UI after successful spam marking
+        setEmails(prevEmails => {
+          const filteredEmails = prevEmails.filter(e => e.messageId !== email.messageId);
+          console.log('[Spam] Emails count after filtering:', filteredEmails.length);
+          console.log('[Spam] Marked email as spam with ID:', email.messageId);
+          return filteredEmails;
+        });
+      } else {
+        console.error('[Spam] API error:', result.error);
+        setError(`Failed to mark email as spam: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('[Spam] Error marking email as spam:', error);
+      setError('Failed to mark email as spam');
     }
   };
 
@@ -639,6 +678,19 @@ export default function EmailPage() {
                           >
                             <Archive className="w-3 h-3 mr-1" />
                             Archive
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={(e) => {
+                              console.log('[Button Click] Spam button clicked for email:', email.messageId);
+                              e.stopPropagation();
+                              handleSpam(email);
+                            }}
+                            className="text-xs px-3 py-1 h-7 text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                          >
+                            <Shield className="w-3 h-3 mr-1" />
+                            Spam
                           </Button>
                           <Button
                             size="sm"
