@@ -6,8 +6,44 @@ This document explains how to set up the Zoho Mail integration for your DaVeenci
 
 You need to set these environment variables in your hosting platform (e.g., Render):
 
-### Required Variables:
+### Required Variables for Multiple Mailboxes:
 ```ini
+# Anton's mailbox (anton.osipov@daveenci.ai)
+ZOHO_ANTON_CLIENT_ID=your_anton_client_id
+ZOHO_ANTON_CLIENT_SECRET=your_anton_client_secret
+ZOHO_ANTON_REFRESH_TOKEN=your_anton_refresh_token
+ZOHO_ANTON_ACCOUNT_ID=your_anton_account_id
+ZOHO_ANTON_FOLDER_ID_INBOX=your_anton_folder_id
+
+# Astrid's mailbox (astrid@daveenci.ai)
+ZOHO_ASTRID_CLIENT_ID=your_astrid_client_id
+ZOHO_ASTRID_CLIENT_SECRET=your_astrid_client_secret
+ZOHO_ASTRID_REFRESH_TOKEN=your_astrid_refresh_token
+ZOHO_ASTRID_ACCOUNT_ID=your_astrid_account_id
+ZOHO_ASTRID_FOLDER_ID_INBOX=your_astrid_folder_id
+
+# Hello mailbox (hello@daveenci.ai)
+ZOHO_HELLO_CLIENT_ID=your_hello_client_id
+ZOHO_HELLO_CLIENT_SECRET=your_hello_client_secret
+ZOHO_HELLO_REFRESH_TOKEN=your_hello_refresh_token
+ZOHO_HELLO_ACCOUNT_ID=your_hello_account_id
+ZOHO_HELLO_FOLDER_ID_INBOX=your_hello_folder_id
+
+# Support mailbox (support@daveenci.ai)
+ZOHO_SUPPORT_CLIENT_ID=your_support_client_id
+ZOHO_SUPPORT_CLIENT_SECRET=your_support_client_secret
+ZOHO_SUPPORT_REFRESH_TOKEN=your_support_refresh_token
+ZOHO_SUPPORT_ACCOUNT_ID=your_support_account_id
+ZOHO_SUPPORT_FOLDER_ID_INBOX=your_support_folder_id
+
+# Operations mailbox (ops@daveenci.ai)
+ZOHO_OPS_CLIENT_ID=your_ops_client_id
+ZOHO_OPS_CLIENT_SECRET=your_ops_client_secret
+ZOHO_OPS_REFRESH_TOKEN=your_ops_refresh_token
+ZOHO_OPS_ACCOUNT_ID=your_ops_account_id
+ZOHO_OPS_FOLDER_ID_INBOX=your_ops_folder_id
+
+# Legacy (backward compatibility)
 ZOHO_CLIENT_ID=your_client_id
 ZOHO_CLIENT_SECRET=your_client_secret
 ZOHO_REFRESH_TOKEN=your_refresh_token
