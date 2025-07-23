@@ -24,9 +24,20 @@ interface EmailStats {
   sentEmails: number;
 }
 
+interface ZohoAccount {
+  accountId: string;
+  accountName: string;
+  primaryEmailAddress: string;
+  displayName: string;
+  isOrganizationAccount: boolean;
+  accountCreatedTime: string;
+  isActive: boolean;
+}
+
 export default function EmailPage() {
   const [emails, setEmails] = useState<EmailMessage[]>([]);
   const [stats, setStats] = useState<EmailStats | null>(null);
+  const [accounts, setAccounts] = useState<ZohoAccount[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isComposeOpen, setIsComposeOpen] = useState(false);
   const [isSending, setIsSending] = useState(false);
@@ -85,6 +96,22 @@ export default function EmailPage() {
     }
   };
 
+  // Fetch all Zoho accounts
+  const fetchAccounts = async () => {
+    try {
+      const response = await fetch('/api/email/accounts');
+      const result = await response.json();
+      
+      if (result.success) {
+        setAccounts(result.data?.data || []);
+      } else {
+        console.error('Error fetching accounts:', result.error);
+      }
+    } catch (err) {
+      console.error('Error fetching accounts:', err);
+    }
+  };
+
   // Send email
   const sendEmail = async () => {
     if (!composeForm.to || !composeForm.subject || !composeForm.content) {
@@ -128,6 +155,7 @@ export default function EmailPage() {
 
   // Load data on component mount
   useEffect(() => {
+    fetchAccounts();
     fetchEmails();
     fetchStats();
   }, []);
@@ -142,7 +170,15 @@ export default function EmailPage() {
             <p className="text-gray-600">Manage your Zoho Mail inbox and send emails</p>
           </div>
           <div className="flex gap-3">
-            <Button onClick={fetchEmails} disabled={isLoading} variant="outline">
+            <Button 
+              onClick={() => {
+                fetchAccounts();
+                fetchEmails();
+                fetchStats();
+              }} 
+              disabled={isLoading} 
+              variant="outline"
+            >
               <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
               Refresh
             </Button>
@@ -160,6 +196,45 @@ export default function EmailPage() {
             <div>
               <p className="text-red-800 font-medium">Error</p>
               <p className="text-red-700 text-sm">{error}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Zoho Mail Accounts */}
+        {accounts.length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">Zoho Mail Accounts</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+              {accounts.map((account) => (
+                <Card key={account.accountId} className="p-4">
+                  <div className="text-center">
+                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-3">
+                      <span className="text-white font-bold text-lg">
+                        {account.displayName?.charAt(0) || account.accountName?.charAt(0) || 'Z'}
+                      </span>
+                    </div>
+                    <h3 className="font-medium text-gray-900 text-sm mb-1 truncate" title={account.displayName || account.accountName}>
+                      {account.displayName || account.accountName}
+                    </h3>
+                    <p className="text-xs text-gray-600 mb-2 truncate" title={account.primaryEmailAddress}>
+                      {account.primaryEmailAddress}
+                    </p>
+                    <div className="flex items-center justify-center gap-2">
+                      <Badge 
+                        variant={account.isActive ? "default" : "secondary"} 
+                        className="text-xs px-2 py-1"
+                      >
+                        {account.isActive ? "Active" : "Inactive"}
+                      </Badge>
+                      {account.isOrganizationAccount && (
+                        <Badge variant="outline" className="text-xs px-2 py-1">
+                          Org
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                </Card>
+              ))}
             </div>
           </div>
         )}

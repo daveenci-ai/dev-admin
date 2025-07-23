@@ -126,6 +126,24 @@ export async function sendEmail(emailData: {
   }
 }
 
+// Get all Zoho Mail accounts
+export async function getAllAccounts() {
+  const token = await getAccessToken();
+  const url = 'https://mail.zoho.com/api/accounts';
+  
+  try {
+    const { data } = await axios.get(url, {
+      headers: {
+        Authorization: `Zoho-oauthtoken ${token}`
+      }
+    });
+    return data;
+  } catch (error) {
+    console.error('[Zoho] Error fetching accounts:', error);
+    throw new Error('Failed to fetch Zoho accounts');
+  }
+}
+
 // Get email statistics
 export async function getEmailStats() {
   if (!ZOHO_ACCOUNT_ID) {
