@@ -103,12 +103,15 @@ export default function EmailPage() {
       const result = await response.json();
       
       if (result.success) {
-        setAccounts(result.data?.data || []);
+        const accountsData = result.data?.data || [];
+        setAccounts(accountsData);
       } else {
         console.error('Error fetching accounts:', result.error);
+        setError(`Failed to fetch accounts: ${result.error}`);
       }
     } catch (err) {
       console.error('Error fetching accounts:', err);
+      setError('Failed to connect to accounts service');
     }
   };
 

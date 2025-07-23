@@ -16,11 +16,27 @@ let accessTokenExpiry = 0;
 // Helper to refresh token when expired
 async function getAccessToken(): Promise<string> {
   const now = Date.now();
+  
+  console.log('[Zoho] getAccessToken called');
+  console.log('[Zoho] Current time:', new Date(now).toISOString());
+  console.log('[Zoho] Token expiry:', new Date(accessTokenExpiry).toISOString());
+  console.log('[Zoho] Has cached token:', !!accessToken);
+  console.log('[Zoho] Token still valid:', accessToken && now < accessTokenExpiry);
+  
   if (accessToken && now < accessTokenExpiry) {
+    console.log('[Zoho] Using cached access token');
     return accessToken; // still valid
   }
 
+  console.log('[Zoho] Environment variables check:');
+  console.log('[Zoho] ZOHO_CLIENT_ID:', ZOHO_CLIENT_ID ? 'SET' : 'MISSING');
+  console.log('[Zoho] ZOHO_CLIENT_SECRET:', ZOHO_CLIENT_SECRET ? 'SET' : 'MISSING');
+  console.log('[Zoho] ZOHO_REFRESH_TOKEN:', ZOHO_REFRESH_TOKEN ? 'SET' : 'MISSING');
+  console.log('[Zoho] ZOHO_ACCOUNT_ID:', ZOHO_ACCOUNT_ID ? 'SET' : 'MISSING');
+  console.log('[Zoho] ZOHO_FOLDER_ID:', ZOHO_FOLDER_ID ? 'SET' : 'MISSING');
+
   if (!ZOHO_CLIENT_ID || !ZOHO_CLIENT_SECRET || !ZOHO_REFRESH_TOKEN) {
+    console.error('[Zoho] Missing required credentials');
     throw new Error('Missing Zoho credentials in environment variables');
   }
 
@@ -32,15 +48,30 @@ async function getAccessToken(): Promise<string> {
   params.append('client_secret', ZOHO_CLIENT_SECRET);
   params.append('grant_type', 'refresh_token');
 
+  console.log('[Zoho] Token refresh URL:', url);
+  console.log('[Zoho] Refresh token (first 20 chars):', ZOHO_REFRESH_TOKEN.substring(0, 20) + '...');
+
   try {
-    const { data } = await axios.post(url, params);
-    accessToken = data.access_token;
+    const response = await axios.post(url, params);
+    console.log('[Zoho] Token refresh response status:', response.status);
+    console.log('[Zoho] Token refresh response:', JSON.stringify(response.data, null, 2));
+    
+    accessToken = response.data.access_token;
     // tokens are valid for 1 hour
-    accessTokenExpiry = now + (data.expires_in - 60) * 1000; // minus 60s safety margin
-    console.log('[Zoho] New access token acquired.');
+    accessTokenExpiry = now + (response.data.expires_in - 60) * 1000; // minus 60s safety margin
+    
+         console.log('[Zoho] New access token acquired (first 20 chars):', accessToken?.substring(0, 20) + '...');
+    console.log('[Zoho] Token expires at:', new Date(accessTokenExpiry).toISOString());
+    
     return accessToken as string;
   } catch (error) {
-    console.error('[Zoho] Error refreshing token:', error);
+    console.error('[Zoho] Error refreshing token - Full error:', error);
+    
+    if (axios.isAxiosError(error)) {
+      console.error('[Zoho] Token refresh status:', error.response?.status);
+      console.error('[Zoho] Token refresh error data:', error.response?.data);
+    }
+    
     throw new Error('Failed to refresh Zoho access token');
   }
 }
@@ -128,18 +159,39 @@ export async function sendEmail(emailData: {
 
 // Get all Zoho Mail accounts
 export async function getAllAccounts() {
+  console.log('[Zoho] Starting getAllAccounts...');
+  
   const token = await getAccessToken();
   const url = 'https://mail.zoho.com/api/accounts';
   
+  console.log('[Zoho] Making request to:', url);
+  console.log('[Zoho] Using token (first 20 chars):', token.substring(0, 20) + '...');
+  
   try {
-    const { data } = await axios.get(url, {
+    const response = await axios.get(url, {
       headers: {
         Authorization: `Zoho-oauthtoken ${token}`
       }
     });
-    return data;
+    
+    console.log('[Zoho] Response status:', response.status);
+    console.log('[Zoho] Response headers:', response.headers);
+    console.log('[Zoho] Raw response data:', JSON.stringify(response.data, null, 2));
+    
+    const accounts = response.data?.data || response.data;
+    console.log('[Zoho] Processed accounts array:', JSON.stringify(accounts, null, 2));
+    console.log('[Zoho] Number of accounts found:', Array.isArray(accounts) ? accounts.length : 'Not an array');
+    
+    return response.data;
   } catch (error) {
-    console.error('[Zoho] Error fetching accounts:', error);
+    console.error('[Zoho] Error fetching accounts - Full error:', error);
+    
+    if (axios.isAxiosError(error)) {
+      console.error('[Zoho] Response status:', error.response?.status);
+      console.error('[Zoho] Response data:', error.response?.data);
+      console.error('[Zoho] Response headers:', error.response?.headers);
+    }
+    
     throw new Error('Failed to fetch Zoho accounts');
   }
 }
