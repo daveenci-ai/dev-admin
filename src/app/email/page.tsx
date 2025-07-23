@@ -190,7 +190,9 @@ export default function EmailPage() {
   const formatDate = (timestamp: number | string) => {
     if (!timestamp) return 'No Date';
     
-    console.log('[Date Debug] Raw timestamp:', timestamp, 'Type:', typeof timestamp);
+    // Only log date debug for first few calls to avoid spam
+    const shouldLog = Math.random() < 0.1; // 10% chance to log
+    if (shouldLog) console.log('[Date Debug] Raw timestamp:', timestamp, 'Type:', typeof timestamp);
     
     try {
       // Handle different timestamp formats
@@ -200,22 +202,33 @@ export default function EmailPage() {
         // Try parsing as number first for string timestamps like "1753308528875"
         const numTimestamp = parseInt(timestamp);
         if (!isNaN(numTimestamp)) {
-          console.log('[Date Debug] Parsed string to number:', numTimestamp);
-          date = new Date(numTimestamp);
+          if (shouldLog) console.log('[Date Debug] Parsed string to number:', numTimestamp);
+          // Check if timestamp seems to be in future (likely wrong format)
+          if (numTimestamp > Date.now() + (365 * 24 * 60 * 60 * 1000)) {
+            if (shouldLog) console.log('[Date Debug] Future timestamp detected, trying seconds conversion');
+            date = new Date(numTimestamp / 1000);
+          } else {
+            date = new Date(numTimestamp);
+          }
         } else {
-          console.log('[Date Debug] Using string as date directly');
+          if (shouldLog) console.log('[Date Debug] Using string as date directly');
           date = new Date(timestamp);
         }
       } else if (typeof timestamp === 'number') {
-        // Zoho timestamps are in milliseconds (like 1753308528875)
-        console.log('[Date Debug] Using number timestamp directly:', timestamp);
-        date = new Date(timestamp);
+        // Check if timestamp is too far in future (wrong format)
+        if (timestamp > Date.now() + (365 * 24 * 60 * 60 * 1000)) {
+          if (shouldLog) console.log('[Date Debug] Future timestamp detected, converting from microseconds');
+          date = new Date(timestamp / 1000);
+        } else {
+          if (shouldLog) console.log('[Date Debug] Using number timestamp directly:', timestamp);
+          date = new Date(timestamp);
+        }
       } else {
-        console.log('[Date Debug] Invalid timestamp type');
+        if (shouldLog) console.log('[Date Debug] Invalid timestamp type');
         return 'Invalid Date';
       }
       
-      console.log('[Date Debug] Created date object:', date, 'Valid:', !isNaN(date.getTime()));
+      if (shouldLog) console.log('[Date Debug] Created date object:', date, 'Valid:', !isNaN(date.getTime()));
       
       if (isNaN(date.getTime())) {
         return 'Invalid Date';
@@ -227,7 +240,7 @@ export default function EmailPage() {
       const diffHours = diffMs / (1000 * 60 * 60);
       const diffDays = diffMs / (1000 * 60 * 60 * 24);
       
-      console.log('[Date Debug] Time diff:', { diffMs, diffHours, diffDays });
+      if (shouldLog) console.log('[Date Debug] Time diff:', { diffMs, diffHours, diffDays });
       
       if (diffHours < 1) {
         const diffMins = Math.floor(diffMs / (1000 * 60));
@@ -242,7 +255,7 @@ export default function EmailPage() {
         return date.toLocaleDateString();
       }
     } catch (error) {
-      console.error('[Date Debug] Error formatting date:', timestamp, error);
+      if (shouldLog) console.error('[Date Debug] Error formatting date:', timestamp, error);
       return `Debug: ${timestamp}`;
     }
   };
@@ -274,15 +287,33 @@ export default function EmailPage() {
       console.log('[Archive] Archiving email:', email.messageId);
       console.log('[Archive] Current emails count before:', emails.length);
       
-      // Remove from UI immediately  
-      setEmails(prevEmails => {
-        const filteredEmails = prevEmails.filter(e => e.messageId !== email.messageId);
-        console.log('[Archive] Emails count after filtering:', filteredEmails.length);
-        console.log('[Archive] Removed email with ID:', email.messageId);
-        return filteredEmails;
+      // Call API to actually archive the email in Zoho
+      const response = await fetch('/api/email/archive', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messageId: email.messageId
+        }),
       });
-      
-      // TODO: Implement actual API call to archive the email
+
+      const result = await response.json();
+
+      if (result.success) {
+        console.log('[Archive] Email archived in Zoho successfully');
+        
+        // Remove from UI after successful archiving
+        setEmails(prevEmails => {
+          const filteredEmails = prevEmails.filter(e => e.messageId !== email.messageId);
+          console.log('[Archive] Emails count after filtering:', filteredEmails.length);
+          console.log('[Archive] Removed email with ID:', email.messageId);
+          return filteredEmails;
+        });
+      } else {
+        console.error('[Archive] API error:', result.error);
+        setError(`Failed to archive email: ${result.error}`);
+      }
     } catch (error) {
       console.error('[Archive] Error archiving email:', error);
       setError('Failed to archive email');
@@ -294,15 +325,33 @@ export default function EmailPage() {
       console.log('[Trash] Trashing email:', email.messageId);
       console.log('[Trash] Current emails count before:', emails.length);
       
-      // Remove from UI immediately
-      setEmails(prevEmails => {
-        const filteredEmails = prevEmails.filter(e => e.messageId !== email.messageId);
-        console.log('[Trash] Emails count after filtering:', filteredEmails.length);
-        console.log('[Trash] Removed email with ID:', email.messageId);
-        return filteredEmails;
+      // Call API to actually delete the email from Zoho
+      const response = await fetch('/api/email/delete', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messageId: email.messageId
+        }),
       });
-      
-      // TODO: Implement actual API call to trash the email
+
+      const result = await response.json();
+
+      if (result.success) {
+        console.log('[Trash] Email deleted from Zoho successfully');
+        
+        // Remove from UI after successful deletion
+        setEmails(prevEmails => {
+          const filteredEmails = prevEmails.filter(e => e.messageId !== email.messageId);
+          console.log('[Trash] Emails count after filtering:', filteredEmails.length);
+          console.log('[Trash] Removed email with ID:', email.messageId);
+          return filteredEmails;
+        });
+      } else {
+        console.error('[Trash] API error:', result.error);
+        setError(`Failed to delete email: ${result.error}`);
+      }
     } catch (error) {
       console.error('[Trash] Error trashing email:', error);
       setError('Failed to delete email');
@@ -511,7 +560,8 @@ export default function EmailPage() {
                   return timeB - timeA;
                 })
                 .map((email, index) => {
-                  console.log(`[Email Render] Rendering email ${index}:`, email.messageId, email.subject);
+                  // Reduced logging - only log first few emails to avoid console spam
+                  if (index < 3) console.log(`[Email Render] Rendering email ${index}:`, email.messageId, email.subject);
                   const isUnread = email.isRead === false || email.flagInfo?.includes('unread');
                   
                   return (
@@ -579,6 +629,7 @@ export default function EmailPage() {
                             size="sm"
                             variant="outline"
                             onClick={(e) => {
+                              console.log('[Button Click] Archive button clicked for email:', email.messageId);
                               e.stopPropagation();
                               handleArchive(email);
                             }}
@@ -591,6 +642,7 @@ export default function EmailPage() {
                             size="sm"
                             variant="outline"
                             onClick={(e) => {
+                              console.log('[Button Click] Trash button clicked for email:', email.messageId);
                               e.stopPropagation();
                               handleTrash(email);
                             }}

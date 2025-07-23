@@ -288,6 +288,79 @@ export async function sendEmail(emailData: {
   }
 }
 
+// Delete an email
+export async function deleteEmail(messageId: string) {
+  if (!ZOHO_ACCOUNT_ID) {
+    throw new Error('Missing Zoho account ID in environment variables');
+  }
+
+  const token = await getLegacyAccessToken();
+  const url = `https://mail.zoho.com/api/accounts/${ZOHO_ACCOUNT_ID}/messages/${messageId}`;
+  
+  try {
+    const { data } = await axios.delete(url, {
+      headers: {
+        Authorization: `Zoho-oauthtoken ${token}`
+      }
+    });
+    return data;
+  } catch (error) {
+    console.error('[Zoho] Error deleting email:', error);
+    throw new Error('Failed to delete email');
+  }
+}
+
+// Move email to trash
+export async function moveEmailToTrash(messageId: string) {
+  if (!ZOHO_ACCOUNT_ID) {
+    throw new Error('Missing Zoho account ID in environment variables');
+  }
+
+  const token = await getLegacyAccessToken();
+  // Move to trash folder
+  const url = `https://mail.zoho.com/api/accounts/${ZOHO_ACCOUNT_ID}/messages/${messageId}/move`;
+  
+  try {
+    const { data } = await axios.put(url, {
+      destinationFolder: 'Trash'
+    }, {
+      headers: {
+        Authorization: `Zoho-oauthtoken ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    return data;
+  } catch (error) {
+    console.error('[Zoho] Error moving email to trash:', error);
+    throw new Error('Failed to move email to trash');
+  }
+}
+
+// Archive an email
+export async function archiveEmail(messageId: string) {
+  if (!ZOHO_ACCOUNT_ID) {
+    throw new Error('Missing Zoho account ID in environment variables');
+  }
+
+  const token = await getLegacyAccessToken();
+  const url = `https://mail.zoho.com/api/accounts/${ZOHO_ACCOUNT_ID}/messages/${messageId}/move`;
+  
+  try {
+    const { data } = await axios.put(url, {
+      destinationFolder: 'Archive'
+    }, {
+      headers: {
+        Authorization: `Zoho-oauthtoken ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    return data;
+  } catch (error) {
+    console.error('[Zoho] Error archiving email:', error);
+    throw new Error('Failed to archive email');
+  }
+}
+
 // Get accounts from a specific mailbox
 async function getAccountsForMailbox(config: MailboxConfig) {
   console.log(`[Zoho-${config.name}] Starting getAccountsForMailbox for ${config.email}...`);
