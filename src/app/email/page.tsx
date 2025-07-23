@@ -118,18 +118,24 @@ export default function EmailPage() {
   // Fetch all Zoho accounts
   const fetchAccounts = async () => {
     try {
+      console.log('[Frontend] Fetching accounts...');
       const response = await fetch('/api/email/accounts');
       const result = await response.json();
+      console.log('[Frontend] Accounts API response:', result);
+      console.log('[Frontend] Accounts data:', result.data);
+      console.log('[Frontend] Accounts data.data:', result.data?.data);
       
       if (result.success) {
         const accountsData = result.data?.data || [];
+        console.log('[Frontend] Setting accounts:', accountsData);
+        console.log('[Frontend] First account sample:', accountsData[0]);
         setAccounts(accountsData);
       } else {
-        console.error('Error fetching accounts:', result.error);
+        console.error('[Frontend] Error fetching accounts:', result.error);
         setError(`Failed to fetch accounts: ${result.error}`);
       }
     } catch (err) {
-      console.error('Error fetching accounts:', err);
+      console.error('[Frontend] Error fetching accounts:', err);
       setError('Failed to connect to accounts service');
     }
   };
@@ -324,21 +330,7 @@ export default function EmailPage() {
           </div>
         )}
 
-        {/* Refresh Button - Keep minimal */}
-        <div className="flex justify-end mb-6">
-          <Button 
-            onClick={() => {
-              fetchAccounts();
-              fetchEmails();
-              fetchStats();
-            }} 
-            disabled={isLoading} 
-            variant="outline"
-            size="sm"
-          >
-            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-          </Button>
-        </div>
+
 
         {/* Mailbox Filter Cards */}
         {accounts.length > 0 && (
@@ -358,8 +350,9 @@ export default function EmailPage() {
               const colorScheme = colors[account.primaryEmailAddress as keyof typeof colors] || colors['anton.osipov@daveenci.ai'];
               
               // Get email stats for this mailbox (placeholder - will be updated with real data)
-              const unreadCount = account.unreadEmails || 0;
-              const totalCount = account.totalEmails || 0;
+                             const unreadCount = account.unreadEmails || 0;
+               const totalCount = account.totalEmails || 0;
+               console.log(`[Frontend] Card for ${account.primaryEmailAddress}: unread=${unreadCount}, total=${totalCount}`, account);
               
               return (
                 <div 
@@ -431,7 +424,21 @@ export default function EmailPage() {
         <Card className="p-6">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-semibold text-gray-900">Recent Emails</h2>
-            <Badge variant="secondary">{emails.length} emails</Badge>
+            <div className="flex items-center gap-3">
+              <Badge variant="secondary">{emails.length} emails</Badge>
+              <Button 
+                onClick={() => {
+                  fetchAccounts();
+                  fetchEmails();
+                  fetchStats();
+                }} 
+                disabled={isLoading} 
+                variant="outline"
+                size="sm"
+              >
+                <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+              </Button>
+            </div>
           </div>
 
           {isLoading ? (
@@ -469,82 +476,84 @@ export default function EmailPage() {
                         isUnread ? 'bg-blue-50 border-blue-200' : 'bg-white'
                       }`}
                     >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            {isUnread && (
-                              <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" title="Unread email" />
-                            )}
-                            <h3 className={`${isUnread ? 'font-bold' : 'font-medium'} text-gray-900 truncate`}>
-                              {email.subject || 'No Subject'}
-                            </h3>
-                            {email.flag && (
-                              <Badge variant="outline" className="text-xs">
-                                {email.flag}
-                              </Badge>
+                      <div className="relative">
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex-1 pr-4">
+                            <div className="flex items-center gap-3 mb-2">
+                              {isUnread && (
+                                <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" title="Unread email" />
+                              )}
+                              <h3 className={`${isUnread ? 'font-bold' : 'font-medium'} text-gray-900 truncate`}>
+                                {email.subject || 'No Subject'}
+                              </h3>
+                              {email.flag && (
+                                <Badge variant="outline" className="text-xs">
+                                  {email.flag}
+                                </Badge>
+                              )}
+                            </div>
+                            <p className={`text-sm text-gray-600 mb-2 ${isUnread ? 'font-medium' : ''}`}>
+                              From: {email.fromAddress}
+                            </p>
+                            {email.summary && (
+                              <p className="text-sm text-gray-500 line-clamp-2">
+                                {email.summary}
+                              </p>
                             )}
                           </div>
-                          <p className={`text-sm text-gray-600 mb-2 ${isUnread ? 'font-medium' : ''}`}>
-                            From: {email.fromAddress}
-                          </p>
-                          {email.summary && (
-                            <p className="text-sm text-gray-500 line-clamp-2 mb-3">
-                              {email.summary}
-                            </p>
-                          )}
-                          
-                          {/* Email Action Buttons */}
-                          <div className="flex gap-2 mt-3">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleReply(email);
-                              }}
-                              className="text-xs px-3 py-1 h-7"
-                            >
-                              <Reply className="w-3 h-3 mr-1" />
-                              Reply
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleArchive(email);
-                              }}
-                              className="text-xs px-3 py-1 h-7"
-                            >
-                              <Archive className="w-3 h-3 mr-1" />
-                              Archive
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleTrash(email);
-                              }}
-                              className="text-xs px-3 py-1 h-7 text-red-600 hover:text-red-700 hover:bg-red-50"
-                            >
-                              <Trash2 className="w-3 h-3 mr-1" />
-                              Trash
-                            </Button>
+                          <div className="flex flex-col items-end text-sm text-gray-500">
+                            <div className="flex items-center mb-1">
+                              <Clock className="w-4 h-4 mr-1" />
+                              <span className={isUnread ? 'font-medium text-gray-700' : ''}>
+                                Raw: {String(email.receivedTime)}
+                              </span>
+                            </div>
+                            {email.mailboxName && (
+                              <div className="text-xs text-gray-400">
+                                {email.mailboxName}
+                              </div>
+                            )}
                           </div>
                         </div>
-                        <div className="flex flex-col items-end text-sm text-gray-500 ml-4">
-                          <div className="flex items-center mb-1">
-                            <Clock className="w-4 h-4 mr-1" />
-                            <span className={isUnread ? 'font-medium text-gray-700' : ''}>
-                              {formatDate(email.receivedTime)}
-                            </span>
-                          </div>
-                          {email.mailboxName && (
-                            <div className="text-xs text-gray-400">
-                              {email.mailboxName}
-                            </div>
-                          )}
+                        
+                        {/* Email Action Buttons - Bottom Right */}
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleReply(email);
+                            }}
+                            className="text-xs px-3 py-1 h-7"
+                          >
+                            <Reply className="w-3 h-3 mr-1" />
+                            Reply
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleArchive(email);
+                            }}
+                            className="text-xs px-3 py-1 h-7"
+                          >
+                            <Archive className="w-3 h-3 mr-1" />
+                            Archive
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleTrash(email);
+                            }}
+                            className="text-xs px-3 py-1 h-7 text-red-600 hover:text-red-700 hover:bg-red-50"
+                          >
+                            <Trash2 className="w-3 h-3 mr-1" />
+                            Trash
+                          </Button>
                         </div>
                       </div>
                     </div>
@@ -559,20 +568,13 @@ export default function EmailPage() {
           isOpen={isReplyOpen} 
           onClose={() => setIsReplyOpen(false)}
         >
-          <div className="p-6 max-w-4xl">
+          <div className="p-6 w-[90vw] max-w-none">
             <h2 className="text-xl font-semibold text-gray-900 mb-6">Reply to Email</h2>
             
-            {/* Original Email Display */}
-            {replyingToEmail && (
+            {/* Original Email Content Only */}
+            {replyingToEmail && replyingToEmail.summary && (
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
-                <h3 className="font-medium text-gray-900 mb-2">{replyingToEmail.subject}</h3>
-                <p className="text-sm text-gray-600 mb-2">From: {replyingToEmail.fromAddress}</p>
-                <p className="text-sm text-gray-600 mb-2">Date: {formatDate(replyingToEmail.receivedTime)}</p>
-                {replyingToEmail.summary && (
-                  <div className="mt-3 p-3 bg-white rounded border">
-                    <p className="text-sm text-gray-700">{replyingToEmail.summary}</p>
-                  </div>
-                )}
+                <p className="text-sm text-gray-700 whitespace-pre-wrap">{replyingToEmail.summary}</p>
               </div>
             )}
             
