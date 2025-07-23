@@ -190,18 +190,32 @@ export default function EmailPage() {
   const formatDate = (timestamp: number | string) => {
     if (!timestamp) return 'No Date';
     
+    console.log('[Date Debug] Raw timestamp:', timestamp, 'Type:', typeof timestamp);
+    
     try {
       // Handle different timestamp formats
       let date: Date;
       
       if (typeof timestamp === 'string') {
-        date = new Date(timestamp);
+        // Try parsing as number first for string timestamps like "1753308528875"
+        const numTimestamp = parseInt(timestamp);
+        if (!isNaN(numTimestamp)) {
+          console.log('[Date Debug] Parsed string to number:', numTimestamp);
+          date = new Date(numTimestamp);
+        } else {
+          console.log('[Date Debug] Using string as date directly');
+          date = new Date(timestamp);
+        }
       } else if (typeof timestamp === 'number') {
-        // If timestamp is in seconds, convert to milliseconds
-        date = timestamp > 9999999999 ? new Date(timestamp) : new Date(timestamp * 1000);
+        // Zoho timestamps are in milliseconds (like 1753308528875)
+        console.log('[Date Debug] Using number timestamp directly:', timestamp);
+        date = new Date(timestamp);
       } else {
+        console.log('[Date Debug] Invalid timestamp type');
         return 'Invalid Date';
       }
+      
+      console.log('[Date Debug] Created date object:', date, 'Valid:', !isNaN(date.getTime()));
       
       if (isNaN(date.getTime())) {
         return 'Invalid Date';
@@ -212,6 +226,8 @@ export default function EmailPage() {
       const diffMs = now.getTime() - date.getTime();
       const diffHours = diffMs / (1000 * 60 * 60);
       const diffDays = diffMs / (1000 * 60 * 60 * 24);
+      
+      console.log('[Date Debug] Time diff:', { diffMs, diffHours, diffDays });
       
       if (diffHours < 1) {
         const diffMins = Math.floor(diffMs / (1000 * 60));
@@ -226,8 +242,8 @@ export default function EmailPage() {
         return date.toLocaleDateString();
       }
     } catch (error) {
-      console.error('Error formatting date:', timestamp, error);
-      return 'Date Error';
+      console.error('[Date Debug] Error formatting date:', timestamp, error);
+      return `Debug: ${timestamp}`;
     }
   };
 
@@ -255,24 +271,40 @@ export default function EmailPage() {
 
   const handleArchive = async (email: EmailMessage) => {
     try {
-      console.log('Archiving email:', email.messageId);
+      console.log('[Archive] Archiving email:', email.messageId);
+      console.log('[Archive] Current emails count before:', emails.length);
+      
       // Remove from UI immediately  
-      setEmails(prevEmails => prevEmails.filter(e => e.messageId !== email.messageId));
+      setEmails(prevEmails => {
+        const filteredEmails = prevEmails.filter(e => e.messageId !== email.messageId);
+        console.log('[Archive] Emails count after filtering:', filteredEmails.length);
+        console.log('[Archive] Removed email with ID:', email.messageId);
+        return filteredEmails;
+      });
+      
       // TODO: Implement actual API call to archive the email
     } catch (error) {
-      console.error('Error archiving email:', error);
+      console.error('[Archive] Error archiving email:', error);
       setError('Failed to archive email');
     }
   };
 
   const handleTrash = async (email: EmailMessage) => {
     try {
-      console.log('Trashing email:', email.messageId);
+      console.log('[Trash] Trashing email:', email.messageId);
+      console.log('[Trash] Current emails count before:', emails.length);
+      
       // Remove from UI immediately
-      setEmails(prevEmails => prevEmails.filter(e => e.messageId !== email.messageId));
+      setEmails(prevEmails => {
+        const filteredEmails = prevEmails.filter(e => e.messageId !== email.messageId);
+        console.log('[Trash] Emails count after filtering:', filteredEmails.length);
+        console.log('[Trash] Removed email with ID:', email.messageId);
+        return filteredEmails;
+      });
+      
       // TODO: Implement actual API call to trash the email
     } catch (error) {
-      console.error('Error trashing email:', error);
+      console.error('[Trash] Error trashing email:', error);
       setError('Failed to delete email');
     }
   };
@@ -478,7 +510,8 @@ export default function EmailPage() {
                   const timeB = typeof b.receivedTime === 'string' ? new Date(b.receivedTime).getTime() : b.receivedTime;
                   return timeB - timeA;
                 })
-                .map((email) => {
+                .map((email, index) => {
+                  console.log(`[Email Render] Rendering email ${index}:`, email.messageId, email.subject);
                   const isUnread = email.isRead === false || email.flagInfo?.includes('unread');
                   
                   return (
@@ -579,8 +612,9 @@ export default function EmailPage() {
         <Modal 
           isOpen={isReplyOpen} 
           onClose={() => setIsReplyOpen(false)}
+          className="w-[90vw] max-w-none h-[90vh] overflow-hidden flex flex-col"
         >
-          <div className="p-6 w-[90vw] max-w-none">
+          <div className="p-6 flex-1 overflow-y-auto">
             <h2 className="text-xl font-semibold text-gray-900 mb-6">Reply to Email</h2>
             
             {/* Original Email Content Only */}
