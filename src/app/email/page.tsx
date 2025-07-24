@@ -1,13 +1,23 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
+import { 
+  Mail, 
+  RefreshCw, 
+  Trash2, 
+  Archive, 
+  AlertTriangle,
+  X,
+  Reply,
+  Shield,
+  Send
+} from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Modal } from '@/components/ui/modal';
-import { Mail, Send, RefreshCw, Inbox, Clock, AlertCircle, Reply, Archive, Trash2, Shield } from 'lucide-react';
 
 interface EmailMessage {
   messageId: string;
@@ -455,23 +465,22 @@ export default function EmailPage() {
     fetchStats();
   }, []);
 
+  // Filter emails based on selected mailbox
+  const filteredEmails = selectedMailbox ? emails.filter(email => email.mailboxEmail === selectedMailbox) : emails;
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
         {/* Error Alert */}
         {error && (
-          <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4 flex items-center">
-            <AlertCircle className="w-5 h-5 text-red-500 mr-3" />
-            <div>
-              <p className="text-red-800 font-medium">Error</p>
-              <p className="text-red-700 text-sm">{error}</p>
-            </div>
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
+            {error}
           </div>
         )}
 
         {/* Mailbox Filter Cards */}
         {accounts.length > 0 && (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6 mt-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
             {accounts.map((account) => {
               const isActive = selectedMailbox === account.emailAddress;
               const mailboxName = account.mailboxName || account.accountDisplayName || account.accountName;
@@ -506,8 +515,8 @@ export default function EmailPage() {
                   <div className="text-xs font-medium text-gray-500 uppercase tracking-wide truncate">
                     {mailboxName?.toUpperCase() || 'MAILBOX'}
                   </div>
-                  <div className="text-xs text-gray-400 truncate" title={account.emailAddress}>
-                    {account.emailAddress}
+                  <div className="text-xs text-gray-400 truncate">
+                    <span className="font-medium">Unread</span> / <span className="font-medium">Total</span>
                   </div>
                 </div>
               );
@@ -515,65 +524,33 @@ export default function EmailPage() {
           </div>
         )}
 
-        {/* Statistics Cards */}
-        {stats && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <Card className="p-6">
-              <div className="flex items-center">
-                <div className="p-3 bg-blue-50 rounded-lg">
-                  <Inbox className="w-6 h-6 text-blue-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Total Emails</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.totalEmails}</p>
-                </div>
-              </div>
-            </Card>
-
-            <Card className="p-6">
-              <div className="flex items-center">
-                <div className="p-3 bg-yellow-50 rounded-lg">
-                  <Mail className="w-6 h-6 text-yellow-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Unread</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.unreadEmails}</p>
-                </div>
-              </div>
-            </Card>
-
-            <Card className="p-6">
-              <div className="flex items-center">
-                <div className="p-3 bg-green-50 rounded-lg">
-                  <Send className="w-6 h-6 text-green-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Sent</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.sentEmails}</p>
-                </div>
-              </div>
-            </Card>
-          </div>
-        )}
-
         {/* Email List */}
         <Card className="p-6">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold text-gray-900">Recent Emails</h2>
+            <h2 className="text-xl font-semibold text-gray-900">
+              Recent Emails
+              {selectedMailbox && (
+                <span className="text-sm text-gray-500 ml-2">
+                  - {accounts.find(a => a.emailAddress === selectedMailbox)?.mailboxName || selectedMailbox}
+                </span>
+              )}
+            </h2>
             <div className="flex items-center gap-3">
-              <Badge variant="secondary">{emails.length} emails</Badge>
-              <Button 
-                onClick={() => {
-                  fetchAccounts();
-                  fetchEmails();
-                  fetchStats();
-                }} 
-                disabled={isLoading} 
-                variant="outline"
-                size="sm"
-              >
-                <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-              </Button>
+              <Badge variant="secondary">
+                {filteredEmails.length} emails
+                <Button 
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    fetchAccounts();
+                    fetchEmails();
+                    fetchStats();
+                  }} 
+                  className="ml-2 p-1 h-6 w-6"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                </Button>
+              </Badge>
             </div>
           </div>
 
@@ -582,7 +559,7 @@ export default function EmailPage() {
               <RefreshCw className="w-8 h-8 text-gray-400 animate-spin mx-auto mb-4" />
               <p className="text-gray-500">Loading emails...</p>
             </div>
-          ) : emails.length === 0 ? (
+          ) : filteredEmails.length === 0 ? (
             <div className="text-center py-12">
               <Mail className="w-12 h-12 text-gray-300 mx-auto mb-4" />
               <p className="text-gray-500">No emails found</p>
@@ -590,12 +567,7 @@ export default function EmailPage() {
             </div>
           ) : (
             <div className="space-y-4">
-              {emails
-                .filter(email => {
-                  // Filter by selected mailbox, or show all if none selected
-                  if (!selectedMailbox) return true;
-                  return email.mailboxEmail === selectedMailbox;
-                })
+              {filteredEmails
                 .sort((a, b) => {
                   // Sort by date, newest first
                   const timeA = typeof a.receivedTime === 'string' ? new Date(a.receivedTime).getTime() : a.receivedTime;
@@ -641,8 +613,7 @@ export default function EmailPage() {
                           </div>
                           <div className="flex flex-col items-end text-sm text-gray-500">
                             <div className="flex items-center mb-1">
-                              <Clock className="w-4 h-4 mr-1" />
-                                                          <span className={isUnread ? 'font-medium text-gray-700' : ''}>
+                              <span className={isUnread ? 'font-medium text-gray-700' : ''}>
                               {formatDate(email.receivedTime)}
                             </span>
                             </div>

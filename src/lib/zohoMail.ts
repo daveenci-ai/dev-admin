@@ -12,73 +12,59 @@ interface ImapConfig {
 const getImapConfigs = (): ImapConfig[] => {
   console.log('[ENV-DEBUG] Starting getImapConfigs...');
   console.log('[ENV-DEBUG] Environment check:');
-  console.log('[ENV-DEBUG] ZOHO_PASSWORD_ANTON exists:', !!process.env.ZOHO_PASSWORD_ANTON);
-  console.log('[ENV-DEBUG] ZOHO_PASSWORD_ASTRID exists:', !!process.env.ZOHO_PASSWORD_ASTRID);
-  console.log('[ENV-DEBUG] ZOHO_PASSWORD_OPS exists:', !!process.env.ZOHO_PASSWORD_OPS);
-  console.log('[ENV-DEBUG] ZOHO_PASSWORD_HELLO exists:', !!process.env.ZOHO_PASSWORD_HELLO);
   
   const configs: ImapConfig[] = [];
+  const missingPasswords: string[] = [];
   
-  // Anton's IMAP config
-  if (process.env.ZOHO_PASSWORD_ANTON) {
-    console.log('[ENV-DEBUG] Adding Anton config');
-    configs.push({
-      name: 'Anton Osipov',
-      email: 'anton.osipov@daveenci.ai',
-      user: 'anton.osipov@daveenci.ai',
-      password: process.env.ZOHO_PASSWORD_ANTON
-    });
-  } else {
-    console.log('[ENV-DEBUG] ZOHO_PASSWORD_ANTON not found');
-  }
+  // Check each environment variable and provide specific feedback
+  const passwordChecks = [
+    { env: 'ZOHO_PASSWORD_ANTON', email: 'anton.osipov@daveenci.ai', name: 'Anton Osipov' },
+    { env: 'ZOHO_PASSWORD_ASTRID', email: 'astrid@daveenci.ai', name: 'Astrid' },
+    { env: 'ZOHO_PASSWORD_OPS', email: 'ops@daveenci.ai', name: 'Ops' },
+    { env: 'ZOHO_PASSWORD_HELLO', email: 'hello@daveenci.ai', name: 'Hello' }
+  ];
   
-  // Astrid's IMAP config
-  if (process.env.ZOHO_PASSWORD_ASTRID) {
-    console.log('[ENV-DEBUG] Adding Astrid config');
-    configs.push({
-      name: 'Astrid',
-      email: 'astrid@daveenci.ai',
-      user: 'astrid@daveenci.ai',
-      password: process.env.ZOHO_PASSWORD_ASTRID
-    });
-  } else {
-    console.log('[ENV-DEBUG] ZOHO_PASSWORD_ASTRID not found');
-  }
-  
-  // Ops IMAP config
-  if (process.env.ZOHO_PASSWORD_OPS) {
-    console.log('[ENV-DEBUG] Adding Ops config');
-    configs.push({
-      name: 'Ops',
-      email: 'ops@daveenci.ai',
-      user: 'ops@daveenci.ai',
-      password: process.env.ZOHO_PASSWORD_OPS
-    });
-  } else {
-    console.log('[ENV-DEBUG] ZOHO_PASSWORD_OPS not found');
-  }
-  
-  // Hello IMAP config
-  if (process.env.ZOHO_PASSWORD_HELLO) {
-    console.log('[ENV-DEBUG] Adding Hello config');
-    configs.push({
-      name: 'Hello',
-      email: 'hello@daveenci.ai',
-      user: 'hello@daveenci.ai',
-      password: process.env.ZOHO_PASSWORD_HELLO
-    });
-  } else {
-    console.log('[ENV-DEBUG] ZOHO_PASSWORD_HELLO not found');
-  }
+  passwordChecks.forEach(check => {
+    const password = process.env[check.env];
+    console.log(`[ENV-DEBUG] ${check.env} exists:`, !!password);
+    
+    if (password) {
+      console.log(`[ENV-DEBUG] Adding ${check.name} config`);
+      configs.push({
+        name: check.name,
+        email: check.email,
+        user: check.email,
+        password: password
+      });
+    } else {
+      console.log(`[ENV-DEBUG] ${check.env} not found`);
+      missingPasswords.push(`${check.env} (for ${check.email})`);
+    }
+  });
   
   console.log('[ENV-DEBUG] Total configs created:', configs.length);
   console.log('[ENV-DEBUG] Config names:', configs.map(c => c.name));
+  
+  if (configs.length === 0) {
+    const errorMessage = `No IMAP configurations found. Missing environment variables: ${missingPasswords.join(', ')}. Please set these in your Render dashboard with the corresponding Zoho app passwords.`;
+    console.error('[ENV-DEBUG] Error:', errorMessage);
+    throw new Error(errorMessage);
+  }
+  
+  if (missingPasswords.length > 0) {
+    console.warn(`[ENV-DEBUG] Warning: Some mailboxes are missing passwords: ${missingPasswords.join(', ')}`);
+  }
   
   return configs;
 };
 
 // IMAP helper function to create connection
 async function createImapConnection(config: ImapConfig): Promise<ImapFlow> {
+  // Check if password exists
+  if (!config.password) {
+    throw new Error(`Missing IMAP password for ${config.email}. Please set the corresponding ZOHO_PASSWORD_* environment variable.`);
+  }
+
   const client = new ImapFlow({
     host: 'imap.zoho.com',
     port: 993,
@@ -91,10 +77,31 @@ async function createImapConnection(config: ImapConfig): Promise<ImapFlow> {
   });
   
   console.log(`[IMAP-${config.name}] Connecting to Zoho IMAP...`);
-  await client.connect();
-  console.log(`[IMAP-${config.name}] Connected successfully`);
   
-  return client;
+  try {
+    await client.connect();
+    console.log(`[IMAP-${config.name}] Connected successfully`);
+    return client;
+  } catch (error: any) {
+    console.error(`[IMAP-${config.name}] Connection failed:`, error.message);
+    
+    // Detect specific error types
+    if (error.message?.includes('Invalid credentials') || 
+        error.message?.includes('Authentication failed') ||
+        error.message?.includes('Login failed') ||
+        error.code === 'AUTHENTICATIONFAILED') {
+      throw new Error(`Authentication failed for ${config.email}. Please check that the IMAP password (app password) is correct in environment variables.`);
+    }
+    
+    if (error.message?.includes('Connection timeout') || 
+        error.message?.includes('ECONNREFUSED') ||
+        error.message?.includes('ENOTFOUND')) {
+      throw new Error(`Cannot connect to Zoho IMAP server for ${config.email}. Please check your internet connection.`);
+    }
+    
+    // Generic connection error
+    throw new Error(`Failed to connect to IMAP for ${config.email}: ${error.message}`);
+  }
 }
 
 // IMAP function to delete email (move to Trash)
