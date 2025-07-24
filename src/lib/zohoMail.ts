@@ -297,18 +297,68 @@ export async function moveEmailToTrash(messageId: string, mailboxEmail?: string)
     throw new Error('No Zoho Mail configurations found');
   }
 
-  // Try each mailbox until we find the one that contains this email
-  for (const config of mailboxConfigs) {
-    // Skip if we know the specific mailbox and this isn't it
-    if (mailboxEmail && config.email !== mailboxEmail) {
-      continue;
+  // If specific mailbox provided, only try that one. Otherwise try all.
+  if (mailboxEmail) {
+    // Find the specific mailbox config
+    const targetConfig = mailboxConfigs.find(c => c.email === mailboxEmail);
+    if (!targetConfig) {
+      throw new Error(`Mailbox configuration not found for ${mailboxEmail}`);
     }
 
+    try {
+      console.log(`[Zoho-${targetConfig.name}] Attempting to move email ${messageId} to trash using DELETE`);
+      
+      const token = await getAccessToken(targetConfig);
+      
+      // First, check if the email still exists by fetching it directly
+      const checkUrl = `https://mail.zoho.com/api/accounts/${targetConfig.accountId}/messages/${messageId}`;
+      try {
+        const checkResponse = await axios.get(checkUrl, {
+          headers: {
+            Authorization: `Zoho-oauthtoken ${token}`
+          }
+        });
+        console.log(`[Zoho-${targetConfig.name}] Email ${messageId} exists, current status:`, {
+          subject: checkResponse.data?.data?.subject || 'No subject',
+          fromAddress: checkResponse.data?.data?.fromAddress || 'Unknown sender', 
+          folderId: checkResponse.data?.data?.folderId || 'Unknown folder',
+          folderName: checkResponse.data?.data?.folderName || 'Unknown folder name'
+        });
+      } catch (checkError: any) {
+        console.log(`[Zoho-${targetConfig.name}] Email ${messageId} check failed:`, checkError.response?.status, checkError.response?.data);
+        if (checkError.response?.status === 404) {
+          throw new Error(`Email ${messageId} no longer exists - it may have already been deleted or moved`);
+        }
+      }
+      
+      const deleteUrl = `https://mail.zoho.com/api/accounts/${targetConfig.accountId}/messages/${messageId}`;
+      
+      const { data } = await axios.delete(deleteUrl, {
+        headers: {
+          Authorization: `Zoho-oauthtoken ${token}`
+        }
+      });
+      
+      console.log(`[Zoho-${targetConfig.name}] Successfully moved email ${messageId} to trash using DELETE`);
+      return data;
+    } catch (error: any) {
+      console.log(`[Zoho-${targetConfig.name}] Failed to move email ${messageId}: ${error.message}`);
+      
+      if (error.response?.status === 404) {
+        throw new Error(`Email ${messageId} not found in ${targetConfig.name} - it may have already been deleted`);
+      }
+      
+      console.log(`[Zoho-${targetConfig.name}] Error details:`, error.response?.data || error.message);
+      throw new Error(`Failed to move email to trash in ${targetConfig.name}: ${error.message}`);
+    }
+  }
+
+  // If no specific mailbox, try all (for legacy compatibility)
+  for (const config of mailboxConfigs) {
     try {
       console.log(`[Zoho-${config.name}] Attempting to move email ${messageId} to trash using DELETE`);
       
       const token = await getAccessToken(config);
-      // Use the simple DELETE approach from Zoho docs: "Moves from Inbox to Trash"
       const deleteUrl = `https://mail.zoho.com/api/accounts/${config.accountId}/messages/${messageId}`;
       
       const { data } = await axios.delete(deleteUrl, {
@@ -322,22 +372,14 @@ export async function moveEmailToTrash(messageId: string, mailboxEmail?: string)
     } catch (error: any) {
       console.log(`[Zoho-${config.name}] Failed to move email ${messageId}: ${error.message}`);
       
-      // If 404, this email is not in this mailbox, try next one
       if (error.response?.status === 404) {
         console.log(`[Zoho-${config.name}] Email ${messageId} not found in this mailbox (404)`);
-        if (mailboxEmail && config.email === mailboxEmail) {
-          throw new Error(`Email ${messageId} not found in specified mailbox ${config.name}`);
-        }
         continue; // Try next mailbox
       }
       
       console.log(`[Zoho-${config.name}] Error details:`, error.response?.data || error.message);
-      
-      // If we specified a mailbox and it failed, throw the error
-      if (mailboxEmail && config.email === mailboxEmail) {
-        throw new Error(`Failed to move email to trash in ${config.name}: ${error.message}`);
-      }
-      // Otherwise, continue trying other mailboxes
+      // For non-404 errors when trying all mailboxes, continue to next
+      continue;
     }
   }
   
@@ -388,39 +430,63 @@ export async function archiveEmail(messageId: string, mailboxEmail?: string) {
     throw new Error('No Zoho Mail configurations found');
   }
 
-  // Try each mailbox until we find the one that contains this email
-  for (const config of mailboxConfigs) {
-    // Skip if we know the specific mailbox and this isn't it
-    if (mailboxEmail && config.email !== mailboxEmail) {
-      continue;
+  // If specific mailbox provided, only try that one. Otherwise try all.
+  if (mailboxEmail) {
+    // Find the specific mailbox config
+    const targetConfig = mailboxConfigs.find(c => c.email === mailboxEmail);
+    if (!targetConfig) {
+      throw new Error(`Mailbox configuration not found for ${mailboxEmail}`);
     }
 
     try {
+      console.log(`[Zoho-${targetConfig.name}] Attempting to archive email ${messageId}`);
+      
+      const token = await getAccessToken(targetConfig);
+      
+      // Get the correct archive folder ID
+      const archiveFolderId = await getArchiveFolderId(targetConfig);
+      if (!archiveFolderId) {
+        throw new Error(`No archive folder found in ${targetConfig.name}`);
+      }
+      
+      // Move to archive folder using folder ID
+      const moveUrl = `https://mail.zoho.com/api/accounts/${targetConfig.accountId}/messages/${messageId}/move`;
+      
+      const { data } = await axios.put(moveUrl, {
+        destinationFolder: archiveFolderId
+      }, {
+        headers: {
+          Authorization: `Zoho-oauthtoken ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      console.log(`[Zoho-${targetConfig.name}] Successfully archived email ${messageId} to folder ${archiveFolderId}`);
+      return data;
+    } catch (error: any) {
+      console.log(`[Zoho-${targetConfig.name}] Failed to archive email ${messageId}: ${error.message}`);
+      
+      if (error.response?.status === 404) {
+        throw new Error(`Email ${messageId} not found in ${targetConfig.name} - it may have already been moved or deleted`);
+      }
+      
+      console.log(`[Zoho-${targetConfig.name}] Error details:`, error.response?.data || error.message);
+      throw new Error(`Failed to archive email in ${targetConfig.name}: ${error.message}`);
+    }
+  }
+
+  // If no specific mailbox, try all (for legacy compatibility)
+  for (const config of mailboxConfigs) {
+    try {
       console.log(`[Zoho-${config.name}] Attempting to archive email ${messageId}`);
       
-      // First, check if the email exists
       const token = await getAccessToken(config);
-      const checkUrl = `https://mail.zoho.com/api/accounts/${config.accountId}/messages/${messageId}`;
-      
-      try {
-        await axios.get(checkUrl, {
-          headers: {
-            Authorization: `Zoho-oauthtoken ${token}`
-          }
-        });
-        console.log(`[Zoho-${config.name}] Email ${messageId} exists, proceeding with archive operation`);
-      } catch (checkError: any) {
-        if (checkError.response?.status === 404) {
-          console.log(`[Zoho-${config.name}] Email ${messageId} not found in this mailbox`);
-          continue; // Try next mailbox
-        }
-        throw checkError; // Re-throw other errors
-      }
       
       // Get the correct archive folder ID
       const archiveFolderId = await getArchiveFolderId(config);
       if (!archiveFolderId) {
-        throw new Error(`No archive folder found in ${config.name}`);
+        console.log(`[Zoho-${config.name}] No archive folder found, skipping this mailbox`);
+        continue; // Try next mailbox
       }
       
       // Move to archive folder using folder ID
@@ -439,13 +505,15 @@ export async function archiveEmail(messageId: string, mailboxEmail?: string) {
       return data;
     } catch (error: any) {
       console.log(`[Zoho-${config.name}] Failed to archive email ${messageId}: ${error.message}`);
-      console.log(`[Zoho-${config.name}] Error details:`, error.response?.data || error.message);
       
-      // If we specified a mailbox and it failed, throw the error
-      if (mailboxEmail && config.email === mailboxEmail) {
-        throw new Error(`Failed to archive email in ${config.name}: ${error.message}`);
+      if (error.response?.status === 404) {
+        console.log(`[Zoho-${config.name}] Email ${messageId} not found in this mailbox (404)`);
+        continue; // Try next mailbox
       }
-      // Otherwise, continue trying other mailboxes
+      
+      console.log(`[Zoho-${config.name}] Error details:`, error.response?.data || error.message);
+      // For non-404 errors when trying all mailboxes, continue to next
+      continue;
     }
   }
   
@@ -497,13 +565,15 @@ export async function markEmailAsSpam(messageId: string, mailboxEmail?: string) 
     throw new Error('No Zoho Mail configurations found');
   }
 
-  // Try each mailbox until we find the one that contains this email
-  for (const config of mailboxConfigs) {
-    // Skip if we know the specific mailbox and this isn't it
-    if (mailboxEmail && config.email !== mailboxEmail) {
-      continue;
-    }
+  // Try specified mailbox first, then try all others as fallback
+  const configsToTry = mailboxEmail 
+    ? [
+        ...mailboxConfigs.filter(c => c.email === mailboxEmail), // Try specified first
+        ...mailboxConfigs.filter(c => c.email !== mailboxEmail)  // Then try others as fallback
+      ]
+    : mailboxConfigs; // If no specific mailbox, try all
 
+  for (const config of configsToTry) {
     try {
       console.log(`[Zoho-${config.name}] Attempting to mark email ${messageId} as spam using POST /messages/move`);
       
@@ -514,7 +584,7 @@ export async function markEmailAsSpam(messageId: string, mailboxEmail?: string) 
       if (!spamFolderId) {
         console.log(`[Zoho-${config.name}] No spam folder found, skipping this mailbox`);
         if (mailboxEmail && config.email === mailboxEmail) {
-          throw new Error(`No spam folder found in specified mailbox ${config.name}`);
+          console.log(`[Zoho-${config.name}] No spam folder in specified mailbox, will try other mailboxes as fallback`);
         }
         continue; // Try next mailbox
       }
@@ -539,20 +609,17 @@ export async function markEmailAsSpam(messageId: string, mailboxEmail?: string) 
       
       // If 404, this email is not in this mailbox, try next one
       if (error.response?.status === 404) {
-        console.log(`[Zoho-${config.name}] Email ${messageId} not found in this mailbox (404)`);
-        if (mailboxEmail && config.email === mailboxEmail) {
-          throw new Error(`Email ${messageId} not found in specified mailbox ${config.name}`);
-        }
+        console.log(`[Zoho-${config.name}] Email ${messageId} not found in this mailbox (404), trying next...`);
         continue; // Try next mailbox
       }
       
       console.log(`[Zoho-${config.name}] Error details:`, error.response?.data || error.message);
       
-      // If we specified a mailbox and it failed, throw the error
+      // For non-404 errors, if this was the specified mailbox, log but continue trying others
       if (mailboxEmail && config.email === mailboxEmail) {
-        throw new Error(`Failed to mark email as spam in ${config.name}: ${error.message}`);
+        console.log(`[Zoho-${config.name}] Non-404 error in specified mailbox, will try other mailboxes as fallback`);
+        continue;
       }
-      // Otherwise, continue trying other mailboxes
     }
   }
   
