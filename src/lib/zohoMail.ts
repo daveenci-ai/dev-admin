@@ -128,18 +128,17 @@ export async function deleteEmailViaImap(messageId: string, mailboxEmail?: strin
       await client.mailboxOpen('INBOX');
       console.log(`[IMAP-${config.name}] Opened INBOX, searching for message ${messageId}`);
       
-      // Find the message by messageId (this might be the Message-ID header or UID)
-      const messages = await client.search({ header: { 'message-id': messageId } });
-      
-      if (!messages || messages.length === 0) {
-        console.log(`[IMAP-${config.name}] Message ${messageId} not found in INBOX`);
+      // The messageId is actually the UID, so we can directly use it
+      const uid = parseInt(messageId);
+      if (isNaN(uid)) {
+        console.log(`[IMAP-${config.name}] Invalid UID: ${messageId}`);
         continue; // Try next mailbox
       }
       
-      console.log(`[IMAP-${config.name}] Found message, moving to Trash`);
+      console.log(`[IMAP-${config.name}] Moving message UID ${uid} to Trash`);
       
-      // Move to Trash folder
-      await client.messageMove(messages as number[], 'Trash');
+      // Move to Trash folder using UID
+      await client.messageMove([uid], 'Trash', { uid: true });
       console.log(`[IMAP-${config.name}] Successfully moved email ${messageId} to Trash`);
       
       return true;
@@ -184,16 +183,16 @@ export async function archiveEmailViaImap(messageId: string, mailboxEmail?: stri
       client = await createImapConnection(config);
       
       await client.mailboxOpen('INBOX');
-      console.log(`[IMAP-${config.name}] Opened INBOX, searching for message ${messageId}`);
+      console.log(`[IMAP-${config.name}] Opened INBOX, archiving message ${messageId}`);
       
-      const messages = await client.search({ header: { 'message-id': messageId } });
-      
-      if (!messages || messages.length === 0) {
-        console.log(`[IMAP-${config.name}] Message ${messageId} not found in INBOX`);
-        continue;
+      // The messageId is actually the UID, so we can directly use it
+      const uid = parseInt(messageId);
+      if (isNaN(uid)) {
+        console.log(`[IMAP-${config.name}] Invalid UID: ${messageId}`);
+        continue; // Try next mailbox
       }
       
-      console.log(`[IMAP-${config.name}] Found message, moving to Archive`);
+      console.log(`[IMAP-${config.name}] Moving message UID ${uid} to Archive`);
       
       // Move to Archive folder (try different possible names)
       const archiveFolders = ['Archive', 'Archived', 'Archives'];
@@ -201,7 +200,7 @@ export async function archiveEmailViaImap(messageId: string, mailboxEmail?: stri
       
       for (const folder of archiveFolders) {
         try {
-          await client.messageMove(messages as number[], folder);
+          await client.messageMove([uid], folder, { uid: true });
           console.log(`[IMAP-${config.name}] Successfully moved email ${messageId} to ${folder}`);
           moved = true;
           break;
@@ -256,16 +255,16 @@ export async function markEmailAsSpamViaImap(messageId: string, mailboxEmail?: s
       client = await createImapConnection(config);
       
       await client.mailboxOpen('INBOX');
-      console.log(`[IMAP-${config.name}] Opened INBOX, searching for message ${messageId}`);
+      console.log(`[IMAP-${config.name}] Opened INBOX, marking message ${messageId} as spam`);
       
-      const messages = await client.search({ header: { 'message-id': messageId } });
-      
-      if (!messages || messages.length === 0) {
-        console.log(`[IMAP-${config.name}] Message ${messageId} not found in INBOX`);
-        continue;
+      // The messageId is actually the UID, so we can directly use it
+      const uid = parseInt(messageId);
+      if (isNaN(uid)) {
+        console.log(`[IMAP-${config.name}] Invalid UID: ${messageId}`);
+        continue; // Try next mailbox
       }
       
-      console.log(`[IMAP-${config.name}] Found message, moving to Spam`);
+      console.log(`[IMAP-${config.name}] Moving message UID ${uid} to Spam`);
       
       // Move to Spam folder (try different possible names)
       const spamFolders = ['Spam', 'Junk', 'Junk Email'];
@@ -273,7 +272,7 @@ export async function markEmailAsSpamViaImap(messageId: string, mailboxEmail?: s
       
       for (const folder of spamFolders) {
         try {
-          await client.messageMove(messages as number[], folder);
+          await client.messageMove([uid], folder, { uid: true });
           console.log(`[IMAP-${config.name}] Successfully moved email ${messageId} to ${folder}`);
           moved = true;
           break;
