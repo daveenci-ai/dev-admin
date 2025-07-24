@@ -310,27 +310,6 @@ export async function moveEmailToTrash(messageId: string, mailboxEmail?: string)
       
       const token = await getAccessToken(targetConfig);
       
-      // First, check if the email still exists by fetching it directly
-      const checkUrl = `https://mail.zoho.com/api/accounts/${targetConfig.accountId}/messages/${messageId}`;
-      try {
-        const checkResponse = await axios.get(checkUrl, {
-          headers: {
-            Authorization: `Zoho-oauthtoken ${token}`
-          }
-        });
-        console.log(`[Zoho-${targetConfig.name}] Email ${messageId} exists, current status:`, {
-          subject: checkResponse.data?.data?.subject || 'No subject',
-          fromAddress: checkResponse.data?.data?.fromAddress || 'Unknown sender', 
-          folderId: checkResponse.data?.data?.folderId || 'Unknown folder',
-          folderName: checkResponse.data?.data?.folderName || 'Unknown folder name'
-        });
-      } catch (checkError: any) {
-        console.log(`[Zoho-${targetConfig.name}] Email ${messageId} check failed:`, checkError.response?.status, checkError.response?.data);
-        if (checkError.response?.status === 404) {
-          throw new Error(`Email ${messageId} no longer exists - it may have already been deleted or moved`);
-        }
-      }
-      
       // Fix: Add folderId parameter to DELETE request (Zoho API requires it)
       const deleteUrl = `https://mail.zoho.com/api/accounts/${targetConfig.accountId}/messages/${messageId}?folderId=${targetConfig.folderId}`;
       
