@@ -345,6 +345,11 @@ async function fetchEmailsViaImap(config: ImapConfig, limit = 10): Promise<any[]
       const envelope = message.envelope;
       const flags = message.flags || new Set();
       
+      // Create a fast preview without additional IMAP calls
+      const fromName = envelope?.from?.[0]?.name || envelope?.from?.[0]?.address || 'Unknown sender';
+      const subject = envelope?.subject || 'No Subject';
+      const bodyContent = `Email from ${fromName} about ${subject}`;
+      
       // Convert IMAP message to our format
       const emailMessage = {
         messageId: message.uid?.toString() || `${Date.now()}-${Math.random()}`,
@@ -356,7 +361,7 @@ async function fetchEmailsViaImap(config: ImapConfig, limit = 10): Promise<any[]
         sentDateInGMT: message.internalDate instanceof Date ? message.internalDate.getTime().toString() : Date.now().toString(),
         isRead: !flags.has('\\Seen') ? false : true,
         flag: Array.from(flags).join(', '),
-        summary: `From: ${envelope?.from?.[0]?.name || envelope?.from?.[0]?.address} - ${envelope?.subject || 'No Subject'}`.substring(0, 100),
+        summary: bodyContent ? bodyContent.substring(0, 300) : 'No content available',
         mailboxName: config.name,
         mailboxEmail: config.email,
         calendarType: 0,
@@ -433,10 +438,10 @@ export async function getAllAccountsViaImap() {
     throw new Error('No IMAP configurations found');
   }
   
-  const accounts = [];
-  
-  for (const config of imapConfigs) {
+  // Fetch account stats from all mailboxes in parallel for better performance
+  const accountPromises = imapConfigs.map(async (config) => {
     try {
+      console.log(`[IMAP] Starting parallel stats fetch for ${config.email}`);
       const stats = await getMailboxStatsViaImap(config);
       
       // Create account object matching the REST API format
@@ -452,11 +457,17 @@ export async function getAllAccountsViaImap() {
         isDefault: config.email === 'anton.osipov@daveenci.ai' // Make Anton default
       };
       
-      accounts.push(account);
+      console.log(`[IMAP] Completed stats fetch for ${config.email}: ${stats.totalEmails}/${stats.unreadEmails}`);
+      return account;
     } catch (error: any) {
       console.error(`[IMAP] Error getting account info for ${config.email}:`, error.message);
+      return null;
     }
-  }
+  });
+  
+  // Wait for all account fetches to complete
+  const accountResults = await Promise.all(accountPromises);
+  const accounts = accountResults.filter(Boolean); // Remove null results
   
   console.log(`[IMAP] Found ${accounts.length} accounts with stats`);
   return { data: accounts };
@@ -471,16 +482,22 @@ export async function fetchAllEmailsViaImap(limit = 10) {
     throw new Error('No IMAP configurations found');
   }
   
-  const allEmails = [];
-  
-  for (const config of imapConfigs) {
+  // Fetch emails from all mailboxes in parallel for better performance
+  const emailPromises = imapConfigs.map(async (config) => {
     try {
+      console.log(`[IMAP] Starting parallel fetch for ${config.email}`);
       const emails = await fetchEmailsViaImap(config, limit);
-      allEmails.push(...emails);
+      console.log(`[IMAP] Completed fetch for ${config.email}: ${emails.length} emails`);
+      return emails;
     } catch (error: any) {
       console.error(`[IMAP] Error fetching emails for ${config.email}:`, error.message);
+      return [];
     }
-  }
+  });
+  
+  // Wait for all mailbox fetches to complete
+  const emailArrays = await Promise.all(emailPromises);
+  const allEmails = emailArrays.flat();
   
   // Sort all emails by date (newest first)
   allEmails.sort((a, b) => (b.receivedTime || 0) - (a.receivedTime || 0));

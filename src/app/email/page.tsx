@@ -274,10 +274,17 @@ export default function EmailPage() {
 
   // Handle mailbox filter selection
   const handleMailboxClick = (mailboxEmail: string) => {
+    console.log('[Mailbox Click] Clicked mailbox:', `"${mailboxEmail}"`, 'Currently selected:', `"${selectedMailbox}"`);
+    console.log('[Mailbox Click] Available emails before filter:', emails.length);
+    console.log('[Mailbox Click] Sample email mailboxEmails:', emails.slice(0, 3).map(e => e.mailboxEmail));
+    
     // If clicking the same mailbox, deselect it (show all emails)
     if (selectedMailbox === mailboxEmail) {
+      console.log('[Mailbox Click] Deselecting mailbox - showing all emails');
       setSelectedMailbox('');
     } else {
+      console.log('[Mailbox Click] Selecting new mailbox:', `"${mailboxEmail}"`);
+      console.log('[Mailbox Click] Emails matching this mailbox:', emails.filter(e => e.mailboxEmail === mailboxEmail).length);
       setSelectedMailbox(mailboxEmail);
     }
   };
@@ -295,11 +302,34 @@ export default function EmailPage() {
   };
 
   const handleArchive = async (email: EmailMessage) => {
+    // Determine if email is unread for count updates
+    const isUnread = email.isRead === false || email.flagInfo?.includes('unread');
+    
     try {
-      console.log('[Archive] Archiving email:', email.messageId);
-      console.log('[Archive] Current emails count before:', emails.length);
+      console.log('[Archive] Archiving email:', email.messageId, email.subject);
       
-      // Call API to actually archive the email in Zoho
+      // OPTIMISTIC UPDATE: Remove from UI and update counts immediately
+      setEmails(prevEmails => {
+        const filteredEmails = prevEmails.filter(e => e.messageId !== email.messageId);
+        console.log('[Archive] Removed from UI (optimistic)');
+        return filteredEmails;
+      });
+
+      // Update account counts optimistically
+      setAccounts(prevAccounts => {
+        return prevAccounts.map(account => {
+          if (account.emailAddress === email.mailboxEmail) {
+            return {
+              ...account,
+              totalEmails: Math.max(0, account.totalEmails - 1),
+              unreadEmails: isUnread ? Math.max(0, account.unreadEmails - 1) : account.unreadEmails
+            };
+          }
+          return account;
+        });
+      });
+
+      // Call API to actually archive the email in Zoho in background
       const response = await fetch('/api/email/archive', {
         method: 'POST',
         headers: {
@@ -314,31 +344,96 @@ export default function EmailPage() {
       const result = await response.json();
 
       if (result.success) {
-        console.log('[Archive] Email archived in Zoho successfully');
-        
-        // Remove from UI after successful archiving
-        setEmails(prevEmails => {
-          const filteredEmails = prevEmails.filter(e => e.messageId !== email.messageId);
-          console.log('[Archive] Emails count after filtering:', filteredEmails.length);
-          console.log('[Archive] Removed email with ID:', email.messageId);
-          return filteredEmails;
-        });
+        console.log('[Archive] Email archived in Zoho successfully (background)');
       } else {
         console.error('[Archive] API error:', result.error);
+        
+        // ROLLBACK: Restore email to UI and account counts if API call failed
+        setEmails(prevEmails => {
+          console.log('[Archive] Rolling back - restoring email to UI');
+          return [...prevEmails, email].sort((a, b) => {
+            const timeA = typeof a.receivedTime === 'number' ? a.receivedTime : 0;
+            const timeB = typeof b.receivedTime === 'number' ? b.receivedTime : 0;
+            return timeB - timeA;
+          });
+        });
+        
+        // Restore account counts
+        setAccounts(prevAccounts => {
+          return prevAccounts.map(account => {
+            if (account.emailAddress === email.mailboxEmail) {
+              return {
+                ...account,
+                totalEmails: account.totalEmails + 1,
+                unreadEmails: isUnread ? account.unreadEmails + 1 : account.unreadEmails
+              };
+            }
+            return account;
+          });
+        });
+        
         setError(`Failed to archive email: ${result.error}`);
       }
     } catch (error) {
       console.error('[Archive] Error archiving email:', error);
-      setError('Failed to archive email');
+      
+      // ROLLBACK: Restore email to UI and account counts if network error
+      setEmails(prevEmails => {
+        console.log('[Archive] Rolling back due to network error - restoring email to UI');
+        return [...prevEmails, email].sort((a, b) => {
+          const timeA = typeof a.receivedTime === 'number' ? a.receivedTime : 0;
+          const timeB = typeof b.receivedTime === 'number' ? b.receivedTime : 0;
+          return timeB - timeA;
+        });
+      });
+      
+      // Restore account counts
+      setAccounts(prevAccounts => {
+        return prevAccounts.map(account => {
+          if (account.emailAddress === email.mailboxEmail) {
+            return {
+              ...account,
+              totalEmails: account.totalEmails + 1,
+              unreadEmails: isUnread ? account.unreadEmails + 1 : account.unreadEmails
+            };
+          }
+          return account;
+        });
+      });
+      
+      setError('Failed to archive email - network error');
     }
   };
 
   const handleSpam = async (email: EmailMessage) => {
+    // Determine if email is unread for count updates
+    const isUnread = email.isRead === false || email.flagInfo?.includes('unread');
+    
     try {
-      console.log('[Spam] Marking email as spam:', email.messageId);
-      console.log('[Spam] Current emails count before:', emails.length);
+      console.log('[Spam] Marking email as spam:', email.messageId, email.subject);
       
-      // Call API to actually mark the email as spam in Zoho
+      // OPTIMISTIC UPDATE: Remove from UI and update counts immediately
+      setEmails(prevEmails => {
+        const filteredEmails = prevEmails.filter(e => e.messageId !== email.messageId);
+        console.log('[Spam] Removed from UI (optimistic)');
+        return filteredEmails;
+      });
+
+      // Update account counts optimistically
+      setAccounts(prevAccounts => {
+        return prevAccounts.map(account => {
+          if (account.emailAddress === email.mailboxEmail) {
+            return {
+              ...account,
+              totalEmails: Math.max(0, account.totalEmails - 1),
+              unreadEmails: isUnread ? Math.max(0, account.unreadEmails - 1) : account.unreadEmails
+            };
+          }
+          return account;
+        });
+      });
+
+      // Call API to actually mark the email as spam in Zoho in background
       const response = await fetch('/api/email/spam', {
         method: 'POST',
         headers: {
@@ -353,36 +448,97 @@ export default function EmailPage() {
       const result = await response.json();
 
       if (result.success) {
-        console.log('[Spam] Email marked as spam in Zoho successfully');
-        
-        // Remove from UI after successful spam marking
-        setEmails(prevEmails => {
-          const filteredEmails = prevEmails.filter(e => e.messageId !== email.messageId);
-          console.log('[Spam] Emails count after filtering:', filteredEmails.length);
-          console.log('[Spam] Marked email as spam with ID:', email.messageId);
-          return filteredEmails;
-        });
+        console.log('[Spam] Email marked as spam in Zoho successfully (background)');
       } else {
         console.error('[Spam] API error:', result.error);
+        
+        // ROLLBACK: Restore email to UI and account counts if API call failed
+        setEmails(prevEmails => {
+          console.log('[Spam] Rolling back - restoring email to UI');
+          return [...prevEmails, email].sort((a, b) => {
+            const timeA = typeof a.receivedTime === 'number' ? a.receivedTime : 0;
+            const timeB = typeof b.receivedTime === 'number' ? b.receivedTime : 0;
+            return timeB - timeA;
+          });
+        });
+        
+        // Restore account counts
+        setAccounts(prevAccounts => {
+          return prevAccounts.map(account => {
+            if (account.emailAddress === email.mailboxEmail) {
+              return {
+                ...account,
+                totalEmails: account.totalEmails + 1,
+                unreadEmails: isUnread ? account.unreadEmails + 1 : account.unreadEmails
+              };
+            }
+            return account;
+          });
+        });
+        
         setError(`Failed to mark email as spam: ${result.error}`);
       }
     } catch (error) {
       console.error('[Spam] Error marking email as spam:', error);
-      setError('Failed to mark email as spam');
+      
+      // ROLLBACK: Restore email to UI and account counts if network error
+      setEmails(prevEmails => {
+        console.log('[Spam] Rolling back due to network error - restoring email to UI');
+        return [...prevEmails, email].sort((a, b) => {
+          const timeA = typeof a.receivedTime === 'number' ? a.receivedTime : 0;
+          const timeB = typeof b.receivedTime === 'number' ? b.receivedTime : 0;
+          return timeB - timeA;
+        });
+      });
+      
+      // Restore account counts
+      setAccounts(prevAccounts => {
+        return prevAccounts.map(account => {
+          if (account.emailAddress === email.mailboxEmail) {
+            return {
+              ...account,
+              totalEmails: account.totalEmails + 1,
+              unreadEmails: isUnread ? account.unreadEmails + 1 : account.unreadEmails
+            };
+          }
+          return account;
+        });
+      });
+      
+      setError('Failed to mark email as spam - network error');
     }
   };
 
   const handleTrash = async (email: EmailMessage) => {
+    // Determine if email is unread for count updates
+    const isUnread = email.isRead === false || email.flagInfo?.includes('unread');
+    
     try {
-      console.log('[Trash] === TRASH FUNCTION CALLED ===');
-      console.log('[Trash] Received email messageId:', email.messageId);
-      console.log('[Trash] Received email mailboxEmail:', email.mailboxEmail);
-      console.log('[Trash] Received email subject:', email.subject);
-      console.log('[Trash] Received email from:', email.fromAddress);
-      console.log('[Trash] Full received email object:', email);
-      console.log('[Trash] Current emails count before:', emails.length);
+      console.log('[Trash] Deleting email:', email.messageId, email.subject);
       
-      // Call API to actually delete the email from Zoho
+      // OPTIMISTIC UPDATE: Remove from UI and update counts immediately
+      
+      setEmails(prevEmails => {
+        const filteredEmails = prevEmails.filter(e => e.messageId !== email.messageId);
+        console.log('[Trash] Removed from UI (optimistic)');
+        return filteredEmails;
+      });
+
+      // Update account counts optimistically
+      setAccounts(prevAccounts => {
+        return prevAccounts.map(account => {
+          if (account.emailAddress === email.mailboxEmail) {
+            return {
+              ...account,
+              totalEmails: Math.max(0, account.totalEmails - 1),
+              unreadEmails: isUnread ? Math.max(0, account.unreadEmails - 1) : account.unreadEmails
+            };
+          }
+          return account;
+        });
+      });
+
+      // Call API to actually delete the email from Zoho in background
       const response = await fetch('/api/email/delete', {
         method: 'DELETE',
         headers: {
@@ -397,22 +553,64 @@ export default function EmailPage() {
       const result = await response.json();
 
       if (result.success) {
-        console.log('[Trash] Email deleted from Zoho successfully');
-        
-        // Remove from UI after successful deletion
-        setEmails(prevEmails => {
-          const filteredEmails = prevEmails.filter(e => e.messageId !== email.messageId);
-          console.log('[Trash] Emails count after filtering:', filteredEmails.length);
-          console.log('[Trash] Removed email with ID:', email.messageId);
-          return filteredEmails;
-        });
+        console.log('[Trash] Email deleted from Zoho successfully (background)');
       } else {
         console.error('[Trash] API error:', result.error);
+        
+        // ROLLBACK: Restore email to UI and account counts if API call failed
+        setEmails(prevEmails => {
+          console.log('[Trash] Rolling back - restoring email to UI');
+          return [...prevEmails, email].sort((a, b) => {
+            const timeA = typeof a.receivedTime === 'number' ? a.receivedTime : 0;
+            const timeB = typeof b.receivedTime === 'number' ? b.receivedTime : 0;
+            return timeB - timeA;
+          });
+        });
+        
+        // Restore account counts
+        setAccounts(prevAccounts => {
+          return prevAccounts.map(account => {
+            if (account.emailAddress === email.mailboxEmail) {
+              return {
+                ...account,
+                totalEmails: account.totalEmails + 1,
+                unreadEmails: isUnread ? account.unreadEmails + 1 : account.unreadEmails
+              };
+            }
+            return account;
+          });
+        });
+        
         setError(`Failed to delete email: ${result.error}`);
       }
     } catch (error) {
       console.error('[Trash] Error trashing email:', error);
-      setError('Failed to delete email');
+      
+      // ROLLBACK: Restore email to UI and account counts if network error
+      setEmails(prevEmails => {
+        console.log('[Trash] Rolling back due to network error - restoring email to UI');
+        return [...prevEmails, email].sort((a, b) => {
+          const timeA = typeof a.receivedTime === 'number' ? a.receivedTime : 0;
+          const timeB = typeof b.receivedTime === 'number' ? b.receivedTime : 0;
+          return timeB - timeA;
+        });
+      });
+      
+      // Restore account counts
+      setAccounts(prevAccounts => {
+        return prevAccounts.map(account => {
+          if (account.emailAddress === email.mailboxEmail) {
+            return {
+              ...account,
+              totalEmails: account.totalEmails + 1,
+              unreadEmails: isUnread ? account.unreadEmails + 1 : account.unreadEmails
+            };
+          }
+          return account;
+        });
+      });
+      
+      setError('Failed to delete email - network error');
     }
   };
 
@@ -465,17 +663,41 @@ export default function EmailPage() {
     fetchStats();
   }, []);
 
+  // Debug when selectedMailbox changes
+  useEffect(() => {
+    console.log('[State Change] selectedMailbox changed to:', `"${selectedMailbox}"`);
+    console.log('[State Change] Total emails available:', emails.length);
+    if (selectedMailbox && emails.length > 0) {
+      const matchingEmails = emails.filter(email => {
+        const emailMailbox = email.mailboxEmail?.trim()?.toLowerCase();
+        const selectedMailboxLower = selectedMailbox?.trim()?.toLowerCase();
+        return emailMailbox === selectedMailboxLower;
+      });
+      console.log('[State Change] Emails that should match filter:', matchingEmails.length);
+      console.log('[State Change] Matching emails sample:', matchingEmails.slice(0, 2).map(e => ({ subject: e.subject, mailboxEmail: e.mailboxEmail })));
+    }
+  }, [selectedMailbox, emails]);
+
   // Filter emails based on selected mailbox
   const filteredEmails = selectedMailbox ? emails.filter(email => {
-    const matches = email.mailboxEmail === selectedMailbox;
-    if (!matches && selectedMailbox) {
-      console.log('[Filter Debug] Email mailbox:', email.mailboxEmail, 'vs selected:', selectedMailbox, 'match:', matches);
-    }
+    const emailMailbox = email.mailboxEmail?.trim()?.toLowerCase();
+    const selectedMailboxLower = selectedMailbox?.trim()?.toLowerCase();
+    const matches = emailMailbox === selectedMailboxLower;
+    
+    // if (!matches && selectedMailbox) {
+    //   console.log('[Filter Debug] Email mailbox:', `"${email.mailboxEmail}"`, 'vs selected:', `"${selectedMailbox}"`, 'match:', matches);
+    //   console.log('[Filter Debug] After normalization - Email:', `"${emailMailbox}"`, 'vs Selected:', `"${selectedMailboxLower}"`);
+    // }
     return matches;
   }) : emails;
   
   // Debug filtered emails count
-  console.log('[Filter Debug] Selected mailbox:', selectedMailbox, 'Total emails:', emails.length, 'Filtered emails:', filteredEmails.length);
+  console.log('[Filter Debug] Selected mailbox:', `"${selectedMailbox}"`, 'Total emails:', emails.length, 'Filtered emails:', filteredEmails.length);
+  
+  // Additional debug: show first few emails and their mailbox info
+  if (selectedMailbox && emails.length > 0) {
+    console.log('[Filter Debug] Available unique mailboxEmail values:', Array.from(new Set(emails.map(e => e.mailboxEmail).filter(Boolean))));
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -506,15 +728,21 @@ export default function EmailPage() {
               // Use stats directly from IMAP API
               const unreadCount = account.unreadEmails || 0;
               const totalCount = account.totalEmails || 0;
-              console.log(`[Frontend] Card for ${account.emailAddress}: unread=${unreadCount}, total=${totalCount}`, account);
+              // console.log(`[Frontend] Card for ${account.emailAddress}: unread=${unreadCount}, total=${totalCount}`, account);
               
               return (
                 <div 
                   key={account.accountId}
-                  onClick={() => handleMailboxClick(account.emailAddress)}
+                  onClick={(e) => {
+                    console.log(`[Card Click] Clicked on card for: "${account.emailAddress}"`);
+                    console.log(`[Card Click] Account name: "${account.mailboxName}"`);
+                    console.log(`[Card Click] Event target:`, e.target);
+                    console.log(`[Card Click] Current element:`, e.currentTarget);
+                    handleMailboxClick(account.emailAddress);
+                  }}
                   className={`bg-white p-4 rounded-lg shadow-sm border border-gray-200 transition-all duration-200 cursor-pointer border-b-2 ${
                     isActive 
-                      ? `${colorScheme.activeBg} ${colorScheme.activeBorder}` 
+                      ? `${colorScheme.activeBg} ${colorScheme.activeBorder} shadow-md scale-105` 
                       : `${colorScheme.hoverBg} ${colorScheme.borderColor}`
                   }`}
                 >
@@ -537,20 +765,36 @@ export default function EmailPage() {
         <Card className="p-6">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-semibold text-gray-900">
-              Recent Emails
-              {selectedMailbox && (
-                <span className="text-sm text-gray-500 ml-2">
-                  - {accounts.find(a => a.emailAddress === selectedMailbox)?.mailboxName || selectedMailbox}
-                </span>
+              {selectedMailbox ? (
+                <>
+                  <span className="text-blue-600">Filtered:</span> {accounts.find(a => a.emailAddress === selectedMailbox)?.mailboxName || selectedMailbox} Emails
+                </>
+              ) : (
+                'All Emails'
               )}
             </h2>
             <div className="flex items-center gap-3">
+              {selectedMailbox && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    console.log('[Show All] Clearing mailbox filter');
+                    setSelectedMailbox('');
+                  }}
+                  className="text-xs"
+                >
+                  <X className="w-3 h-3 mr-1" />
+                  Show All
+                </Button>
+              )}
               <Badge variant="secondary">
                 {filteredEmails.length} emails
                 <Button 
                   size="sm"
                   variant="ghost"
                   onClick={() => {
+                    console.log('[Refresh] Refreshing data, current selectedMailbox:', `"${selectedMailbox}"`);
                     fetchAccounts();
                     fetchEmails();
                     fetchStats();
@@ -584,13 +828,11 @@ export default function EmailPage() {
                   return timeB - timeA;
                 })
                 .map((email, index) => {
-                  // Reduced logging - only log first few emails to avoid console spam
-                  if (index < 3) console.log(`[Email Render] Rendering email ${index}:`, email.messageId, email.subject);
                   const isUnread = email.isRead === false || email.flagInfo?.includes('unread');
                   
                   return (
                     <div
-                      key={email.messageId}
+                      key={`${email.mailboxEmail}-${email.messageId}-${index}`}
                       className={`border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors ${
                         isUnread ? 'bg-blue-50 border-blue-200' : 'bg-white'
                       }`}
@@ -614,7 +856,7 @@ export default function EmailPage() {
                             <p className={`text-sm text-gray-600 mb-2 ${isUnread ? 'font-medium' : ''}`}>
                               From: {email.fromAddress}
                             </p>
-                            {email.summary && (
+                            {email.summary && email.summary !== 'No content available' && (
                               <p className="text-sm text-gray-500 line-clamp-2">
                                 {email.summary}
                               </p>
