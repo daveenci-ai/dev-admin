@@ -1,16 +1,4 @@
-import axios from 'axios';
 import { ImapFlow } from 'imapflow';
-
-// Define mailbox configuration
-interface MailboxConfig {
-  name: string;
-  email: string;
-  clientId: string;
-  clientSecret: string;
-  refreshToken: string;
-  accountId: string;
-  folderId: string;
-}
 
 // IMAP Configuration for each mailbox
 interface ImapConfig {
@@ -20,133 +8,71 @@ interface ImapConfig {
   password: string;
 }
 
-// Load all mailbox configurations from environment variables
-const getMailboxConfigs = (): MailboxConfig[] => {
-  const configs: MailboxConfig[] = [];
-  
-  // Anton's mailbox
-  if (process.env.ZOHO_ANTON_CLIENT_ID && process.env.ZOHO_ANTON_CLIENT_SECRET && process.env.ZOHO_ANTON_REFRESH_TOKEN) {
-    configs.push({
-      name: 'Anton Osipov',
-      email: 'anton.osipov@daveenci.ai',
-      clientId: process.env.ZOHO_ANTON_CLIENT_ID,
-      clientSecret: process.env.ZOHO_ANTON_CLIENT_SECRET,
-      refreshToken: process.env.ZOHO_ANTON_REFRESH_TOKEN,
-      accountId: process.env.ZOHO_ANTON_ACCOUNT_ID || '',
-      folderId: '' // Will be discovered dynamically
-    });
-  }
-  
-  // Astrid's mailbox
-  if (process.env.ZOHO_ASTRID_CLIENT_ID && process.env.ZOHO_ASTRID_CLIENT_SECRET && process.env.ZOHO_ASTRID_REFRESH_TOKEN) {
-    configs.push({
-      name: 'Astrid',
-      email: 'astrid@daveenci.ai',
-      clientId: process.env.ZOHO_ASTRID_CLIENT_ID,
-      clientSecret: process.env.ZOHO_ASTRID_CLIENT_SECRET,
-      refreshToken: process.env.ZOHO_ASTRID_REFRESH_TOKEN,
-      accountId: process.env.ZOHO_ASTRID_ACCOUNT_ID || '',
-      folderId: '' // Will be discovered dynamically
-    });
-  }
-  
-  // Hello mailbox
-  if (process.env.ZOHO_HELLO_CLIENT_ID && process.env.ZOHO_HELLO_CLIENT_SECRET && process.env.ZOHO_HELLO_REFRESH_TOKEN) {
-    configs.push({
-      name: 'Hello',
-      email: 'hello@daveenci.ai',
-      clientId: process.env.ZOHO_HELLO_CLIENT_ID,
-      clientSecret: process.env.ZOHO_HELLO_CLIENT_SECRET,
-      refreshToken: process.env.ZOHO_HELLO_REFRESH_TOKEN,
-      accountId: process.env.ZOHO_HELLO_ACCOUNT_ID || '',
-      folderId: '' // Will be discovered dynamically
-    });
-  }
-  
-  // Support mailbox
-  if (process.env.ZOHO_SUPPORT_CLIENT_ID && process.env.ZOHO_SUPPORT_CLIENT_SECRET && process.env.ZOHO_SUPPORT_REFRESH_TOKEN) {
-    configs.push({
-      name: 'Support',
-      email: 'support@daveenci.ai',
-      clientId: process.env.ZOHO_SUPPORT_CLIENT_ID,
-      clientSecret: process.env.ZOHO_SUPPORT_CLIENT_SECRET,
-      refreshToken: process.env.ZOHO_SUPPORT_REFRESH_TOKEN,
-      accountId: process.env.ZOHO_SUPPORT_ACCOUNT_ID || '',
-      folderId: '' // Will be discovered dynamically
-    });
-  }
-  
-  // Ops mailbox
-  if (process.env.ZOHO_OPS_CLIENT_ID && process.env.ZOHO_OPS_CLIENT_SECRET && process.env.ZOHO_OPS_REFRESH_TOKEN) {
-    configs.push({
-      name: 'Operations',
-      email: 'ops@daveenci.ai',
-      clientId: process.env.ZOHO_OPS_CLIENT_ID,
-      clientSecret: process.env.ZOHO_OPS_CLIENT_SECRET,
-      refreshToken: process.env.ZOHO_OPS_REFRESH_TOKEN,
-      accountId: process.env.ZOHO_OPS_ACCOUNT_ID || '',
-      folderId: '' // Will be discovered dynamically
-    });
-  }
-  
-  return configs;
-};
-
-// Cache access tokens per mailbox
-const accessTokenCache = new Map<string, { token: string; expiry: number }>();
-
-// Legacy environment variables for backward compatibility
-const {
-  ZOHO_CLIENT_ID,
-  ZOHO_CLIENT_SECRET,
-  ZOHO_REFRESH_TOKEN,
-  ZOHO_ACCOUNT_ID,
-  ZOHO_FOLDER_ID
-} = process.env;
-
 // Get IMAP configurations for all mailboxes
 const getImapConfigs = (): ImapConfig[] => {
+  console.log('[ENV-DEBUG] Starting getImapConfigs...');
+  console.log('[ENV-DEBUG] Environment check:');
+  console.log('[ENV-DEBUG] ZOHO_PASSWORD_ANTON exists:', !!process.env.ZOHO_PASSWORD_ANTON);
+  console.log('[ENV-DEBUG] ZOHO_PASSWORD_ASTRID exists:', !!process.env.ZOHO_PASSWORD_ASTRID);
+  console.log('[ENV-DEBUG] ZOHO_PASSWORD_OPS exists:', !!process.env.ZOHO_PASSWORD_OPS);
+  console.log('[ENV-DEBUG] ZOHO_PASSWORD_HELLO exists:', !!process.env.ZOHO_PASSWORD_HELLO);
+  
   const configs: ImapConfig[] = [];
   
   // Anton's IMAP config
   if (process.env.ZOHO_PASSWORD_ANTON) {
+    console.log('[ENV-DEBUG] Adding Anton config');
     configs.push({
       name: 'Anton Osipov',
       email: 'anton.osipov@daveenci.ai',
       user: 'anton.osipov@daveenci.ai',
       password: process.env.ZOHO_PASSWORD_ANTON
     });
+  } else {
+    console.log('[ENV-DEBUG] ZOHO_PASSWORD_ANTON not found');
   }
   
   // Astrid's IMAP config
   if (process.env.ZOHO_PASSWORD_ASTRID) {
+    console.log('[ENV-DEBUG] Adding Astrid config');
     configs.push({
       name: 'Astrid',
       email: 'astrid@daveenci.ai',
       user: 'astrid@daveenci.ai',
       password: process.env.ZOHO_PASSWORD_ASTRID
     });
+  } else {
+    console.log('[ENV-DEBUG] ZOHO_PASSWORD_ASTRID not found');
   }
   
   // Ops IMAP config
   if (process.env.ZOHO_PASSWORD_OPS) {
+    console.log('[ENV-DEBUG] Adding Ops config');
     configs.push({
       name: 'Ops',
       email: 'ops@daveenci.ai',
       user: 'ops@daveenci.ai',
       password: process.env.ZOHO_PASSWORD_OPS
     });
+  } else {
+    console.log('[ENV-DEBUG] ZOHO_PASSWORD_OPS not found');
   }
   
   // Hello IMAP config
   if (process.env.ZOHO_PASSWORD_HELLO) {
+    console.log('[ENV-DEBUG] Adding Hello config');
     configs.push({
       name: 'Hello',
       email: 'hello@daveenci.ai',
       user: 'hello@daveenci.ai',
       password: process.env.ZOHO_PASSWORD_HELLO
     });
+  } else {
+    console.log('[ENV-DEBUG] ZOHO_PASSWORD_HELLO not found');
   }
+  
+  console.log('[ENV-DEBUG] Total configs created:', configs.length);
+  console.log('[ENV-DEBUG] Config names:', configs.map(c => c.name));
   
   return configs;
 };
@@ -375,585 +301,187 @@ export async function markEmailAsSpamViaImap(messageId: string, mailboxEmail?: s
   throw new Error('Failed to mark email as spam - not found in any configured mailbox');
 }
 
-// Helper to refresh token for a specific mailbox
-async function getAccessToken(config: MailboxConfig): Promise<string> {
-  const now = Date.now();
-  const cacheKey = config.email;
+// IMAP function to fetch emails from INBOX
+async function fetchEmailsViaImap(config: ImapConfig, limit = 10): Promise<any[]> {
+  console.log(`[IMAP-${config.name}] Fetching ${limit} emails via IMAP...`);
   
-  console.log(`[Zoho-${config.name}] getAccessToken called`);
-  console.log(`[Zoho-${config.name}] Current time:`, new Date(now).toISOString());
-  
-  // Check cache
-  const cached = accessTokenCache.get(cacheKey);
-  if (cached && now < cached.expiry) {
-    console.log(`[Zoho-${config.name}] Using cached access token`);
-    return cached.token;
-  }
-
-  console.log(`[Zoho-${config.name}] Environment variables check:`);
-  console.log(`[Zoho-${config.name}] CLIENT_ID:`, config.clientId ? 'SET' : 'MISSING');
-  console.log(`[Zoho-${config.name}] CLIENT_SECRET:`, config.clientSecret ? 'SET' : 'MISSING');
-  console.log(`[Zoho-${config.name}] REFRESH_TOKEN:`, config.refreshToken ? 'SET' : 'MISSING');
-  console.log(`[Zoho-${config.name}] ACCOUNT_ID:`, config.accountId ? 'SET' : 'MISSING');
-  console.log(`[Zoho-${config.name}] FOLDER_ID:`, config.folderId ? 'SET' : 'MISSING');
-
-  if (!config.clientId || !config.clientSecret || !config.refreshToken) {
-    console.error(`[Zoho-${config.name}] Missing required credentials`);
-    throw new Error(`Missing Zoho credentials for ${config.email}`);
-  }
-
-  console.log(`[Zoho-${config.name}] Refreshing access token...`);
-  const url = 'https://accounts.zoho.com/oauth/v2/token';
-  const params = new URLSearchParams();
-  params.append('refresh_token', config.refreshToken);
-  params.append('client_id', config.clientId);
-  params.append('client_secret', config.clientSecret);
-  params.append('grant_type', 'refresh_token');
-
-  console.log(`[Zoho-${config.name}] Token refresh URL:`, url);
-  console.log(`[Zoho-${config.name}] Refresh token (first 20 chars):`, config.refreshToken.substring(0, 20) + '...');
-
-  try {
-    const response = await axios.post(url, params);
-    console.log(`[Zoho-${config.name}] Token refresh response status:`, response.status);
-    console.log(`[Zoho-${config.name}] Token refresh response:`, JSON.stringify(response.data, null, 2));
-    
-    const newToken = response.data.access_token;
-    const expiry = now + (response.data.expires_in - 60) * 1000; // minus 60s safety margin
-    
-    // Cache the token
-    accessTokenCache.set(cacheKey, { token: newToken, expiry });
-    
-    console.log(`[Zoho-${config.name}] New access token acquired (first 20 chars):`, newToken?.substring(0, 20) + '...');
-    console.log(`[Zoho-${config.name}] Token expires at:`, new Date(expiry).toISOString());
-    
-    return newToken;
-  } catch (error) {
-    console.error(`[Zoho-${config.name}] Error refreshing token - Full error:`, error);
-    
-    if (axios.isAxiosError(error)) {
-      console.error(`[Zoho-${config.name}] Token refresh status:`, error.response?.status);
-      console.error(`[Zoho-${config.name}] Token refresh error data:`, error.response?.data);
-    }
-    
-    throw new Error(`Failed to refresh Zoho access token for ${config.email}`);
-  }
-}
-
-// Legacy function for backward compatibility
-async function getLegacyAccessToken(): Promise<string> {
-  if (!ZOHO_CLIENT_ID || !ZOHO_CLIENT_SECRET || !ZOHO_REFRESH_TOKEN) {
-    throw new Error('Missing legacy Zoho credentials in environment variables');
-  }
-
-  const legacyConfig: MailboxConfig = {
-    name: 'Legacy',
-    email: 'legacy@daveenci.ai',
-    clientId: ZOHO_CLIENT_ID,
-    clientSecret: ZOHO_CLIENT_SECRET,
-    refreshToken: ZOHO_REFRESH_TOKEN,
-    accountId: ZOHO_ACCOUNT_ID || '',
-    folderId: ZOHO_FOLDER_ID || ''
-  };
-
-  return getAccessToken(legacyConfig);
-}
-
-// Fetch inbox messages (legacy function - uses first available mailbox or legacy config)
-export async function fetchInboxMessages(limit = 10) {
-  const mailboxConfigs = getMailboxConfigs();
-  
-  if (mailboxConfigs.length > 0) {
-    // Use first available mailbox
-    const config = mailboxConfigs[0];
-    console.log(`[Zoho] Using mailbox ${config.email} for fetchInboxMessages`);
-    
-    if (!config.accountId || !config.folderId) {
-      throw new Error(`Missing account or folder ID for ${config.email}`);
-    }
-
-    const token = await getAccessToken(config);
-    const url = `https://mail.zoho.com/api/accounts/${config.accountId}/messages/view?folderId=${config.folderId}&limit=${limit}`;
-    
-    try {
-      const { data } = await axios.get(url, {
-        headers: {
-          Authorization: `Zoho-oauthtoken ${token}`
-        }
-      });
-      return data;
-    } catch (error) {
-      console.error('[Zoho] Error fetching messages:', error);
-      throw new Error('Failed to fetch Zoho messages');
-    }
-  } else {
-    // Fall back to legacy credentials
-    if (!ZOHO_ACCOUNT_ID || !ZOHO_FOLDER_ID) {
-      throw new Error('Missing Zoho account or folder ID in environment variables');
-    }
-
-    const token = await getLegacyAccessToken();
-    const url = `https://mail.zoho.com/api/accounts/${ZOHO_ACCOUNT_ID}/messages/view?folderId=${ZOHO_FOLDER_ID}&limit=${limit}`;
-    
-    try {
-      const { data } = await axios.get(url, {
-        headers: {
-          Authorization: `Zoho-oauthtoken ${token}`
-        }
-      });
-      return data;
-    } catch (error) {
-      console.error('[Zoho] Error fetching messages:', error);
-      throw new Error('Failed to fetch Zoho messages');
-    }
-  }
-}
-
-// Fetch a specific message details
-export async function fetchMessageDetails(messageId: string) {
-  if (!ZOHO_ACCOUNT_ID) {
-    throw new Error('Missing Zoho account ID in environment variables');
-  }
-
-  const token = await getLegacyAccessToken();
-  const url = `https://mail.zoho.com/api/accounts/${ZOHO_ACCOUNT_ID}/messages/${messageId}`;
+  let client: ImapFlow | null = null;
   
   try {
-    const { data } = await axios.get(url, {
-      headers: {
-        Authorization: `Zoho-oauthtoken ${token}`
-      }
-    });
-    return data;
-  } catch (error) {
-    console.error('[Zoho] Error fetching message details:', error);
-    throw new Error('Failed to fetch message details');
-  }
-}
-
-// Send an email
-export async function sendEmail(emailData: {
-  to: string;
-  subject: string;
-  content: string;
-  cc?: string;
-  bcc?: string;
-}) {
-  if (!ZOHO_ACCOUNT_ID) {
-    throw new Error('Missing Zoho account ID in environment variables');
-  }
-
-  const token = await getLegacyAccessToken();
-  const url = `https://mail.zoho.com/api/accounts/${ZOHO_ACCOUNT_ID}/messages`;
-  
-  const payload = {
-    toAddress: emailData.to,
-    subject: emailData.subject,
-    content: emailData.content,
-    ...(emailData.cc && { ccAddress: emailData.cc }),
-    ...(emailData.bcc && { bccAddress: emailData.bcc })
-  };
-
-  try {
-    const { data } = await axios.post(url, payload, {
-      headers: {
-        Authorization: `Zoho-oauthtoken ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
-    return data;
-  } catch (error) {
-    console.error('[Zoho] Error sending email:', error);
-    throw new Error('Failed to send email');
-  }
-}
-
-// Get accounts from a specific mailbox
-async function getAccountsForMailbox(config: MailboxConfig) {
-  console.log(`[Zoho-${config.name}] Starting getAccountsForMailbox for ${config.email}...`);
-  
-  const token = await getAccessToken(config);
-  const url = 'https://mail.zoho.com/api/accounts';
-  
-  console.log(`[Zoho-${config.name}] Making request to:`, url);
-  console.log(`[Zoho-${config.name}] Using token (first 20 chars):`, token.substring(0, 20) + '...');
-  
-  try {
-    const response = await axios.get(url, {
-      headers: {
-        Authorization: `Zoho-oauthtoken ${token}`
-      }
-    });
+    client = await createImapConnection(config);
     
-    console.log(`[Zoho-${config.name}] Response status:`, response.status);
-    console.log(`[Zoho-${config.name}] Raw response data:`, JSON.stringify(response.data, null, 2));
+    // Open INBOX
+    const mailbox = await client.mailboxOpen('INBOX');
+    console.log(`[IMAP-${config.name}] INBOX opened, ${mailbox.exists} messages total`);
     
-    const accounts = response.data?.data || response.data;
-    
-    // Add mailbox info to each account
-    if (Array.isArray(accounts)) {
-      accounts.forEach((account: any) => {
-        account.mailboxName = config.name;
-        account.mailboxEmail = config.email;
-      });
+    if (mailbox.exists === 0) {
+      console.log(`[IMAP-${config.name}] No messages in INBOX`);
+      return [];
     }
     
-    console.log(`[Zoho-${config.name}] Number of accounts found:`, Array.isArray(accounts) ? accounts.length : 'Not an array');
+    // Get the most recent messages
+    const searchLimit = Math.min(limit, mailbox.exists);
+    const range = mailbox.exists > searchLimit ? 
+      `${mailbox.exists - searchLimit + 1}:${mailbox.exists}` : 
+      `1:${mailbox.exists}`;
     
-    return accounts;
-  } catch (error) {
-    console.error(`[Zoho-${config.name}] Error fetching accounts - Full error:`, error);
+    console.log(`[IMAP-${config.name}] Fetching messages in range: ${range}`);
     
-    if (axios.isAxiosError(error)) {
-      console.error(`[Zoho-${config.name}] Response status:`, error.response?.status);
-      console.error(`[Zoho-${config.name}] Response data:`, error.response?.data);
-    }
-    
-    throw new Error(`Failed to fetch Zoho accounts for ${config.email}`);
-  }
-}
-
-// Get all Zoho Mail accounts from all configured mailboxes
-export async function getAllAccounts() {
-  console.log('[Zoho] Starting getAllAccounts for all mailboxes...');
-  
-  const mailboxConfigs = getMailboxConfigs();
-  console.log('[Zoho] Found mailbox configurations:', mailboxConfigs.length);
-  
-  if (mailboxConfigs.length === 0) {
-    console.log('[Zoho] No mailbox configurations found, trying legacy credentials...');
-    
-    // Try legacy approach if no new configs
-    if (ZOHO_CLIENT_ID && ZOHO_CLIENT_SECRET && ZOHO_REFRESH_TOKEN) {
-      const legacyConfig: MailboxConfig = {
-        name: 'Legacy Account',
-        email: 'legacy@daveenci.ai',
-        clientId: ZOHO_CLIENT_ID,
-        clientSecret: ZOHO_CLIENT_SECRET,
-        refreshToken: ZOHO_REFRESH_TOKEN,
-        accountId: ZOHO_ACCOUNT_ID || '',
-        folderId: ZOHO_FOLDER_ID || ''
+    // Fetch message headers and flags
+    const messages = [];
+    for await (const message of client.fetch(range, {
+      envelope: true,
+      flags: true,
+      internalDate: true,
+      uid: true,
+      bodyStructure: true
+    })) {
+      const envelope = message.envelope;
+      const flags = message.flags || new Set();
+      
+      // Convert IMAP message to our format
+      const emailMessage = {
+        messageId: message.uid?.toString() || `${Date.now()}-${Math.random()}`,
+        subject: envelope?.subject || 'No Subject',
+        fromAddress: envelope?.from?.[0]?.address || 'unknown@example.com',
+        fromName: envelope?.from?.[0]?.name || envelope?.from?.[0]?.address || 'Unknown',
+        toAddress: envelope?.to?.[0]?.address || config.email,
+        receivedTime: message.internalDate instanceof Date ? message.internalDate.getTime() : Date.now(),
+        sentDateInGMT: message.internalDate instanceof Date ? message.internalDate.getTime().toString() : Date.now().toString(),
+        isRead: !flags.has('\\Seen') ? false : true,
+        flag: Array.from(flags).join(', '),
+        summary: `From: ${envelope?.from?.[0]?.name || envelope?.from?.[0]?.address} - ${envelope?.subject || 'No Subject'}`.substring(0, 100),
+        mailboxName: config.name,
+        mailboxEmail: config.email,
+        calendarType: 0,
+        size: 0 // IMAP doesn't easily provide size in this call
       };
       
-      const legacyAccounts = await getAccountsForMailbox(legacyConfig);
-      return { data: legacyAccounts };
-    } else {
-      throw new Error('No Zoho Mail configurations found');
+      messages.push(emailMessage);
     }
-  }
-  
-  const allAccounts: any[] = [];
-  const errors: string[] = [];
-  
-  // Fetch accounts from each mailbox
-  for (const config of mailboxConfigs) {
-    try {
-      console.log(`[Zoho] Fetching accounts for ${config.email}...`);
-      const accounts = await getAccountsForMailbox(config);
-      
-      if (Array.isArray(accounts)) {
-        allAccounts.push(...accounts);
-      } else {
-        allAccounts.push(accounts);
+    
+    // Sort by date (newest first) and limit
+    messages.sort((a, b) => (b.receivedTime || 0) - (a.receivedTime || 0));
+    const limitedMessages = messages.slice(0, limit);
+    
+    console.log(`[IMAP-${config.name}] Successfully fetched ${limitedMessages.length} messages`);
+    return limitedMessages;
+    
+  } catch (error: any) {
+    console.error(`[IMAP-${config.name}] Error fetching emails:`, error.message);
+    return [];
+  } finally {
+    if (client) {
+      try {
+        await client.logout();
+      } catch (e) {
+        console.log(`[IMAP-${config.name}] Error closing connection:`, e);
       }
-    } catch (error) {
-      const errorMsg = `Failed to fetch accounts for ${config.email}: ${error instanceof Error ? error.message : 'Unknown error'}`;
-      console.error('[Zoho]', errorMsg);
-      errors.push(errorMsg);
     }
   }
-  
-  console.log('[Zoho] Total accounts found across all mailboxes:', allAccounts.length);
-  console.log('[Zoho] Errors encountered:', errors.length);
-  
-  if (allAccounts.length === 0 && errors.length > 0) {
-    throw new Error(`Failed to fetch accounts from any mailbox: ${errors.join('; ')}`);
-  }
-  
-  return { 
-    data: allAccounts,
-    errors: errors.length > 0 ? errors : undefined
-  };
 }
 
-// Get folder statistics for a specific mailbox
-async function getFolderStatsForMailbox(config: MailboxConfig) {
-  console.log(`[Zoho-${config.name}] Getting folder stats for ${config.email}...`);
+// IMAP function to get mailbox statistics
+async function getMailboxStatsViaImap(config: ImapConfig): Promise<{totalEmails: number, unreadEmails: number}> {
+  console.log(`[IMAP-${config.name}] Getting mailbox stats via IMAP...`);
   
-  const token = await getAccessToken(config);
-  const url = `https://mail.zoho.com/api/accounts/${config.accountId}/folders`;
+  let client: ImapFlow | null = null;
   
   try {
-    const response = await axios.get(url, {
-      headers: {
-        Authorization: `Zoho-oauthtoken ${token}`
-      }
-    });
+    client = await createImapConnection(config);
     
-    console.log(`[Zoho-${config.name}] Folder stats response:`, JSON.stringify(response.data, null, 2));
+    // Open INBOX and get stats
+    const mailbox = await client.mailboxOpen('INBOX');
     
-    const folders = response.data?.data || [];
+    // Get unread count by searching for unseen messages
+    const unreadMessages = await client.search({ seen: false });
+    const unreadCount = Array.isArray(unreadMessages) ? unreadMessages.length : 0;
     
-    // Find inbox folder by name (could be "Inbox", "INBOX", etc.)
-    const inboxFolder = folders.find((f: any) => 
-      f.folderName?.toLowerCase() === 'inbox' || 
-      f.folderName === 'Inbox' ||
-      f.folderName === 'INBOX' ||
-      f.isSystemFolder === true ||
-      f.folderType === 'inbox'
-    );
-    
-    console.log(`[Zoho-${config.name}] Found inbox folder:`, JSON.stringify(inboxFolder, null, 2));
-    console.log(`[Zoho-${config.name}] All folders:`, folders.map((f: any) => ({ name: f.folderName, type: f.folderType, system: f.isSystemFolder, id: f.folderId, messageCount: f.messageCount, unreadCount: f.unreadCount })));
-    
-    // Update the config with the correct inbox folder ID for future use
-    if (inboxFolder && inboxFolder.folderId) {
-      config.folderId = inboxFolder.folderId;
-      console.log(`[Zoho-${config.name}] Updated folder ID to: ${config.folderId}`);
-    }
+    console.log(`[IMAP-${config.name}] Stats: ${mailbox.exists} total, ${unreadCount} unread`);
     
     return {
-      totalEmails: inboxFolder?.messageCount || 0,
-      unreadEmails: inboxFolder?.unreadCount || 0,
-      folders,
-      inboxFolderId: inboxFolder?.folderId
+      totalEmails: mailbox.exists || 0,
+      unreadEmails: unreadCount
     };
-  } catch (error) {
-    console.error(`[Zoho-${config.name}] Error fetching folder stats:`, error);
-    return { totalEmails: 0, unreadEmails: 0, folders: [], inboxFolderId: null };
+    
+  } catch (error: any) {
+    console.error(`[IMAP-${config.name}] Error getting stats:`, error.message);
+    return { totalEmails: 0, unreadEmails: 0 };
+  } finally {
+    if (client) {
+      try {
+        await client.logout();
+      } catch (e) {
+        console.log(`[IMAP-${config.name}] Error closing connection:`, e);
+      }
+    }
   }
 }
 
-// Get all accounts with folder statistics
-export async function getAllAccountsWithStats() {
-  console.log('[Zoho] Starting getAllAccountsWithStats for all mailboxes...');
+// IMAP function to get all accounts with stats
+export async function getAllAccountsViaImap() {
+  console.log('[IMAP] Getting all accounts via IMAP...');
   
-  const mailboxConfigs = getMailboxConfigs();
-  console.log('[Zoho] Found mailbox configurations:', mailboxConfigs.length);
+  const imapConfigs = getImapConfigs();
+  if (imapConfigs.length === 0) {
+    throw new Error('No IMAP configurations found');
+  }
   
-  if (mailboxConfigs.length === 0) {
-    console.log('[Zoho] No mailbox configurations found, trying legacy credentials...');
-    
-    // Try legacy approach if no new configs
-    if (ZOHO_CLIENT_ID && ZOHO_CLIENT_SECRET && ZOHO_REFRESH_TOKEN) {
-      const legacyConfig: MailboxConfig = {
-        name: 'Legacy Account',
-        email: 'legacy@daveenci.ai',
-        clientId: ZOHO_CLIENT_ID,
-        clientSecret: ZOHO_CLIENT_SECRET,
-        refreshToken: ZOHO_REFRESH_TOKEN,
-        accountId: ZOHO_ACCOUNT_ID || '',
-        folderId: ZOHO_FOLDER_ID || ''
+  const accounts = [];
+  
+  for (const config of imapConfigs) {
+    try {
+      const stats = await getMailboxStatsViaImap(config);
+      
+      // Create account object matching the REST API format
+      const account = {
+        accountId: `imap-${config.email}`,
+        accountName: config.name,
+        emailAddress: config.email,
+        accountDisplayName: config.name,
+        mailboxName: config.name,
+        mailboxEmail: config.email,
+        totalEmails: stats.totalEmails,
+        unreadEmails: stats.unreadEmails,
+        isDefault: config.email === 'anton.osipov@daveenci.ai' // Make Anton default
       };
       
-      const legacyAccounts = await getAccountsForMailbox(legacyConfig);
-      const legacyStats = await getFolderStatsForMailbox(legacyConfig);
-      
-      // Add stats to legacy accounts
-      if (Array.isArray(legacyAccounts)) {
-        legacyAccounts.forEach((account: any) => {
-          account.totalEmails = legacyStats.totalEmails;
-          account.unreadEmails = legacyStats.unreadEmails;
-        });
-      }
-      
-      return { data: legacyAccounts };
-    } else {
-      throw new Error('No Zoho Mail configurations found');
+      accounts.push(account);
+    } catch (error: any) {
+      console.error(`[IMAP] Error getting account info for ${config.email}:`, error.message);
     }
   }
   
-  const allAccounts: any[] = [];
-  const errors: string[] = [];
-  
-  // Fetch accounts and stats from each mailbox
-  for (const config of mailboxConfigs) {
-    try {
-      console.log(`[Zoho] Fetching accounts and stats for ${config.email}...`);
-      
-      // Get accounts and folder stats in parallel
-      const [accounts, folderStats] = await Promise.all([
-        getAccountsForMailbox(config),
-        getFolderStatsForMailbox(config)
-      ]);
-      
-      // Add folder stats to accounts
-      if (Array.isArray(accounts)) {
-        accounts.forEach((account: any) => {
-          account.totalEmails = folderStats.totalEmails;
-          account.unreadEmails = folderStats.unreadEmails;
-        });
-        allAccounts.push(...accounts);
-      } else if (accounts) {
-        accounts.totalEmails = folderStats.totalEmails;
-        accounts.unreadEmails = folderStats.unreadEmails;
-        allAccounts.push(accounts);
-      }
-    } catch (error) {
-      const errorMsg = `Failed to fetch accounts/stats for ${config.email}: ${error instanceof Error ? error.message : 'Unknown error'}`;
-      console.error('[Zoho]', errorMsg);
-      errors.push(errorMsg);
-    }
-  }
-  
-  console.log('[Zoho] Total accounts found across all mailboxes:', allAccounts.length);
-  console.log('[Zoho] Errors encountered:', errors.length);
-  
-  if (allAccounts.length === 0 && errors.length > 0) {
-    throw new Error(`Failed to fetch accounts from any mailbox: ${errors.join('; ')}`);
-  }
-  
-  return { 
-    data: allAccounts,
-    errors: errors.length > 0 ? errors : undefined
-  };
+  console.log(`[IMAP] Found ${accounts.length} accounts with stats`);
+  return { data: accounts };
 }
 
-// Get email statistics
-export async function getEmailStats() {
-  if (!ZOHO_ACCOUNT_ID) {
-    throw new Error('Missing Zoho account ID in environment variables');
-  }
-
-  const token = await getLegacyAccessToken();
-  const url = `https://mail.zoho.com/api/accounts/${ZOHO_ACCOUNT_ID}/folders`;
+// IMAP function to fetch all emails from all mailboxes
+export async function fetchAllEmailsViaImap(limit = 10) {
+  console.log('[IMAP] Fetching all emails via IMAP...');
   
-  try {
-    const { data } = await axios.get(url, {
-      headers: {
-        Authorization: `Zoho-oauthtoken ${token}`
-      }
-    });
-    return data;
-  } catch (error) {
-    console.error('[Zoho] Error fetching email stats:', error);
-    throw new Error('Failed to fetch email statistics');
-  }
-} 
-
-// Fetch emails from a specific mailbox
-async function fetchEmailsForMailbox(config: MailboxConfig, limit = 10) {
-  console.log(`[Zoho-${config.name}] Fetching emails for ${config.email}...`);
-  
-  // If no folder ID is set, get folder stats first to find the inbox
-  if (!config.folderId) {
-    console.log(`[Zoho-${config.name}] No folder ID set, getting folder stats first...`);
-    const folderStats = await getFolderStatsForMailbox(config);
-    if (!folderStats.inboxFolderId) {
-      throw new Error(`Could not find inbox folder for ${config.email}`);
-    }
-    config.folderId = folderStats.inboxFolderId;
-  }
-
-  if (!config.accountId || !config.folderId) {
-    throw new Error(`Missing account or folder ID for ${config.email}`);
-  }
-
-  const token = await getAccessToken(config);
-  const url = `https://mail.zoho.com/api/accounts/${config.accountId}/messages/view?folderId=${config.folderId}&limit=${limit}`;
-  
-  console.log(`[Zoho-${config.name}] Fetching emails from URL: ${url}`);
-  
-  try {
-    const { data } = await axios.get(url, {
-      headers: {
-        Authorization: `Zoho-oauthtoken ${token}`
-      }
-    });
-    
-    console.log(`[Zoho-${config.name}] Raw email data:`, JSON.stringify(data, null, 2));
-    
-    // Add mailbox information and read status to each email
-    if (data?.data && Array.isArray(data.data)) {
-      data.data.forEach((email: any) => {
-        email.mailboxName = config.name;
-        email.mailboxEmail = config.email;
-        
-        // Determine read status from various possible fields
-        email.isRead = email.isRead !== false && 
-                      !email.flag?.includes('unread') && 
-                      !email.flagInfo?.includes('unread') &&
-                      email.readStatus !== false &&
-                      email.status !== 'unread';
-        
-        // Extract flag information for debugging
-        email.flagInfo = email.flag || email.flagInfo || '';
-        
-        console.log(`[Zoho-${config.name}] Email ${email.messageId}: isRead=${email.isRead}, flag=${email.flag}, flagInfo=${email.flagInfo}`);
-      });
-    }
-    
-    console.log(`[Zoho-${config.name}] Found ${data?.data?.length || 0} emails`);
-    
-    return data?.data || [];
-  } catch (error) {
-    console.error(`[Zoho-${config.name}] Error fetching emails:`, error);
-    
-    if (axios.isAxiosError(error)) {
-      console.error(`[Zoho-${config.name}] Response status:`, error.response?.status);
-      console.error(`[Zoho-${config.name}] Response data:`, error.response?.data);
-    }
-    
-    return [];
-  }
-}
-
-// Fetch emails from all configured mailboxes
-export async function fetchAllInboxMessages(limit = 10) {
-  console.log('[Zoho] Starting fetchAllInboxMessages for all mailboxes...');
-  
-  const mailboxConfigs = getMailboxConfigs();
-  console.log('[Zoho] Found mailbox configurations:', mailboxConfigs.length);
-  
-  if (mailboxConfigs.length === 0) {
-    console.log('[Zoho] No mailbox configurations found, trying legacy...');
-    
-    // Fall back to legacy single mailbox
-    if (ZOHO_CLIENT_ID && ZOHO_CLIENT_SECRET && ZOHO_REFRESH_TOKEN && ZOHO_ACCOUNT_ID && ZOHO_FOLDER_ID) {
-      const legacyConfig: MailboxConfig = {
-        name: 'Legacy Account',
-        email: 'legacy@daveenci.ai',
-        clientId: ZOHO_CLIENT_ID,
-        clientSecret: ZOHO_CLIENT_SECRET,
-        refreshToken: ZOHO_REFRESH_TOKEN,
-        accountId: ZOHO_ACCOUNT_ID,
-        folderId: ZOHO_FOLDER_ID
-      };
-      
-      const legacyEmails = await fetchEmailsForMailbox(legacyConfig, limit);
-      return { data: legacyEmails };
-    } else {
-      throw new Error('No email configurations found');
-    }
+  const imapConfigs = getImapConfigs();
+  if (imapConfigs.length === 0) {
+    throw new Error('No IMAP configurations found');
   }
   
-  const allEmails: any[] = [];
-  const errors: string[] = [];
+  const allEmails = [];
   
-  // Fetch emails from each mailbox
-  for (const config of mailboxConfigs) {
+  for (const config of imapConfigs) {
     try {
-      const emails = await fetchEmailsForMailbox(config, limit);
+      const emails = await fetchEmailsViaImap(config, limit);
       allEmails.push(...emails);
-    } catch (error) {
-      const errorMsg = `Failed to fetch emails for ${config.email}: ${error instanceof Error ? error.message : 'Unknown error'}`;
-      console.error('[Zoho]', errorMsg);
-      errors.push(errorMsg);
+    } catch (error: any) {
+      console.error(`[IMAP] Error fetching emails for ${config.email}:`, error.message);
     }
   }
   
   // Sort all emails by date (newest first)
-  allEmails.sort((a, b) => {
-    const timeA = a.receivedTime || 0;
-    const timeB = b.receivedTime || 0;
-    return timeB - timeA;
-  });
+  allEmails.sort((a, b) => (b.receivedTime || 0) - (a.receivedTime || 0));
   
-  console.log('[Zoho] Total emails found across all mailboxes:', allEmails.length);
-  console.log('[Zoho] Errors encountered:', errors.length);
+  // Limit total results
+  const limitedEmails = allEmails.slice(0, limit * imapConfigs.length);
   
-  return { 
-    data: allEmails,
-    errors: errors.length > 0 ? errors : undefined
-  };
+  console.log(`[IMAP] Found ${limitedEmails.length} total emails from all mailboxes`);
+  return { data: limitedEmails };
 } 

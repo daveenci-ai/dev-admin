@@ -1,30 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { fetchAllInboxMessages } from '@/lib/zohoMail';
+import { fetchAllEmailsViaImap } from '@/lib/zohoMail';
 
-// Force dynamic rendering for this route
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
+  console.log('[API] /api/email/inbox - Starting request');
+  
   try {
-    const searchParams = request.nextUrl.searchParams;
-    const limit = parseInt(searchParams.get('limit') || '10');
-
-    const messages = await fetchAllInboxMessages(limit);
+    const url = new URL(request.url);
+    const limit = parseInt(url.searchParams.get('limit') || '10');
     
-    return NextResponse.json({
-      success: true,
-      data: messages,
-      count: messages?.data?.length || 0
+    console.log(`[API] Fetching inbox messages via IMAP with limit: ${limit}`);
+    
+    const emails = await fetchAllEmailsViaImap(limit);
+    
+    console.log(`[API] Successfully fetched ${emails.data?.length || 0} emails via IMAP`);
+    
+    return NextResponse.json({ 
+      success: true, 
+      ...emails 
     });
-  } catch (error) {
-    console.error('Error fetching inbox messages:', error);
+  } catch (error: any) {
+    console.error('[API] Error fetching inbox messages:', error);
     
-    return NextResponse.json(
-      { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Failed to fetch inbox messages' 
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({ 
+      success: false, 
+      error: error.message || 'Failed to fetch inbox messages'
+    }, { status: 500 });
   }
 } 
