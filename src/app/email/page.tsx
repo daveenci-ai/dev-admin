@@ -31,15 +31,19 @@ interface EmailStats {
 interface ZohoAccount {
   accountId: string;
   accountName: string;
-  primaryEmailAddress: string;
-  displayName: string;
-  isOrganizationAccount: boolean;
-  accountCreatedTime: string;
-  isActive: boolean;
-  mailboxName?: string;
-  mailboxEmail?: string;
-  unreadEmails?: number;
-  totalEmails?: number;
+  emailAddress: string;  // IMAP API uses emailAddress instead of primaryEmailAddress
+  accountDisplayName: string;  // IMAP API field
+  mailboxName: string;
+  mailboxEmail: string;
+  totalEmails: number;
+  unreadEmails: number;
+  isDefault: boolean;  // IMAP API field
+  // Legacy fields (optional for backward compatibility)
+  primaryEmailAddress?: string;
+  displayName?: string;
+  isOrganizationAccount?: boolean;
+  accountCreatedTime?: string;
+  isActive?: boolean;
 }
 
 export default function EmailPage() {
@@ -91,7 +95,8 @@ export default function EmailPage() {
       const result = await response.json();
       
       if (result.success) {
-        setEmails(result.data?.data || []);
+        // IMAP API returns emails directly in result.data
+        setEmails(result.data || []);
       } else {
         setError(result.error || 'Failed to fetch emails');
       }
@@ -110,14 +115,11 @@ export default function EmailPage() {
       const result = await response.json();
       
       if (result.success) {
-        // Process folder data to get stats
-        const folders = result.data?.data || [];
-        const inboxFolder = folders.find((f: any) => f.folderName === 'Inbox');
-        
+        // IMAP API returns total stats directly
         setStats({
-          totalEmails: inboxFolder?.messageCount || 0,
-          unreadEmails: inboxFolder?.unreadCount || 0,
-          sentEmails: folders.find((f: any) => f.folderName === 'Sent')?.messageCount || 0
+          totalEmails: result.data?.totalEmails || 0,
+          unreadEmails: result.data?.unreadEmails || 0,
+          sentEmails: 0 // IMAP doesn't track sent folder in current implementation
         });
       }
     } catch (err) {
@@ -133,10 +135,10 @@ export default function EmailPage() {
       const result = await response.json();
       console.log('[Frontend] Accounts API response:', result);
       console.log('[Frontend] Accounts data:', result.data);
-      console.log('[Frontend] Accounts data.data:', result.data?.data);
       
       if (result.success) {
-        const accountsData = result.data?.data || [];
+        // IMAP API returns accounts directly in result.data
+        const accountsData = result.data || [];
         console.log('[Frontend] Setting accounts:', accountsData);
         console.log('[Frontend] First account sample:', accountsData[0]);
         setAccounts(accountsData);
@@ -471,8 +473,8 @@ export default function EmailPage() {
         {accounts.length > 0 && (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6 mt-6">
             {accounts.map((account) => {
-              const isActive = selectedMailbox === account.primaryEmailAddress;
-              const mailboxName = account.mailboxName || account.displayName || account.accountName;
+              const isActive = selectedMailbox === account.emailAddress;
+              const mailboxName = account.mailboxName || account.accountDisplayName || account.accountName;
               const colors = {
                 'anton.osipov@daveenci.ai': { color: 'text-blue-600', bgColor: 'hover:bg-blue-50', borderColor: 'border-b-blue-500', activeBg: 'bg-blue-50', activeBorder: 'border-blue-500' },
                 'astrid@daveenci.ai': { color: 'text-purple-600', bgColor: 'hover:bg-purple-50', borderColor: 'border-b-purple-500', activeBg: 'bg-purple-50', activeBorder: 'border-purple-500' },
@@ -481,19 +483,17 @@ export default function EmailPage() {
                 'ops@daveenci.ai': { color: 'text-red-600', bgColor: 'hover:bg-red-50', borderColor: 'border-b-red-500', activeBg: 'bg-red-50', activeBorder: 'border-red-500' }
               };
               
-              const colorScheme = colors[account.primaryEmailAddress as keyof typeof colors] || colors['anton.osipov@daveenci.ai'];
+              const colorScheme = colors[account.emailAddress as keyof typeof colors] || colors['anton.osipov@daveenci.ai'];
               
-              // Get email stats for this mailbox (placeholder - will be updated with real data)
-                             // Get actual email counts from loaded emails
-               const emailCounts = getEmailCountsForMailbox(account.primaryEmailAddress);
-               const unreadCount = emailCounts.unread;
-               const totalCount = emailCounts.total;
-               console.log(`[Frontend] Card for ${account.primaryEmailAddress}: unread=${unreadCount}, total=${totalCount}`, account);
+              // Use stats directly from IMAP API
+              const unreadCount = account.unreadEmails || 0;
+              const totalCount = account.totalEmails || 0;
+              console.log(`[Frontend] Card for ${account.emailAddress}: unread=${unreadCount}, total=${totalCount}`, account);
               
               return (
                 <div 
                   key={account.accountId}
-                  onClick={() => handleMailboxClick(account.primaryEmailAddress)}
+                  onClick={() => handleMailboxClick(account.emailAddress)}
                   className={`bg-white p-4 rounded-lg shadow-sm border border-gray-200 transition-all duration-200 cursor-pointer border-b-2 ${
                     isActive 
                       ? `${colorScheme.activeBg} ${colorScheme.activeBorder}` 
@@ -506,8 +506,8 @@ export default function EmailPage() {
                   <div className="text-xs font-medium text-gray-500 uppercase tracking-wide truncate">
                     {mailboxName?.toUpperCase() || 'MAILBOX'}
                   </div>
-                  <div className="text-xs text-gray-400 truncate" title={account.primaryEmailAddress}>
-                    {account.primaryEmailAddress}
+                  <div className="text-xs text-gray-400 truncate" title={account.emailAddress}>
+                    {account.emailAddress}
                   </div>
                 </div>
               );
