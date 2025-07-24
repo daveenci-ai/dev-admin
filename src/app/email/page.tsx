@@ -362,7 +362,12 @@ export default function EmailPage() {
 
   const handleTrash = async (email: EmailMessage) => {
     try {
-      console.log('[Trash] Trashing email:', email.messageId);
+      console.log('[Trash] === TRASH FUNCTION CALLED ===');
+      console.log('[Trash] Received email messageId:', email.messageId);
+      console.log('[Trash] Received email mailboxEmail:', email.mailboxEmail);
+      console.log('[Trash] Received email subject:', email.subject);
+      console.log('[Trash] Received email from:', email.fromAddress);
+      console.log('[Trash] Full received email object:', email);
       console.log('[Trash] Current emails count before:', emails.length);
       
       // Call API to actually delete the email from Zoho
@@ -696,7 +701,12 @@ export default function EmailPage() {
                             size="sm"
                             variant="outline"
                             onClick={(e) => {
-                              console.log('[Button Click] Trash button clicked for email:', email.messageId);
+                              console.log('[Button Click] Trash button clicked');
+                              console.log('[Button Click] Email messageId:', email.messageId);
+                              console.log('[Button Click] Email mailboxEmail:', email.mailboxEmail);
+                              console.log('[Button Click] Email subject:', email.subject);
+                              console.log('[Button Click] Email from:', email.fromAddress);
+                              console.log('[Button Click] Full email object:', email);
                               e.stopPropagation();
                               handleTrash(email);
                             }}
