@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { archiveEmail } from '@/lib/zohoMail';
+import { archiveEmailViaImap } from '@/lib/zohoMail';
 
-// Force dynamic rendering for this route
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
@@ -11,28 +10,36 @@ export async function POST(request: NextRequest) {
     const { messageId, mailboxEmail } = await request.json();
     
     if (!messageId) {
-      return NextResponse.json(
-        { success: false, error: 'Message ID is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ 
+        success: false, 
+        error: 'Message ID is required' 
+      }, { status: 400 });
     }
 
-    console.log('[API] Archiving email with ID:', messageId, 'from mailbox:', mailboxEmail);
-    
-    const result = await archiveEmail(messageId, mailboxEmail);
-    
-    console.log('[API] Email archived successfully:', result);
-    
-    return NextResponse.json({
-      success: true,
-      data: result
-    });
-  } catch (error) {
+    console.log(`[API] Archiving email with ID: ${messageId} from mailbox: ${mailboxEmail}`);
+
+    // Use IMAP to archive the email
+    const success = await archiveEmailViaImap(messageId, mailboxEmail);
+
+    if (success) {
+      console.log('[API] Email archived successfully via IMAP');
+      return NextResponse.json({ 
+        success: true, 
+        message: 'Email archived successfully' 
+      });
+    } else {
+      console.log('[API] Failed to archive email via IMAP');
+      return NextResponse.json({ 
+        success: false, 
+        error: 'Failed to archive email' 
+      }, { status: 500 });
+    }
+
+  } catch (error: any) {
     console.error('[API] Error archiving email:', error);
-    
-    return NextResponse.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to archive email'
+    return NextResponse.json({ 
+      success: false, 
+      error: error.message || 'Failed to archive email'
     }, { status: 500 });
   }
 } 

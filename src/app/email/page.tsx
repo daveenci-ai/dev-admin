@@ -455,7 +455,7 @@ export default function EmailPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
         {/* Error Alert */}
         {error && (
           <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4 flex items-center">
@@ -467,12 +467,9 @@ export default function EmailPage() {
           </div>
         )}
 
-
-
         {/* Mailbox Filter Cards */}
         {accounts.length > 0 && (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
-            {/* Individual Mailbox Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6 mt-6">
             {accounts.map((account) => {
               const isActive = selectedMailbox === account.primaryEmailAddress;
               const mailboxName = account.mailboxName || account.displayName || account.accountName;
