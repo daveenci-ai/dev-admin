@@ -466,7 +466,16 @@ export default function EmailPage() {
   }, []);
 
   // Filter emails based on selected mailbox
-  const filteredEmails = selectedMailbox ? emails.filter(email => email.mailboxEmail === selectedMailbox) : emails;
+  const filteredEmails = selectedMailbox ? emails.filter(email => {
+    const matches = email.mailboxEmail === selectedMailbox;
+    if (!matches && selectedMailbox) {
+      console.log('[Filter Debug] Email mailbox:', email.mailboxEmail, 'vs selected:', selectedMailbox, 'match:', matches);
+    }
+    return matches;
+  }) : emails;
+  
+  // Debug filtered emails count
+  console.log('[Filter Debug] Selected mailbox:', selectedMailbox, 'Total emails:', emails.length, 'Filtered emails:', filteredEmails.length);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -485,11 +494,11 @@ export default function EmailPage() {
               const isActive = selectedMailbox === account.emailAddress;
               const mailboxName = account.mailboxName || account.accountDisplayName || account.accountName;
               const colors = {
-                'anton.osipov@daveenci.ai': { color: 'text-blue-600', bgColor: 'hover:bg-blue-50', borderColor: 'border-b-blue-500', activeBg: 'bg-blue-50', activeBorder: 'border-blue-500' },
-                'astrid@daveenci.ai': { color: 'text-purple-600', bgColor: 'hover:bg-purple-50', borderColor: 'border-b-purple-500', activeBg: 'bg-purple-50', activeBorder: 'border-purple-500' },
-                'hello@daveenci.ai': { color: 'text-green-600', bgColor: 'hover:bg-green-50', borderColor: 'border-b-green-500', activeBg: 'bg-green-50', activeBorder: 'border-green-500' },
-                'support@daveenci.ai': { color: 'text-yellow-600', bgColor: 'hover:bg-yellow-50', borderColor: 'border-b-yellow-500', activeBg: 'bg-yellow-50', activeBorder: 'border-yellow-500' },
-                'ops@daveenci.ai': { color: 'text-red-600', bgColor: 'hover:bg-red-50', borderColor: 'border-b-red-500', activeBg: 'bg-red-50', activeBorder: 'border-red-500' }
+                'anton.osipov@daveenci.ai': { color: 'text-blue-600', hoverBg: 'hover:bg-blue-50', borderColor: 'border-b-blue-500', activeBg: 'bg-blue-100', activeBorder: 'border-b-blue-600' },
+                'astrid@daveenci.ai': { color: 'text-purple-600', hoverBg: 'hover:bg-purple-50', borderColor: 'border-b-purple-500', activeBg: 'bg-purple-100', activeBorder: 'border-b-purple-600' },
+                'hello@daveenci.ai': { color: 'text-green-600', hoverBg: 'hover:bg-green-50', borderColor: 'border-b-green-500', activeBg: 'bg-green-100', activeBorder: 'border-b-green-600' },
+                'support@daveenci.ai': { color: 'text-yellow-600', hoverBg: 'hover:bg-yellow-50', borderColor: 'border-b-yellow-500', activeBg: 'bg-yellow-100', activeBorder: 'border-b-yellow-600' },
+                'ops@daveenci.ai': { color: 'text-red-600', hoverBg: 'hover:bg-red-50', borderColor: 'border-b-red-500', activeBg: 'bg-red-100', activeBorder: 'border-b-red-600' }
               };
               
               const colorScheme = colors[account.emailAddress as keyof typeof colors] || colors['anton.osipov@daveenci.ai'];
@@ -506,7 +515,7 @@ export default function EmailPage() {
                   className={`bg-white p-4 rounded-lg shadow-sm border border-gray-200 transition-all duration-200 cursor-pointer border-b-2 ${
                     isActive 
                       ? `${colorScheme.activeBg} ${colorScheme.activeBorder}` 
-                      : `${colorScheme.bgColor} ${colorScheme.borderColor}`
+                      : `${colorScheme.hoverBg} ${colorScheme.borderColor}`
                   }`}
                 >
                   <div className={`text-xl font-bold ${colorScheme.color} mb-1`}>

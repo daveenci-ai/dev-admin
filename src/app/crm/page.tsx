@@ -417,70 +417,70 @@ export default function CRMPage() {
       value: stats.churned,
       status: 'churned', 
       color: 'text-black',
-      bgColor: 'hover:bg-gray-100',
+      hoverBg: 'hover:bg-gray-100',
       borderColor: 'border-b-black',
-      activeBg: 'bg-gray-100',
-      activeBorder: 'border-black'
+      activeBg: 'bg-gray-200',
+      activeBorder: 'border-b-black'
     },
     { 
       label: 'DECLINED', 
       value: stats.declined,
       status: 'declined', 
       color: 'text-red-600',
-      bgColor: 'hover:bg-red-50',
+      hoverBg: 'hover:bg-red-50',
       borderColor: 'border-b-red-500',
-      activeBg: 'bg-red-50',
-      activeBorder: 'border-red-500'
+      activeBg: 'bg-red-100',
+      activeBorder: 'border-b-red-600'
     },
     { 
       label: 'UNQUALIFIED', 
       value: stats.unqualified,
       status: 'unqualified', 
       color: 'text-gray-600',
-      bgColor: 'hover:bg-gray-50',
+      hoverBg: 'hover:bg-gray-50',
       borderColor: 'border-b-gray-400',
-      activeBg: 'bg-gray-50',
-      activeBorder: 'border-gray-400'
+      activeBg: 'bg-gray-100',
+      activeBorder: 'border-b-gray-500'
     },
     { 
       label: 'PROSPECTS', 
       value: stats.prospects,
       status: 'prospect', 
       color: 'text-blue-600',
-      bgColor: 'hover:bg-blue-50',
+      hoverBg: 'hover:bg-blue-50',
       borderColor: 'border-b-blue-500',
-      activeBg: 'bg-blue-50',
-      activeBorder: 'border-blue-500'
+      activeBg: 'bg-blue-100',
+      activeBorder: 'border-b-blue-600'
     },
     { 
       label: 'LEADS', 
       value: stats.leads,
       status: 'lead', 
       color: 'text-yellow-600',
-      bgColor: 'hover:bg-yellow-50',
+      hoverBg: 'hover:bg-yellow-50',
       borderColor: 'border-b-yellow-500',
-      activeBg: 'bg-yellow-50',
-      activeBorder: 'border-yellow-500'
+      activeBg: 'bg-yellow-100',
+      activeBorder: 'border-b-yellow-600'
     },
     { 
       label: 'OPPORTUNITIES', 
       value: stats.opportunities,
       status: 'opportunity', 
       color: 'text-green-500',
-      bgColor: 'hover:bg-green-50',
+      hoverBg: 'hover:bg-green-50',
       borderColor: 'border-b-green-400',
-      activeBg: 'bg-green-50',
-      activeBorder: 'border-green-400'
+      activeBg: 'bg-green-100',
+      activeBorder: 'border-b-green-500'
     },
     { 
       label: 'CLIENTS', 
       value: stats.clients,
       status: 'client', 
       color: 'text-green-700',
-      bgColor: 'hover:bg-green-50',
+      hoverBg: 'hover:bg-green-50',
       borderColor: 'border-b-green-600',
-      activeBg: 'bg-green-50',
-      activeBorder: 'border-green-600'
+      activeBg: 'bg-green-100',
+      activeBorder: 'border-b-green-700'
     }
   ]
 
@@ -497,7 +497,7 @@ export default function CRMPage() {
               className={`bg-white p-4 rounded-lg shadow-sm border border-gray-200 transition-all duration-200 cursor-pointer border-b-2 ${
                 isActive 
                   ? `${stat.activeBg} ${stat.activeBorder}` 
-                  : `${stat.bgColor} ${stat.borderColor}`
+                  : `${stat.hoverBg} ${stat.borderColor}`
               }`}
             >
               <div className={`text-xl font-bold ${stat.color} mb-1`}>{stat.value}</div>
