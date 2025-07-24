@@ -331,7 +331,11 @@ export async function moveEmailToTrash(messageId: string, mailboxEmail?: string)
         }
       }
       
-      const deleteUrl = `https://mail.zoho.com/api/accounts/${targetConfig.accountId}/messages/${messageId}`;
+      // Fix: Add folderId parameter to DELETE request (Zoho API requires it)
+      const deleteUrl = `https://mail.zoho.com/api/accounts/${targetConfig.accountId}/messages/${messageId}?folderId=${targetConfig.folderId}`;
+      
+      console.log(`[Zoho-${targetConfig.name}] About to DELETE email ${messageId} from account ${targetConfig.accountId}, folder ${targetConfig.folderId}`);
+      console.log(`[Zoho-${targetConfig.name}] DELETE URL: ${deleteUrl}`);
       
       const { data } = await axios.delete(deleteUrl, {
         headers: {
@@ -359,7 +363,10 @@ export async function moveEmailToTrash(messageId: string, mailboxEmail?: string)
       console.log(`[Zoho-${config.name}] Attempting to move email ${messageId} to trash using DELETE`);
       
       const token = await getAccessToken(config);
-      const deleteUrl = `https://mail.zoho.com/api/accounts/${config.accountId}/messages/${messageId}`;
+      // Fix: Add folderId parameter to DELETE request (Zoho API requires it)
+      const deleteUrl = `https://mail.zoho.com/api/accounts/${config.accountId}/messages/${messageId}?folderId=${config.folderId}`;
+      
+      console.log(`[Zoho-${config.name}] DELETE URL: ${deleteUrl}`);
       
       const { data } = await axios.delete(deleteUrl, {
         headers: {
