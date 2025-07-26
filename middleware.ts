@@ -3,31 +3,49 @@ import { NextResponse } from 'next/server'
 
 export default withAuth(
   function middleware(req) {
+    const { pathname } = req.nextUrl
+    
+    // Debug logging for production
+    console.log(`[MIDDLEWARE] Request to: ${pathname}`)
+    console.log(`[MIDDLEWARE] User authenticated: ${!!req.nextauth.token}`)
+    
     // If we reach here, the user is authenticated
     return NextResponse.next()
   },
   {
     callbacks: {
-      authorized: ({ token }) => {
-        // Only allow access if user has a valid token
-        // The token exists only if user is validated in database
-        return !!token
+      authorized: ({ token, req }) => {
+        const { pathname } = req.nextUrl
+        
+        // Always allow auth routes
+        if (pathname.startsWith('/api/auth') || pathname === '/auth/login') {
+          return true
+        }
+        
+        // For all other routes, require authentication
+        const isAuthenticated = !!token
+        
+        console.log(`[AUTH] Path: ${pathname}, Token exists: ${isAuthenticated}`)
+        
+        if (!isAuthenticated) {
+          console.log(`[AUTH] DENYING access to ${pathname} - no token`)
+          return false
+        }
+        
+        console.log(`[AUTH] ALLOWING access to ${pathname}`)
+        return true
       },
     },
   }
 )
 
-// Protect all routes except login and API auth routes
+// Protect ALL routes - be extremely explicit
 export const config = {
   matcher: [
     /*
-     * Match all request paths except for the ones starting with:
-     * - api/auth (NextAuth API routes)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - auth/login (login page)
+     * Match all request paths except for static files and images.
+     * This is the most restrictive matcher possible.
      */
-    '/((?!api/auth|_next/static|_next/image|favicon.ico|auth/login).*)',
+    '/((?!_next/static|_next/image|favicon.ico).*)',
   ],
 } 
