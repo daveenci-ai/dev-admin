@@ -514,27 +514,9 @@ export async function fetchAllEmailsViaImap(limit = 10) {
   return { data: limitedEmails };
 }
 
-// Fetch full email body for a specific message with timeout protection
+// Fetch full email body for a specific message
 export async function fetchEmailBodyViaImap(messageId: string, mailboxEmail: string): Promise<string> {
   console.log(`[IMAP Body] Fetching body for message ${messageId} from ${mailboxEmail}`);
-  
-  // Add timeout protection to prevent hanging connections
-  const timeoutPromise = new Promise<string>((_, reject) => {
-    setTimeout(() => reject(new Error('IMAP operation timed out after 30 seconds')), 30000);
-  });
-  
-  const fetchPromise = fetchEmailBodyViaImapInternal(messageId, mailboxEmail);
-  
-  try {
-    return await Promise.race([fetchPromise, timeoutPromise]);
-  } catch (error) {
-    console.error(`[IMAP Body] Timeout or error in main function:`, error);
-    throw error;
-  }
-}
-
-// Internal function with the actual IMAP logic
-async function fetchEmailBodyViaImapInternal(messageId: string, mailboxEmail: string): Promise<string> {
   
   const imapConfigs = getImapConfigs();
   const config = imapConfigs.find(c => c.email === mailboxEmail);
@@ -656,10 +638,23 @@ async function fetchEmailBodyViaImapInternal(messageId: string, mailboxEmail: st
     if (client) {
       try {
         console.log(`[IMAP Body] Closing connection for ${config.name}...`);
-        await client.logout();
+        
+        // Add timeout to just the logout operation
+        const logoutPromise = client.logout();
+        const logoutTimeout = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Logout timeout')), 5000);
+        });
+        
+        await Promise.race([logoutPromise, logoutTimeout]);
         console.log(`[IMAP Body] ✅ Connection successfully closed for ${config.name}`);
       } catch (error) {
-        console.error(`[IMAP Body] ❌ Error closing connection for ${config.name}:`, error);
+        console.error(`[IMAP Body] ❌ Error/timeout closing connection for ${config.name}:`, error);
+        // Force close the connection if logout hangs
+        try {
+          (client as any).close();
+        } catch (forceCloseError) {
+          console.log(`[IMAP Body] Force close attempted for ${config.name}`);
+        }
       }
     } else {
       console.log(`[IMAP Body] No client to close for ${config.name}`);
