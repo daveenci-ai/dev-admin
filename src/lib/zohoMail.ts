@@ -514,9 +514,27 @@ export async function fetchAllEmailsViaImap(limit = 10) {
   return { data: limitedEmails };
 }
 
-// Fetch full email body for a specific message
+// Fetch full email body for a specific message with timeout protection
 export async function fetchEmailBodyViaImap(messageId: string, mailboxEmail: string): Promise<string> {
   console.log(`[IMAP Body] Fetching body for message ${messageId} from ${mailboxEmail}`);
+  
+  // Add timeout protection to prevent hanging connections
+  const timeoutPromise = new Promise<string>((_, reject) => {
+    setTimeout(() => reject(new Error('IMAP operation timed out after 30 seconds')), 30000);
+  });
+  
+  const fetchPromise = fetchEmailBodyViaImapInternal(messageId, mailboxEmail);
+  
+  try {
+    return await Promise.race([fetchPromise, timeoutPromise]);
+  } catch (error) {
+    console.error(`[IMAP Body] Timeout or error in main function:`, error);
+    throw error;
+  }
+}
+
+// Internal function with the actual IMAP logic
+async function fetchEmailBodyViaImapInternal(messageId: string, mailboxEmail: string): Promise<string> {
   
   const imapConfigs = getImapConfigs();
   const config = imapConfigs.find(c => c.email === mailboxEmail);
@@ -637,11 +655,14 @@ export async function fetchEmailBodyViaImap(messageId: string, mailboxEmail: str
   } finally {
     if (client) {
       try {
+        console.log(`[IMAP Body] Closing connection for ${config.name}...`);
         await client.logout();
-        console.log(`[IMAP Body] Connection closed for ${config.name}`);
+        console.log(`[IMAP Body] ✅ Connection successfully closed for ${config.name}`);
       } catch (error) {
-        console.error(`[IMAP Body] Error closing connection:`, error);
+        console.error(`[IMAP Body] ❌ Error closing connection for ${config.name}:`, error);
       }
+    } else {
+      console.log(`[IMAP Body] No client to close for ${config.name}`);
     }
   }
 }
