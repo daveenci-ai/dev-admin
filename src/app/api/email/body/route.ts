@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { fetchEmailBodyViaImap } from '@/lib/zohoMail'
 
+// Force this route to be dynamic (not statically generated)
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: NextRequest) {
   console.log('[Email Body API] Starting request handler...')
   
