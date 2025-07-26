@@ -507,4 +507,103 @@ export async function fetchAllEmailsViaImap(limit = 10) {
   
   console.log(`[IMAP] Found ${limitedEmails.length} total emails from all mailboxes`);
   return { data: limitedEmails };
+}
+
+// Fetch full email body for a specific message
+export async function fetchEmailBodyViaImap(messageId: string, mailboxEmail: string): Promise<string> {
+  console.log(`[IMAP Body] Fetching body for message ${messageId} from ${mailboxEmail}`);
+  
+  const imapConfigs = getImapConfigs();
+  const config = imapConfigs.find(c => c.email === mailboxEmail);
+  
+  if (!config) {
+    throw new Error(`No IMAP configuration found for mailbox: ${mailboxEmail}`);
+  }
+  
+  let client: ImapFlow | null = null;
+  
+  try {
+    client = await createImapConnection(config);
+    
+    // Open INBOX
+    await client.mailboxOpen('INBOX');
+    console.log(`[IMAP Body] INBOX opened for ${config.name}`);
+    
+    // Find the message by UID
+    const uid = parseInt(messageId);
+    if (isNaN(uid)) {
+      throw new Error(`Invalid message ID: ${messageId}`);
+    }
+    
+    console.log(`[IMAP Body] Fetching body for UID: ${uid}`);
+    
+    // Fetch the message body
+    let emailBody = '';
+    for await (const message of client.fetch(`${uid}`, {
+      bodyParts: ['TEXT', 'HTML'],
+      envelope: true,
+      bodyStructure: true
+    })) {
+      console.log(`[IMAP Body] Processing message body parts...`);
+      
+      // Try to get text or HTML content
+      if (message.bodyParts) {
+        const bodyParts = message.bodyParts;
+        
+        // Look for text content first
+        if (bodyParts.has('TEXT')) {
+          const textBuffer = bodyParts.get('TEXT');
+          if (textBuffer) {
+            emailBody = textBuffer.toString('utf8');
+            console.log(`[IMAP Body] Found TEXT content, length: ${emailBody.length}`);
+          }
+        } else if (bodyParts.has('HTML')) {
+          const htmlBuffer = bodyParts.get('HTML');
+          if (htmlBuffer) {
+            emailBody = htmlBuffer.toString('utf8');
+            console.log(`[IMAP Body] Found HTML content, length: ${emailBody.length}`);
+            
+            // Clean up HTML content
+            emailBody = emailBody
+              .replace(/<[^>]*>/g, '') // Remove HTML tags
+              .replace(/&nbsp;/g, ' ') // Replace HTML entities
+              .replace(/&amp;/g, '&')
+              .replace(/&lt;/g, '<')
+              .replace(/&gt;/g, '>')
+              .replace(/&quot;/g, '"')
+              .replace(/&#39;/g, "'")
+              .replace(/\s+/g, ' ') // Normalize whitespace
+              .trim();
+          }
+        }
+      }
+      
+      // If no body parts found, try to get some basic info
+      if (!emailBody && message.envelope) {
+        emailBody = `Subject: ${message.envelope.subject}\nFrom: ${message.envelope.from?.[0]?.address}\n\n[Email body content not available]`;
+      }
+      
+      break; // We only expect one message
+    }
+    
+    if (!emailBody) {
+      emailBody = '[No email content available]';
+    }
+    
+    console.log(`[IMAP Body] Successfully fetched email body, length: ${emailBody.length}`);
+    return emailBody;
+    
+  } catch (error: any) {
+    console.error(`[IMAP Body] Error fetching email body:`, error);
+    throw error;
+  } finally {
+    if (client) {
+      try {
+        await client.logout();
+        console.log(`[IMAP Body] Connection closed for ${config.name}`);
+      } catch (error) {
+        console.error(`[IMAP Body] Error closing connection:`, error);
+      }
+    }
+  }
 } 
