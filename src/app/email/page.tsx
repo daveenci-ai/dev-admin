@@ -113,6 +113,16 @@ export default function EmailPage() {
       const response = await fetch(url);
       console.warn('📡 FETCH RESPONSE STATUS:', response.status, response.statusText);
       
+      // Check if response is actually JSON
+      const contentType = response.headers.get('content-type');
+      console.warn('📄 CONTENT TYPE:', contentType);
+      
+      if (!contentType || !contentType.includes('application/json')) {
+        const htmlText = await response.text();
+        console.error('🚨 SERVER RETURNED HTML INSTEAD OF JSON:', htmlText.substring(0, 500));
+        return `Server Error: Received HTML instead of JSON. Content: ${htmlText.substring(0, 200)}...`;
+      }
+      
       const data = await response.json();
       console.warn('📦 FETCH RESPONSE DATA:', data);
       

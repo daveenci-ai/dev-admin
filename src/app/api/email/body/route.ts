@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { fetchEmailBodyViaImap } from '@/lib/zohoMail'
 
 export async function GET(request: NextRequest) {
+  console.log('[Email Body API] Starting request handler...')
+  
   try {
     const messageId = request.nextUrl.searchParams.get('messageId')
     const mailboxEmail = request.nextUrl.searchParams.get('mailboxEmail')
@@ -31,15 +33,24 @@ export async function GET(request: NextRequest) {
     console.error('[Email Body API] Detailed error:', {
       message: error.message,
       stack: error.stack,
-      name: error.name
+      name: error.name,
+      toString: error.toString()
     })
+    
+    // Ensure we always return JSON, never HTML
     return NextResponse.json(
       { 
         error: 'Failed to fetch email body',
-        details: error.message,
-        errorName: error.name
+        details: error.message || 'Unknown error',
+        errorName: error.name || 'UnknownError',
+        timestamp: new Date().toISOString()
       },
-      { status: 500 }
+      { 
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }
     )
   }
 } 
