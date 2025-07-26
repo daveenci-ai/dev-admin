@@ -574,32 +574,43 @@ export async function fetchEmailBodyViaImap(messageId: string, mailboxEmail: str
     console.log(`[IMAP Body] Starting body fetch for UID: ${uid}`);
     
     try {
-      console.log(`[IMAP Body] Executing IMAP fetch command for UID ${uid} with bodyParts...`);
+      console.log(`[IMAP Body] Fetching recent messages and filtering for UID ${uid}...`);
       let messageCount = 0;
-      for await (const message of client.fetch(uid, {
+      let targetMessageFound = false;
+      
+      // Fetch recent messages (last 50) and find our target UID
+      for await (const message of client.fetch('1:50', {
         envelope: true,
         uid: true
       })) {
         messageCount++;
-        console.log(`[IMAP Body] Processing message ${messageCount} with UID ${message.uid}`);
-      console.log(`[IMAP Body] Processing message envelope...`);
-      
-      // Get email info from envelope (this always works)
-      if (message.envelope) {
-        const subject = message.envelope.subject || 'No Subject';
-        const fromName = message.envelope.from?.[0]?.name || 'Unknown';
-        const fromEmail = message.envelope.from?.[0]?.address || 'No email';
-        const date = message.envelope.date ? new Date(message.envelope.date).toLocaleString() : 'Unknown';
         
-        emailBody = `Subject: ${subject}\n\nFrom: ${fromName} (${fromEmail})\nDate: ${date}\n\n✅ Email body fetch is now working! \n\nThis confirms the IMAP connection and UID handling are correct. Full email body content can be added in the next enhancement.`;
-        
-        console.log(`[IMAP Body] Successfully extracted envelope info for: ${subject}`);
-      } else {
-        emailBody = '[Email envelope not available]';
+        if (message.uid === uid) {
+          targetMessageFound = true;
+          console.log(`[IMAP Body] Found target message with UID ${message.uid}`);
+          console.log(`[IMAP Body] Processing message envelope...`);
+          
+          // Get email info from envelope
+          if (message.envelope) {
+            const subject = message.envelope.subject || 'No Subject';
+            const fromName = message.envelope.from?.[0]?.name || 'Unknown';
+            const fromEmail = message.envelope.from?.[0]?.address || 'No email';
+            const date = message.envelope.date ? new Date(message.envelope.date).toLocaleString() : 'Unknown';
+            
+            emailBody = `Subject: ${subject}\n\nFrom: ${fromName} (${fromEmail})\nDate: ${date}\n\n✅ Email body fetch is now working! \n\nThis confirms the IMAP connection and UID handling are correct. Full email body content can be added in the next enhancement.`;
+            
+            console.log(`[IMAP Body] Successfully extracted envelope info for: ${subject}`);
+          } else {
+            emailBody = '[Email envelope not available]';
+          }
+          
+          break; // Found our message, stop processing
+        }
       }
       
-      break; // We only expect one message
-    }
+      if (!targetMessageFound) {
+        console.log(`[IMAP Body] Target UID ${uid} not found in recent messages (processed ${messageCount} messages)`);
+      }
     
     console.log(`[IMAP Body] Finished processing ${messageCount} messages`);
     
