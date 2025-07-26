@@ -542,12 +542,14 @@ export async function fetchEmailBodyViaImap(messageId: string, mailboxEmail: str
     
     console.log(`[IMAP Body] Fetching body for UID: ${uid}`);
     
+    // Get all available UIDs for debugging and body fetch optimization
+    let allMessages: number[] = [];
+    
     // First check if the message exists and debug available UIDs
     try {
       console.log(`[IMAP Body] Checking if UID ${uid} exists...`);
       
       // Get all available UIDs for debugging
-      const allMessages = [];
       for await (const message of client.fetch('1:*', { uid: true })) {
         allMessages.push(message.uid);
       }
@@ -574,12 +576,15 @@ export async function fetchEmailBodyViaImap(messageId: string, mailboxEmail: str
     console.log(`[IMAP Body] Starting body fetch for UID: ${uid}`);
     
     try {
-      console.log(`[IMAP Body] Fetching recent messages and filtering for UID ${uid}...`);
+      console.log(`[IMAP Body] Using optimized single UID fetch for UID ${uid}...`);
       let messageCount = 0;
       let targetMessageFound = false;
       
-      // Fetch recent messages (last 50) and find our target UID
-      for await (const message of client.fetch('1:50', {
+      // Use the UID list to build a targeted sequence - fetch only known UIDs from the check above
+      const uidString = allMessages.slice(0, 10).join(','); // Limit to first 10 UIDs for speed
+      console.log(`[IMAP Body] Fetching UIDs: ${uidString}`);
+      
+      for await (const message of client.fetch(uidString, {
         envelope: true,
         uid: true
       })) {
@@ -609,7 +614,7 @@ export async function fetchEmailBodyViaImap(messageId: string, mailboxEmail: str
       }
       
       if (!targetMessageFound) {
-        console.log(`[IMAP Body] Target UID ${uid} not found in recent messages (processed ${messageCount} messages)`);
+        console.log(`[IMAP Body] Target UID ${uid} not found in fetched messages (processed ${messageCount} messages)`);
       }
     
     console.log(`[IMAP Body] Finished processing ${messageCount} messages`);
