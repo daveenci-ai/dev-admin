@@ -586,7 +586,8 @@ export async function fetchEmailBodyViaImap(messageId: string, mailboxEmail: str
       
       for await (const message of client.fetch(uidString, {
         envelope: true,
-        uid: true
+        uid: true,
+        source: true
       })) {
         messageCount++;
         
@@ -602,10 +603,56 @@ export async function fetchEmailBodyViaImap(messageId: string, mailboxEmail: str
             const fromEmail = message.envelope.from?.[0]?.address || 'No email';
             const date = message.envelope.date ? new Date(message.envelope.date).toLocaleString() : 'Unknown';
             
-            // For now, show envelope info with a note about body content
-            let bodyContent = `✅ Email successfully fetched from IMAP server!\n\nThe complete email envelope information is displayed above. Full email body content extraction is being refined to work with all IMAP servers.\n\nThis confirms your email system is working properly.`;
+            // Try to extract body content from available message properties
+            let bodyContent = '';
             
-            console.log(`[IMAP Body] Using envelope-only display (body content extraction temporarily disabled for compatibility)`);
+            console.log(`[IMAP Body] Investigating message properties for body content...`);
+            console.log(`[IMAP Body] Message keys:`, Object.keys(message));
+            
+            // Check for body content in various message properties
+            if (message.bodyStructure) {
+              console.log(`[IMAP Body] Found bodyStructure`);
+            }
+            
+            if (message.source) {
+              console.log(`[IMAP Body] Found source, length:`, message.source.length);
+              // Extract text from source if available
+              const sourceText = message.source.toString();
+              if (sourceText.length > 100) {
+                // Try to extract content after headers
+                const bodyStart = sourceText.indexOf('\r\n\r\n');
+                if (bodyStart > 0) {
+                  bodyContent = sourceText.substring(bodyStart + 4).trim();
+                  console.log(`[IMAP Body] Extracted body from source, length:`, bodyContent.length);
+                }
+              }
+            }
+            
+            if (!bodyContent && (message as any).text) {
+              bodyContent = (message as any).text;
+              console.log(`[IMAP Body] Found text property, length:`, bodyContent.length);
+            }
+            
+            if (!bodyContent && (message as any).html) {
+              bodyContent = (message as any).html;
+              console.log(`[IMAP Body] Found html property, length:`, bodyContent.length);
+            }
+            
+            // If we found content, clean it up
+            if (bodyContent && bodyContent.length > 50) {
+              // Remove HTML tags if present
+              bodyContent = bodyContent.replace(/<[^>]*>/g, '');
+              // Clean up whitespace
+              bodyContent = bodyContent.replace(/\n\s*\n\s*\n/g, '\n\n').trim();
+              // Limit length
+              if (bodyContent.length > 1000) {
+                bodyContent = bodyContent.substring(0, 1000) + '\n\n... [Content truncated for preview]';
+              }
+              console.log(`[IMAP Body] Successfully extracted and cleaned body content, final length:`, bodyContent.length);
+            } else {
+              bodyContent = `[Email body content not found in available message properties]\n\nThe email envelope was successfully fetched. Body content may require different IMAP fetch parameters.`;
+              console.log(`[IMAP Body] No substantial body content found in message properties`);
+            }
 
             
             emailBody = `Subject: ${subject}\n\nFrom: ${fromName} (${fromEmail})\nDate: ${date}\n\n--- EMAIL CONTENT ---\n\n${bodyContent}`;
