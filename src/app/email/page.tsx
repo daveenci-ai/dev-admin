@@ -102,25 +102,34 @@ export default function EmailPage() {
 
   // Fetch full email body for expanded view
   const fetchEmailBody = async (email: EmailMessage) => {
+    console.warn('🚨 FETCH EMAIL BODY CALLED!', { messageId: email.messageId, mailbox: email.mailboxEmail });
+    
     try {
       console.log('[Email Body] Fetching full body for:', email.messageId, 'from mailbox:', email.mailboxEmail);
       const url = `/api/email/body?messageId=${email.messageId}&mailboxEmail=${email.mailboxEmail}`;
       console.log('[Email Body] API URL:', url);
       
+      console.warn('🌐 MAKING FETCH REQUEST to:', url);
       const response = await fetch(url);
+      console.warn('📡 FETCH RESPONSE STATUS:', response.status, response.statusText);
+      
       const data = await response.json();
+      console.warn('📦 FETCH RESPONSE DATA:', data);
       
       console.log('[Email Body] Response status:', response.status);
       console.log('[Email Body] Response data:', data);
       
       if (response.ok) {
+        console.warn('✅ SUCCESS: Returning email body');
         return data.body || 'No content available';
       } else {
         console.error('[Email Body] API Error:', data.error, data.details);
-        return `API Error: ${data.error || 'Failed to load email content'}`;
+        console.warn('❌ API ERROR:', data.error, 'Details:', data.details);
+        return `API Error: ${data.error || 'Failed to load email content'} - Details: ${data.details || 'No details'}`;
       }
     } catch (error) {
       console.error('[Email Body] Network/Parse Error:', error);
+      console.warn('💥 NETWORK/PARSE ERROR:', error);
       return `Network Error: ${error instanceof Error ? error.message : 'Error loading email content'}`;
     }
   };

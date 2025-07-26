@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { format } from 'date-fns'
 import { CheckCircle, AlertCircle, XCircle, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
+import { Modal } from '@/components/ui/modal'
 
 interface Contact {
   id: number
@@ -720,240 +721,216 @@ export default function CRMPageComponent() {
         </table>
       </div>
 
-      {/* Contact Details Sliding Panel */}
-      {showContactDetails && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex">
-          {/* Overlay - click to close */}
-          <div 
-            className="flex-1 cursor-pointer" 
-            onClick={handleCloseContactDetails}
-          />
-          
-          {/* Sliding Panel */}
-          <div className={`
-            bg-white w-full max-w-md h-full shadow-xl overflow-y-auto transform transition-transform duration-300 ease-in-out
-            ${showContactDetails ? 'translate-x-0' : 'translate-x-full'}
-          `}>
-            {selectedContact && (
-              <div className="p-6">
-                {/* Header */}
-                <div className="flex justify-between items-start mb-6 border-b pb-4">
-                  <div>
-                    <h2 className="text-xl font-bold text-gray-900 mb-1">
-                      {selectedContact.name}
-                    </h2>
-                                         <div className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(selectedContact.status)}`}>
-                      {selectedContact.status.toUpperCase()}
-                    </div>
-                  </div>
-                  <button
-                    onClick={handleCloseContactDetails}
-                    className="text-gray-400 hover:text-gray-600 text-2xl font-light"
-                  >
-                    ×
-                  </button>
-                </div>
-
-                {/* Edit/Save Buttons */}
-                <div className="mb-6 flex gap-2">
-                  {!isEditingContact ? (
-                    <button
-                      onClick={handleEditContact}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                    >
-                      Edit Contact
-                    </button>
-                  ) : (
-                    <div className="flex gap-2">
-                      <button
-                        onClick={handleSaveContact}
-                        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                      >
-                        Save Changes
-                      </button>
-                      <button
-                        onClick={() => {
-                          setIsEditingContact(false)
-                          setEditedContact(null)
-                        }}
-                        className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                {/* Contact Information */}
-                <div className="space-y-4 mb-6">
-                  <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Contact Information</h3>
-                  
-                  <div className="grid grid-cols-1 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Primary Email</label>
-                      {isEditingContact ? (
-                        <input
-                          type="email"
-                          value={editedContact?.primaryEmail || ''}
-                          onChange={(e) => setEditedContact(prev => prev ? {...prev, primaryEmail: e.target.value} : null)}
-                          className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        />
-                      ) : (
-                        <p className="text-gray-900">{selectedContact.primaryEmail}</p>
-                      )}
-                    </div>
-
-                    {(selectedContact.secondaryEmail || isEditingContact) && (
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Secondary Email</label>
-                        {isEditingContact ? (
-                          <input
-                            type="email"
-                            value={editedContact?.secondaryEmail || ''}
-                            onChange={(e) => setEditedContact(prev => prev ? {...prev, secondaryEmail: e.target.value} : null)}
-                            className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                          />
-                        ) : (
-                          <p className="text-gray-900">{selectedContact.secondaryEmail}</p>
-                        )}
-                      </div>
-                    )}
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Primary Phone</label>
-                      {isEditingContact ? (
-                        <input
-                          type="tel"
-                          value={editedContact?.primaryPhone || ''}
-                          onChange={(e) => setEditedContact(prev => prev ? {...prev, primaryPhone: e.target.value} : null)}
-                          className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        />
-                      ) : (
-                        <p className="text-gray-900">{selectedContact.primaryPhone || 'Not provided'}</p>
-                      )}
-                    </div>
-
-                    {(selectedContact.secondaryPhone || isEditingContact) && (
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Secondary Phone</label>
-                        {isEditingContact ? (
-                          <input
-                            type="tel"
-                            value={editedContact?.secondaryPhone || ''}
-                            onChange={(e) => setEditedContact(prev => prev ? {...prev, secondaryPhone: e.target.value} : null)}
-                            className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                          />
-                        ) : (
-                          <p className="text-gray-900">{selectedContact.secondaryPhone}</p>
-                        )}
-                      </div>
-                    )}
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Company</label>
-                      {isEditingContact ? (
-                        <input
-                          type="text"
-                          value={editedContact?.company || ''}
-                          onChange={(e) => setEditedContact(prev => prev ? {...prev, company: e.target.value} : null)}
-                          className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        />
-                      ) : (
-                        <p className="text-gray-900">{selectedContact.company || 'Not provided'}</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Source</label>
-                      <p className="text-gray-900">{selectedContact.source || 'Unknown'}</p>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Sentiment</label>
-                      <div className="flex items-center gap-2">
-                        {getSentimentIcon(selectedContact.sentiment)}
-                        <span className="text-gray-900 capitalize">{selectedContact.sentiment}</span>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Added Date</label>
-                      <p className="text-gray-900">{format(new Date(selectedContact.createdAt), 'MMM d, yyyy')}</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Notes Section */}
-                <div className="space-y-4 mb-6">
-                  <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Notes</h3>
-                  {isEditingContact ? (
-                    <textarea
-                      value={editedContact?.notes || ''}
-                      onChange={(e) => setEditedContact(prev => prev ? {...prev, notes: e.target.value} : null)}
-                      placeholder="Add notes about this contact..."
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 h-24 resize-none"
-                    />
-                  ) : (
-                    <p className="text-gray-900 whitespace-pre-wrap">
-                      {selectedContact.notes || 'No notes added yet.'}
-                    </p>
-                  )}
-                </div>
-
-                {/* Touchpoints Section */}
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center border-b pb-2">
-                    <h3 className="text-lg font-semibold text-gray-900">Activity & Touchpoints</h3>
-                    <span className="text-sm text-gray-500">
-                      {selectedContact.touchpoints?.length || 0} entries
-                    </span>
-                  </div>
-
-                  {/* Add New Touchpoint */}
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Add New Touchpoint</label>
-                    <div className="flex gap-2">
-                      <textarea
-                        value={newTouchpoint}
-                        onChange={(e) => setNewTouchpoint(e.target.value)}
-                        placeholder="Describe the interaction or activity..."
-                        className="flex-1 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 h-20 resize-none"
-                      />
-                      <button
-                        onClick={handleAddTouchpoint}
-                        disabled={!newTouchpoint.trim()}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                      >
-                        Add
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Touchpoints List */}
-                  <div className="space-y-3 max-h-64 overflow-y-auto">
-                    {selectedContact.touchpoints && selectedContact.touchpoints.length > 0 ? (
-                      selectedContact.touchpoints.map((touchpoint, index) => (
-                        <div key={touchpoint.id} className="bg-white border border-gray-200 rounded-lg p-3">
-                          <div className="flex justify-between items-start mb-2">
-                            <span className="text-xs text-gray-500">
-                              {format(new Date(touchpoint.createdAt), 'MMM d, yyyy h:mm a')}
-                            </span>
-                            <span className="text-xs text-blue-600 font-medium">
-                              {touchpoint.source}
-                            </span>
-                          </div>
-                          <p className="text-gray-900 text-sm">{touchpoint.note}</p>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="text-gray-500 italic text-center py-4">No activity recorded yet.</p>
-                    )}
-                  </div>
+            {/* Contact Details Modal */}
+      {showContactDetails && selectedContact && (
+        <Modal isOpen={showContactDetails} onClose={handleCloseContactDetails} className="max-w-4xl">
+          <div className="p-6">
+            {/* Header */}
+            <div className="flex justify-between items-start mb-6 border-b pb-4">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900 mb-1">
+                  {selectedContact.name}
+                </h2>
+                <div className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(selectedContact.status)}`}>
+                  {selectedContact.status.toUpperCase()}
                 </div>
               </div>
-            )}
+            </div>
+
+            {/* Edit/Save Buttons */}
+            <div className="mb-6 flex gap-2">
+              {!isEditingContact ? (
+                <button
+                  onClick={handleEditContact}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Edit Contact
+                </button>
+              ) : (
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleSaveContact}
+                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                  >
+                    Save Changes
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsEditingContact(false)
+                      setEditedContact(null)
+                    }}
+                    className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Contact Information */}
+            <div className="space-y-4 mb-6">
+              <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Contact Information</h3>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Primary Email</label>
+                  {isEditingContact ? (
+                    <input
+                      type="email"
+                      value={editedContact?.primaryEmail || ''}
+                      onChange={(e) => setEditedContact(prev => prev ? {...prev, primaryEmail: e.target.value} : null)}
+                      className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  ) : (
+                    <p className="text-gray-900">{selectedContact.primaryEmail}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Primary Phone</label>
+                  {isEditingContact ? (
+                    <input
+                      type="tel"
+                      value={editedContact?.primaryPhone || ''}
+                      onChange={(e) => setEditedContact(prev => prev ? {...prev, primaryPhone: e.target.value} : null)}
+                      className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  ) : (
+                    <p className="text-gray-900">{selectedContact.primaryPhone || 'Not provided'}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Secondary Email</label>
+                  {isEditingContact ? (
+                    <input
+                      type="email"
+                      value={editedContact?.secondaryEmail || ''}
+                      onChange={(e) => setEditedContact(prev => prev ? {...prev, secondaryEmail: e.target.value} : null)}
+                      className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  ) : (
+                    <p className="text-gray-900">{selectedContact.secondaryEmail || 'Not provided'}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Secondary Phone</label>
+                  {isEditingContact ? (
+                    <input
+                      type="tel"
+                      value={editedContact?.secondaryPhone || ''}
+                      onChange={(e) => setEditedContact(prev => prev ? {...prev, secondaryPhone: e.target.value} : null)}
+                      className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  ) : (
+                    <p className="text-gray-900">{selectedContact.secondaryPhone || 'Not provided'}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Company</label>
+                  {isEditingContact ? (
+                    <input
+                      type="text"
+                      value={editedContact?.company || ''}
+                      onChange={(e) => setEditedContact(prev => prev ? {...prev, company: e.target.value} : null)}
+                      className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  ) : (
+                    <p className="text-gray-900">{selectedContact.company || 'Not provided'}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Source</label>
+                  <p className="text-gray-900">{selectedContact.source || 'Unknown'}</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Sentiment</label>
+                  <div className="flex items-center gap-2">
+                    {getSentimentIcon(selectedContact.sentiment)}
+                    <span className="text-gray-900 capitalize">{selectedContact.sentiment}</span>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Added Date</label>
+                  <p className="text-gray-900">{format(new Date(selectedContact.createdAt), 'MMM d, yyyy')}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Notes Section */}
+            <div className="space-y-4 mb-6">
+              <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Notes</h3>
+              {isEditingContact ? (
+                <textarea
+                  value={editedContact?.notes || ''}
+                  onChange={(e) => setEditedContact(prev => prev ? {...prev, notes: e.target.value} : null)}
+                  placeholder="Add notes about this contact..."
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 h-24 resize-none"
+                />
+              ) : (
+                <p className="text-gray-900 whitespace-pre-wrap">
+                  {selectedContact.notes || 'No notes added yet.'}
+                </p>
+              )}
+            </div>
+
+            {/* Touchpoints Section */}
+            <div className="space-y-4">
+              <div className="flex justify-between items-center border-b pb-2">
+                <h3 className="text-lg font-semibold text-gray-900">Activity & Touchpoints</h3>
+                <span className="text-sm text-gray-500">
+                  {selectedContact.touchpoints?.length || 0} entries
+                </span>
+              </div>
+
+              {/* Add New Touchpoint */}
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Add New Touchpoint</label>
+                <div className="flex gap-2">
+                  <textarea
+                    value={newTouchpoint}
+                    onChange={(e) => setNewTouchpoint(e.target.value)}
+                    placeholder="Describe the interaction or activity..."
+                    className="flex-1 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 h-20 resize-none"
+                  />
+                  <button
+                    onClick={handleAddTouchpoint}
+                    disabled={!newTouchpoint.trim()}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Add
+                  </button>
+                </div>
+              </div>
+
+              {/* Touchpoints List */}
+              <div className="space-y-3 max-h-64 overflow-y-auto">
+                {selectedContact.touchpoints && selectedContact.touchpoints.length > 0 ? (
+                  selectedContact.touchpoints.map((touchpoint) => (
+                    <div key={touchpoint.id} className="bg-white border border-gray-200 rounded-lg p-3">
+                      <div className="flex justify-between items-start mb-2">
+                        <span className="text-xs text-gray-500">
+                          {format(new Date(touchpoint.createdAt), 'MMM d, yyyy h:mm a')}
+                        </span>
+                        <span className="text-xs text-blue-600 font-medium">
+                          {touchpoint.source}
+                        </span>
+                      </div>
+                      <p className="text-gray-900 text-sm">{touchpoint.note}</p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-gray-500 italic text-center py-4">No activity recorded yet.</p>
+                )}
+              </div>
+            </div>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   )
