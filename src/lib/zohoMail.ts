@@ -576,9 +576,9 @@ export async function fetchEmailBodyViaImap(messageId: string, mailboxEmail: str
     try {
       console.log(`[IMAP Body] Executing IMAP fetch command for UID ${uid} with bodyParts...`);
       let messageCount = 0;
-      for await (const message of client.fetch(`${uid}`, {
+      for await (const message of client.fetch(`${uid}:${uid}`, {
         envelope: true,
-        bodyStructure: true
+        uid: true
       })) {
         messageCount++;
         console.log(`[IMAP Body] Processing message ${messageCount} with UID ${message.uid}`);
