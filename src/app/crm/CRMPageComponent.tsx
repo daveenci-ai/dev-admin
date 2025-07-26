@@ -419,11 +419,11 @@ export default function CRMPageComponent() {
       label: 'CHURNED', 
       value: stats.churned,
       status: 'churned', 
-      color: 'text-black',
+      color: 'text-gray-800',
       hoverBg: 'hover:bg-gray-100',
-      borderColor: 'border-b-black',
+      borderColor: 'border-b-gray-500',
       activeBg: 'bg-gray-100',
-      activeBorder: 'border-gray-600'
+      activeBorder: 'border-gray-500'
     },
     { 
       label: 'DECLINED', 
@@ -469,9 +469,9 @@ export default function CRMPageComponent() {
       label: 'OPPORTUNITIES', 
       value: stats.opportunities,
       status: 'opportunity', 
-      color: 'text-green-500',
+      color: 'text-green-600',
       hoverBg: 'hover:bg-green-50',
-      borderColor: 'border-b-green-400',
+      borderColor: 'border-b-green-500',
       activeBg: 'bg-green-50',
       activeBorder: 'border-green-500'
     },
@@ -497,10 +497,10 @@ export default function CRMPageComponent() {
             <div 
               key={stat.label}
               onClick={() => handleStatusCardClick(stat.status)}
-              className={`bg-white p-4 rounded-lg shadow-sm border border-gray-200 transition-all duration-200 cursor-pointer ${
+              className={`bg-white p-4 rounded-lg shadow-sm transition-all duration-200 cursor-pointer ${
                 isActive 
-                  ? `${stat.activeBg} ${stat.activeBorder} shadow-md scale-105 border-2` 
-                  : `${stat.hoverBg} ${stat.borderColor} border-b-2 hover:shadow-md`
+                  ? `${stat.activeBg} border-2 ${stat.activeBorder} shadow-md scale-105` 
+                  : `border border-gray-200 ${stat.borderColor} border-b-2 ${stat.hoverBg} hover:shadow-md`
               }`}
             >
               <div className={`text-xl font-bold ${stat.color} mb-1`}>{stat.value}</div>

@@ -103,18 +103,25 @@ export default function EmailPage() {
   // Fetch full email body for expanded view
   const fetchEmailBody = async (email: EmailMessage) => {
     try {
-      console.log('[Email Body] Fetching full body for:', email.messageId);
-      const response = await fetch(`/api/email/body?messageId=${email.messageId}&mailboxEmail=${email.mailboxEmail}`);
+      console.log('[Email Body] Fetching full body for:', email.messageId, 'from mailbox:', email.mailboxEmail);
+      const url = `/api/email/body?messageId=${email.messageId}&mailboxEmail=${email.mailboxEmail}`;
+      console.log('[Email Body] API URL:', url);
+      
+      const response = await fetch(url);
+      const data = await response.json();
+      
+      console.log('[Email Body] Response status:', response.status);
+      console.log('[Email Body] Response data:', data);
+      
       if (response.ok) {
-        const data = await response.json();
         return data.body || 'No content available';
       } else {
-        console.error('[Email Body] Failed to fetch email body:', response.statusText);
-        return 'Failed to load email content';
+        console.error('[Email Body] API Error:', data.error, data.details);
+        return `API Error: ${data.error || 'Failed to load email content'}`;
       }
     } catch (error) {
-      console.error('[Email Body] Error fetching email body:', error);
-      return 'Error loading email content';
+      console.error('[Email Body] Network/Parse Error:', error);
+      return `Network Error: ${error instanceof Error ? error.message : 'Error loading email content'}`;
     }
   };
 
@@ -836,11 +843,11 @@ export default function EmailPage() {
                 const isActive = selectedMailbox === account.emailAddress;
                 const mailboxName = account.mailboxName || account.accountDisplayName || account.accountName;
                 const colors = {
-                  'anton.osipov@daveenci.ai': { color: 'text-blue-600', hoverBg: 'hover:bg-blue-50', borderColor: 'border-b-blue-500', activeBg: 'bg-blue-100', activeBorder: 'border-b-blue-600' },
-                  'astrid@daveenci.ai': { color: 'text-purple-600', hoverBg: 'hover:bg-purple-50', borderColor: 'border-b-purple-500', activeBg: 'bg-purple-100', activeBorder: 'border-b-purple-600' },
-                  'hello@daveenci.ai': { color: 'text-green-600', hoverBg: 'hover:bg-green-50', borderColor: 'border-b-green-500', activeBg: 'bg-green-100', activeBorder: 'border-b-green-600' },
-                  'support@daveenci.ai': { color: 'text-yellow-600', hoverBg: 'hover:bg-yellow-50', borderColor: 'border-b-yellow-500', activeBg: 'bg-yellow-100', activeBorder: 'border-b-yellow-600' },
-                  'ops@daveenci.ai': { color: 'text-red-600', hoverBg: 'hover:bg-red-50', borderColor: 'border-b-red-500', activeBg: 'bg-red-100', activeBorder: 'border-b-red-600' }
+                  'anton.osipov@daveenci.ai': { color: 'text-blue-600', hoverBg: 'hover:bg-blue-50', borderColor: 'border-b-blue-500', activeBg: 'bg-blue-50', activeBorder: 'border-blue-500' },
+                  'astrid@daveenci.ai': { color: 'text-purple-600', hoverBg: 'hover:bg-purple-50', borderColor: 'border-b-purple-500', activeBg: 'bg-purple-50', activeBorder: 'border-purple-500' },
+                  'hello@daveenci.ai': { color: 'text-green-600', hoverBg: 'hover:bg-green-50', borderColor: 'border-b-green-500', activeBg: 'bg-green-50', activeBorder: 'border-green-500' },
+                  'support@daveenci.ai': { color: 'text-yellow-600', hoverBg: 'hover:bg-yellow-50', borderColor: 'border-b-yellow-500', activeBg: 'bg-yellow-50', activeBorder: 'border-yellow-500' },
+                  'ops@daveenci.ai': { color: 'text-red-600', hoverBg: 'hover:bg-red-50', borderColor: 'border-b-red-500', activeBg: 'bg-red-50', activeBorder: 'border-red-500' }
                 };
                 
                 const colorScheme = colors[account.emailAddress as keyof typeof colors] || colors['anton.osipov@daveenci.ai'];
@@ -857,10 +864,10 @@ export default function EmailPage() {
                       console.log(`[Card Click] Account name: "${account.mailboxName}"`);
                       handleMailboxClick(account.emailAddress);
                     }}
-                    className={`bg-white p-4 rounded-lg shadow-sm border border-gray-200 transition-all duration-200 cursor-pointer border-b-2 ${
+                    className={`bg-white p-4 rounded-lg shadow-sm transition-all duration-200 cursor-pointer ${
                       isActive 
-                        ? `${colorScheme.activeBg} ${colorScheme.activeBorder} shadow-md scale-105` 
-                        : `${colorScheme.hoverBg} ${colorScheme.borderColor}`
+                        ? `${colorScheme.activeBg} border-2 ${colorScheme.activeBorder} shadow-md scale-105` 
+                        : `border border-gray-200 ${colorScheme.borderColor} border-b-2 ${colorScheme.hoverBg} hover:shadow-md`
                     }`}
                   >
                     {/* Name in bold - top row */}
