@@ -991,10 +991,10 @@ export default function EmailPage() {
                                 : email.fromAddress}
                             </p>
                             
-                            {/* Email Body - Full when expanded, truncated when collapsed */}
+                            {/* Email Body - Full when expanded, only show if not placeholder */}
                             {isExpanded ? (
                               <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                                {emailBody ? (
+                                {emailBody && emailBody !== 'Click to expand and view full email content' ? (
                                   <div className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap max-h-80 overflow-y-auto">
                                     {emailBody}
                                   </div>
@@ -1006,7 +1006,10 @@ export default function EmailPage() {
                                 )}
                               </div>
                             ) : (
-                              email.summary && email.summary !== 'No content available' && (
+                              // Only show summary if it's not the placeholder text
+                              email.summary && 
+                              email.summary !== 'No content available' && 
+                              email.summary !== 'Click to expand and view full email content' && (
                                 <p className="text-sm text-gray-500 line-clamp-2">
                                   {email.summary}
                                 </p>
@@ -1024,14 +1027,18 @@ export default function EmailPage() {
                                 {email.mailboxName}
                               </div>
                             )}
-                            <div className="text-xs text-blue-600 mt-1">
-                              {isExpanded ? 'Click to collapse' : 'Click to expand'}
-                            </div>
                           </div>
                         </div>
                         
-                        {/* Email Action Buttons - Bottom Right */}
-                        <div className="flex justify-end gap-2 mt-4">
+                        {/* Bottom row with expand/collapse button and action buttons */}
+                        <div className="flex justify-between items-center mt-4">
+                          {/* Click to expand - Bottom Left */}
+                          <div className="text-xs text-blue-600 hover:text-blue-800 font-medium">
+                            {isExpanded ? 'Click to collapse' : 'Click to expand'}
+                          </div>
+                          
+                          {/* Email Action Buttons - Bottom Right */}
+                          <div className="flex gap-2">
                           <Button
                             size="sm"
                             variant="outline"
@@ -1088,6 +1095,7 @@ export default function EmailPage() {
                             <Trash2 className="w-3 h-3 mr-1" />
                             Trash
                           </Button>
+                          </div>
                         </div>
                       </div>
                     </div>
