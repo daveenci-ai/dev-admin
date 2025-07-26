@@ -3,9 +3,8 @@ import { fetchEmailBodyViaImap } from '@/lib/zohoMail'
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
-    const messageId = searchParams.get('messageId')
-    const mailboxEmail = searchParams.get('mailboxEmail')
+    const messageId = request.nextUrl.searchParams.get('messageId')
+    const mailboxEmail = request.nextUrl.searchParams.get('mailboxEmail')
 
     if (!messageId || !mailboxEmail) {
       return NextResponse.json(
