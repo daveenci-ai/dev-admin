@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useSession } from 'next-auth/react';
 import { 
   Mail, 
   RefreshCw, 
@@ -23,6 +24,7 @@ interface EmailMessage {
   messageId: string;
   subject: string;
   fromAddress: string;
+  fromName?: string;
   receivedTime: number | string;
   summary: string;
   flag?: string;
@@ -57,6 +59,7 @@ interface ZohoAccount {
 }
 
 export default function EmailPage() {
+  const { data: session } = useSession();
   const [emails, setEmails] = useState<EmailMessage[]>([]);
   const [stats, setStats] = useState<EmailStats | null>(null);
   const [accounts, setAccounts] = useState<ZohoAccount[]>([]);
@@ -67,8 +70,8 @@ export default function EmailPage() {
   const [selectedMailbox, setSelectedMailbox] = useState<string>('');
   const [isReplyOpen, setIsReplyOpen] = useState(false);
   const [replyingToEmail, setReplyingToEmail] = useState<EmailMessage | null>(null);
-  const [expandedEmailId, setExpandedEmailId] = useState<string | null>(null);
-  const [expandedEmailBody, setExpandedEmailBody] = useState<string>('');
+  const [expandedEmails, setExpandedEmails] = useState<Set<string>>(new Set());
+  const [emailBodies, setEmailBodies] = useState<Record<string, string>>({});
 
   // Compose form state
   const [composeForm, setComposeForm] = useState({
@@ -115,23 +118,63 @@ export default function EmailPage() {
     }
   };
 
-  // Handle email card click for expansion
+  // Handle email card click for expansion and mark as read
   const handleEmailCardClick = async (email: EmailMessage) => {
     const emailKey = `${email.mailboxEmail}-${email.messageId}`;
     
-    if (expandedEmailId === emailKey) {
+    if (expandedEmails.has(emailKey)) {
       // Collapse if already expanded
       console.log('[Email Card] Collapsing email:', email.subject);
-      setExpandedEmailId(null);
-      setExpandedEmailBody('');
+      setExpandedEmails(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(emailKey);
+        return newSet;
+      });
     } else {
-      // Expand email and fetch body
+      // Expand email, fetch body, and mark as read
       console.log('[Email Card] Expanding email:', email.subject);
-      setExpandedEmailId(emailKey);
-      setExpandedEmailBody('Loading email content...');
+      setExpandedEmails(prev => new Set(prev).add(emailKey));
       
-      const body = await fetchEmailBody(email);
-      setExpandedEmailBody(body);
+      // Mark email as read in UI immediately
+      setEmails(prevEmails => 
+        prevEmails.map(e => 
+          e.messageId === email.messageId && e.mailboxEmail === email.mailboxEmail
+            ? { ...e, isRead: true, flagInfo: e.flagInfo?.replace('unread', '').trim() }
+            : e
+        )
+      );
+      
+      // Fetch full body content
+      if (!emailBodies[emailKey]) {
+        const body = await fetchEmailBody(email);
+        setEmailBodies(prev => ({ ...prev, [emailKey]: body }));
+      }
+      
+      // Mark as read on server
+      await markEmailAsRead(email);
+    }
+  };
+
+  // Mark email as read via IMAP
+  const markEmailAsRead = async (email: EmailMessage) => {
+    try {
+      console.log('[Mark Read] Marking email as read:', email.messageId);
+      const response = await fetch('/api/email/mark-read', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messageId: email.messageId,
+          mailboxEmail: email.mailboxEmail
+        })
+      });
+      
+      if (response.ok) {
+        console.log('[Mark Read] Email marked as read successfully');
+      } else {
+        console.error('[Mark Read] Failed to mark email as read');
+      }
+    } catch (error) {
+      console.error('[Mark Read] Error marking email as read:', error);
     }
   };
 
@@ -192,6 +235,28 @@ export default function EmailPage() {
         console.log('[Frontend] Setting accounts:', accountsData);
         console.log('[Frontend] First account sample:', accountsData[0]);
         setAccounts(accountsData);
+        
+        // Set default selected mailbox based on logged-in user
+        if (accountsData.length > 0 && !selectedMailbox) {
+          const userEmail = session?.user?.email;
+          if (userEmail) {
+            const userAccount = accountsData.find((account: ZohoAccount) => 
+              account.emailAddress === userEmail
+            );
+            if (userAccount) {
+              setSelectedMailbox(userAccount.emailAddress);
+              console.log('[Accounts] Set default mailbox to logged-in user:', userEmail);
+            } else {
+              // Fallback to first account if user's email not found
+              setSelectedMailbox(accountsData[0].emailAddress);
+              console.log('[Accounts] User email not found, defaulting to first account:', accountsData[0].emailAddress);
+            }
+          } else {
+            // Fallback to first account if no user session
+            setSelectedMailbox(accountsData[0].emailAddress);
+            console.log('[Accounts] No user session, defaulting to first account:', accountsData[0].emailAddress);
+          }
+        }
       } else {
         console.error('[Frontend] Error fetching accounts:', result.error);
         setError(`Failed to fetch accounts: ${result.error}`);
@@ -752,52 +817,70 @@ export default function EmailPage() {
         {/* Mailbox Filter Cards */}
         {accounts.length > 0 && (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
-            {accounts.map((account) => {
-              const isActive = selectedMailbox === account.emailAddress;
-              const mailboxName = account.mailboxName || account.accountDisplayName || account.accountName;
-              const colors = {
-                'anton.osipov@daveenci.ai': { color: 'text-blue-600', hoverBg: 'hover:bg-blue-50', borderColor: 'border-b-blue-500', activeBg: 'bg-blue-100', activeBorder: 'border-b-blue-600' },
-                'astrid@daveenci.ai': { color: 'text-purple-600', hoverBg: 'hover:bg-purple-50', borderColor: 'border-b-purple-500', activeBg: 'bg-purple-100', activeBorder: 'border-b-purple-600' },
-                'hello@daveenci.ai': { color: 'text-green-600', hoverBg: 'hover:bg-green-50', borderColor: 'border-b-green-500', activeBg: 'bg-green-100', activeBorder: 'border-b-green-600' },
-                'support@daveenci.ai': { color: 'text-yellow-600', hoverBg: 'hover:bg-yellow-50', borderColor: 'border-b-yellow-500', activeBg: 'bg-yellow-100', activeBorder: 'border-b-yellow-600' },
-                'ops@daveenci.ai': { color: 'text-red-600', hoverBg: 'hover:bg-red-50', borderColor: 'border-b-red-500', activeBg: 'bg-red-100', activeBorder: 'border-b-red-600' }
+            {(() => {
+              // Define custom order: Astrid -> Hello -> Ops -> Anton
+              const orderPriority = {
+                'astrid@daveenci.ai': 1,
+                'hello@daveenci.ai': 2,
+                'ops@daveenci.ai': 3,
+                'anton.osipov@daveenci.ai': 4
               };
               
-              const colorScheme = colors[account.emailAddress as keyof typeof colors] || colors['anton.osipov@daveenci.ai'];
+              const sortedAccounts = [...accounts].sort((a, b) => {
+                const priorityA = orderPriority[a.emailAddress as keyof typeof orderPriority] || 999;
+                const priorityB = orderPriority[b.emailAddress as keyof typeof orderPriority] || 999;
+                return priorityA - priorityB;
+              });
               
-              // Use stats directly from IMAP API
-              const unreadCount = account.unreadEmails || 0;
-              const totalCount = account.totalEmails || 0;
-              // console.log(`[Frontend] Card for ${account.emailAddress}: unread=${unreadCount}, total=${totalCount}`, account);
-              
-              return (
-                <div 
-                  key={account.accountId}
-                  onClick={(e) => {
-                    console.log(`[Card Click] Clicked on card for: "${account.emailAddress}"`);
-                    console.log(`[Card Click] Account name: "${account.mailboxName}"`);
-                    console.log(`[Card Click] Event target:`, e.target);
-                    console.log(`[Card Click] Current element:`, e.currentTarget);
-                    handleMailboxClick(account.emailAddress);
-                  }}
-                  className={`bg-white p-4 rounded-lg shadow-sm border border-gray-200 transition-all duration-200 cursor-pointer border-b-2 ${
-                    isActive 
-                      ? `${colorScheme.activeBg} ${colorScheme.activeBorder} shadow-md scale-105` 
-                      : `${colorScheme.hoverBg} ${colorScheme.borderColor}`
-                  }`}
-                >
-                  <div className={`text-xl font-bold ${colorScheme.color} mb-1`}>
-                    {unreadCount}/{totalCount}
+              return sortedAccounts.map((account) => {
+                const isActive = selectedMailbox === account.emailAddress;
+                const mailboxName = account.mailboxName || account.accountDisplayName || account.accountName;
+                const colors = {
+                  'anton.osipov@daveenci.ai': { color: 'text-blue-600', hoverBg: 'hover:bg-blue-50', borderColor: 'border-b-blue-500', activeBg: 'bg-blue-100', activeBorder: 'border-b-blue-600' },
+                  'astrid@daveenci.ai': { color: 'text-purple-600', hoverBg: 'hover:bg-purple-50', borderColor: 'border-b-purple-500', activeBg: 'bg-purple-100', activeBorder: 'border-b-purple-600' },
+                  'hello@daveenci.ai': { color: 'text-green-600', hoverBg: 'hover:bg-green-50', borderColor: 'border-b-green-500', activeBg: 'bg-green-100', activeBorder: 'border-b-green-600' },
+                  'support@daveenci.ai': { color: 'text-yellow-600', hoverBg: 'hover:bg-yellow-50', borderColor: 'border-b-yellow-500', activeBg: 'bg-yellow-100', activeBorder: 'border-b-yellow-600' },
+                  'ops@daveenci.ai': { color: 'text-red-600', hoverBg: 'hover:bg-red-50', borderColor: 'border-b-red-500', activeBg: 'bg-red-100', activeBorder: 'border-b-red-600' }
+                };
+                
+                const colorScheme = colors[account.emailAddress as keyof typeof colors] || colors['anton.osipov@daveenci.ai'];
+                
+                // Use stats directly from IMAP API
+                const unreadCount = account.unreadEmails || 0;
+                const totalCount = account.totalEmails || 0;
+                
+                return (
+                  <div 
+                    key={account.accountId}
+                    onClick={(e) => {
+                      console.log(`[Card Click] Clicked on card for: "${account.emailAddress}"`);
+                      console.log(`[Card Click] Account name: "${account.mailboxName}"`);
+                      handleMailboxClick(account.emailAddress);
+                    }}
+                    className={`bg-white p-4 rounded-lg shadow-sm border border-gray-200 transition-all duration-200 cursor-pointer border-b-2 ${
+                      isActive 
+                        ? `${colorScheme.activeBg} ${colorScheme.activeBorder} shadow-md scale-105` 
+                        : `${colorScheme.hoverBg} ${colorScheme.borderColor}`
+                    }`}
+                  >
+                    {/* Name in bold - top row */}
+                    <div className={`text-lg font-bold ${colorScheme.color} mb-1 truncate`}>
+                      {mailboxName || 'Mailbox'}
+                    </div>
+                    
+                    {/* Email address in gray - 2nd row */}
+                    <div className="text-xs text-gray-500 mb-2 truncate">
+                      {account.emailAddress}
+                    </div>
+                    
+                    {/* Unread / Total emails - 3rd row */}
+                    <div className="text-sm text-gray-700 font-medium">
+                      {unreadCount} Unread, {totalCount} Total
+                    </div>
                   </div>
-                  <div className="text-xs font-medium text-gray-500 uppercase tracking-wide truncate">
-                    {mailboxName?.toUpperCase() || 'MAILBOX'}
-                  </div>
-                  <div className="text-xs text-gray-400 truncate">
-                    <span className="font-medium">Unread</span> / <span className="font-medium">Total</span>
-                  </div>
-                </div>
-              );
-            })}
+                );
+              });
+            })()}
           </div>
         )}
 
@@ -870,115 +953,85 @@ export default function EmailPage() {
                 .map((email, index) => {
                   const isUnread = email.isRead === false || email.flagInfo?.includes('unread');
                   const emailKey = `${email.mailboxEmail}-${email.messageId}`;
-                  const isExpanded = expandedEmailId === emailKey;
+                  const isExpanded = expandedEmails.has(emailKey);
+                  const emailBody = emailBodies[emailKey];
                   
                   return (
                     <div
                       key={`${email.mailboxEmail}-${email.messageId}-${index}`}
-                      className={`border border-gray-200 rounded-lg transition-all duration-300 ${
+                      className={`border border-gray-200 rounded-lg p-4 transition-all duration-300 cursor-pointer ${
                         isUnread ? 'bg-blue-50 border-blue-200' : 'bg-white'
                       } ${isExpanded ? 'shadow-lg border-blue-400' : 'hover:bg-gray-50 hover:shadow-md'}`}
+                      onClick={() => handleEmailCardClick(email)}
                     >
-                      {/* Email Header - Clickable for expansion */}
-                      <div 
-                        className="p-4 cursor-pointer"
-                        onClick={() => handleEmailCardClick(email)}
-                      >
-                        <div className="relative">
-                          <div className="flex items-start justify-between mb-3">
-                            <div className="flex-1 pr-4">
-                              <div className="flex items-center gap-3 mb-2">
-                                {isUnread && (
-                                  <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" title="Unread email" />
-                                )}
-                                <h3 className={`${isUnread ? 'font-bold' : 'font-medium'} text-gray-900 truncate`}>
-                                  {email.subject || 'No Subject'}
-                                </h3>
-                                {email.flag && (
-                                  <Badge variant="outline" className="text-xs">
-                                    {email.flag}
-                                  </Badge>
-                                )}
-                                {isExpanded && (
-                                  <Badge variant="secondary" className="text-xs">
-                                    Expanded
-                                  </Badge>
+                      <div className="relative">
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex-1 pr-4">
+                            <div className="flex items-center gap-3 mb-2">
+                              {isUnread && (
+                                <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" title="Unread email" />
+                              )}
+                              <h3 className={`${isUnread ? 'font-bold' : 'font-medium'} text-gray-900 truncate`}>
+                                {email.subject || 'No Subject'}
+                              </h3>
+                              {email.flag && (
+                                <Badge variant="outline" className="text-xs">
+                                  {email.flag}
+                                </Badge>
+                              )}
+                              {isExpanded && (
+                                <Badge variant="secondary" className="text-xs">
+                                  Expanded
+                                </Badge>
+                              )}
+                            </div>
+                            <p className={`text-sm text-gray-600 mb-2 ${isUnread ? 'font-medium' : ''}`}>
+                              From: {email.fromName && email.fromName !== email.fromAddress 
+                                ? `${email.fromName} (${email.fromAddress})` 
+                                : email.fromAddress}
+                            </p>
+                            
+                            {/* Email Body - Full when expanded, truncated when collapsed */}
+                            {isExpanded ? (
+                              <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                                {emailBody ? (
+                                  <div className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap max-h-80 overflow-y-auto">
+                                    {emailBody}
+                                  </div>
+                                ) : (
+                                  <div className="text-center py-4">
+                                    <RefreshCw className="w-4 h-4 text-gray-400 animate-spin mx-auto mb-2" />
+                                    <p className="text-gray-500 text-xs">Loading full email content...</p>
+                                  </div>
                                 )}
                               </div>
-                              <p className={`text-sm text-gray-600 mb-2 ${isUnread ? 'font-medium' : ''}`}>
-                                From: {email.fromAddress}
-                              </p>
-                              {!isExpanded && email.summary && email.summary !== 'No content available' && (
+                            ) : (
+                              email.summary && email.summary !== 'No content available' && (
                                 <p className="text-sm text-gray-500 line-clamp-2">
                                   {email.summary}
                                 </p>
-                              )}
+                              )
+                            )}
+                          </div>
+                          <div className="flex flex-col items-end text-sm text-gray-500">
+                            <div className="flex items-center mb-1">
+                              <span className={isUnread ? 'font-medium text-gray-700' : ''}>
+                              {formatDate(email.receivedTime)}
+                            </span>
                             </div>
-                            <div className="flex flex-col items-end text-sm text-gray-500">
-                              <div className="flex items-center mb-1">
-                                <span className={isUnread ? 'font-medium text-gray-700' : ''}>
-                                {formatDate(email.receivedTime)}
-                              </span>
+                            {email.mailboxName && (
+                              <div className="text-xs text-gray-400">
+                                {email.mailboxName}
                               </div>
-                              {email.mailboxName && (
-                                <div className="text-xs text-gray-400">
-                                  {email.mailboxName}
-                                </div>
-                              )}
-                              <div className="text-xs text-blue-600 mt-1">
-                                {isExpanded ? 'Click to collapse' : 'Click to expand'}
-                              </div>
+                            )}
+                            <div className="text-xs text-blue-600 mt-1">
+                              {isExpanded ? 'Click to collapse' : 'Click to expand'}
                             </div>
                           </div>
                         </div>
-                      </div>
-
-                      {/* Expanded Email Body */}
-                      {isExpanded && (
-                        <div className="border-t border-gray-200 bg-gray-50">
-                          <div className="p-6">
-                            <div className="flex items-center justify-between mb-4">
-                              <h4 className="text-lg font-semibold text-gray-900">Email Content</h4>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setExpandedEmailId(null);
-                                  setExpandedEmailBody('');
-                                }}
-                                className="text-xs"
-                              >
-                                <X className="w-3 h-3 mr-1" />
-                                Collapse
-                              </Button>
-                            </div>
-                            <div className="bg-white rounded-lg border border-gray-200 p-4 max-h-96 overflow-y-auto">
-                              {expandedEmailBody === 'Loading email content...' ? (
-                                <div className="text-center py-8">
-                                  <RefreshCw className="w-6 h-6 text-gray-400 animate-spin mx-auto mb-2" />
-                                  <p className="text-gray-500 text-sm">Loading email content...</p>
-                                </div>
-                              ) : (
-                                <div className="prose prose-sm max-w-none">
-                                  <div 
-                                    className="text-gray-800 leading-relaxed whitespace-pre-wrap"
-                                    dangerouslySetInnerHTML={{ 
-                                      __html: expandedEmailBody.replace(/\n/g, '<br/>') 
-                                    }}
-                                  />
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Email Action Buttons */}
-                      <div className={`px-4 pb-4 ${isExpanded ? 'border-t border-gray-200 pt-4' : ''}`}>
                         
                         {/* Email Action Buttons - Bottom Right */}
-                        <div className="flex justify-end gap-2">
+                        <div className="flex justify-end gap-2 mt-4">
                           <Button
                             size="sm"
                             variant="outline"

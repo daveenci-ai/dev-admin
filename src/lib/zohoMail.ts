@@ -345,10 +345,15 @@ async function fetchEmailsViaImap(config: ImapConfig, limit = 10): Promise<any[]
       const envelope = message.envelope;
       const flags = message.flags || new Set();
       
-      // Create a fast preview without additional IMAP calls
+      // Try to get a basic preview or show placeholder
       const fromName = envelope?.from?.[0]?.name || envelope?.from?.[0]?.address || 'Unknown sender';
       const subject = envelope?.subject || 'No Subject';
-      const bodyContent = `Email from ${fromName} about ${subject}`;
+      
+      // For now, show a simple placeholder - full content will be loaded on expansion
+      let bodyContent = 'Click to expand and view full email content';
+      
+      // If there's any basic text structure available, we could try to extract a preview
+      // But for performance, we'll keep it simple and load full content on demand
       
       // Convert IMAP message to our format
       const emailMessage = {
@@ -603,6 +608,50 @@ export async function fetchEmailBodyViaImap(messageId: string, mailboxEmail: str
         console.log(`[IMAP Body] Connection closed for ${config.name}`);
       } catch (error) {
         console.error(`[IMAP Body] Error closing connection:`, error);
+      }
+    }
+  }
+}
+
+// Mark email as read via IMAP
+export async function markEmailAsReadViaImap(messageId: string, mailboxEmail: string): Promise<void> {
+  console.log(`[IMAP Mark Read] Marking message ${messageId} as read in ${mailboxEmail}`);
+  
+  const imapConfigs = getImapConfigs();
+  const config = imapConfigs.find(c => c.email === mailboxEmail);
+  
+  if (!config) {
+    throw new Error(`No IMAP configuration found for mailbox: ${mailboxEmail}`);
+  }
+  
+  let client: ImapFlow | null = null;
+  
+  try {
+    client = await createImapConnection(config);
+    
+    // Open INBOX
+    await client.mailboxOpen('INBOX');
+    console.log(`[IMAP Mark Read] INBOX opened for ${config.name}`);
+    
+    // Mark the message as read by adding the \Seen flag
+    const uid = parseInt(messageId);
+    if (isNaN(uid)) {
+      throw new Error(`Invalid message ID: ${messageId}`);
+    }
+    
+    await client.messageFlagsAdd(`${uid}`, ['\\Seen']);
+    console.log(`[IMAP Mark Read] Successfully marked message ${uid} as read`);
+    
+  } catch (error: any) {
+    console.error(`[IMAP Mark Read] Error marking email as read:`, error);
+    throw error;
+  } finally {
+    if (client) {
+      try {
+        await client.logout();
+        console.log(`[IMAP Mark Read] Connection closed for ${config.name}`);
+      } catch (error) {
+        console.error(`[IMAP Mark Read] Error closing connection:`, error);
       }
     }
   }
