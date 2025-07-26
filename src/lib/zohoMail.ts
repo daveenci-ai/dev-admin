@@ -542,17 +542,39 @@ export async function fetchEmailBodyViaImap(messageId: string, mailboxEmail: str
     
     console.log(`[IMAP Body] Fetching body for UID: ${uid}`);
     
-    // First check if the message exists
+    // First check if the message exists and debug available UIDs
     try {
+      console.log(`[IMAP Body] Checking if UID ${uid} exists...`);
+      
+      // Get all available UIDs for debugging
+      const allMessages = [];
+      for await (const message of client.fetch('1:*', { uid: true })) {
+        allMessages.push(message.uid);
+      }
+      console.log(`[IMAP Body] Available UIDs in mailbox:`, allMessages.slice(0, 10), `(showing first 10 of ${allMessages.length})`);
+      console.log(`[IMAP Body] Looking for UID: ${uid}, Available UIDs include:`, allMessages.includes(uid));
+      
+      // Check if the specific message exists
       let messageExists = false;
       for await (const message of client.fetch(`${uid}`, { uid: true, envelope: true })) {
         messageExists = true;
-        break; // We only need to know if at least one message is returned
+        console.log(`[IMAP Body] Found message with UID ${uid}, subject: ${message.envelope?.subject || 'No subject'}`);
+        break;
       }
       console.log(`[IMAP Body] Message UID ${uid} exists: ${messageExists}`);
       
       if (!messageExists) {
-        throw new Error(`Message with UID ${uid} not found in mailbox`);
+        // Try to find the message by subject as fallback
+        console.log(`[IMAP Body] UID ${uid} not found, attempting to find by most recent messages...`);
+        const recentMessages = [];
+        for await (const message of client.fetch('1:10', { uid: true, envelope: true })) {
+          recentMessages.push({
+            uid: message.uid,
+            subject: message.envelope?.subject || 'No subject'
+          });
+        }
+        console.log(`[IMAP Body] Recent messages:`, recentMessages);
+        throw new Error(`Message with UID ${uid} not found in mailbox. Available UIDs: ${allMessages.join(', ')}`);
       }
     } catch (existsError) {
       console.error(`[IMAP Body] Error checking if message exists:`, existsError);
