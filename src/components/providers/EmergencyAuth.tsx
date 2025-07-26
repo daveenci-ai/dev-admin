@@ -1,58 +1,55 @@
 'use client'
 
 import { useSession } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
-import { useEffect } from 'react'
+import { usePathname } from 'next/navigation'
 
 /**
- * EMERGENCY AUTHENTICATION COMPONENT
- * This component provides immediate security protection at the page level
- * when middleware fails to work in production.
+ * CLEAN AUTHENTICATION COMPONENT
+ * Shows a single, clean access denied message without redirects or flickering
  */
 export function EmergencyAuth({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession()
-  const router = useRouter()
+  const pathname = usePathname()
 
-  useEffect(() => {
-    // Force redirect if not authenticated
-    if (status === 'unauthenticated') {
-      console.log('[EMERGENCY_AUTH] Blocking unauthenticated access - redirecting to login')
-      window.location.href = '/auth/login'
-      return
-    }
+  // Public routes that don't require authentication
+  const publicRoutes = ['/auth/login']
+  const isPublicRoute = publicRoutes.includes(pathname)
 
-    if (status === 'authenticated' && !session?.user) {
-      console.log('[EMERGENCY_AUTH] No user in session - redirecting to login')
-      window.location.href = '/auth/login'
-      return
-    }
-
-    console.log('[EMERGENCY_AUTH] User authenticated:', session?.user?.email)
-  }, [status, session, router])
-
-  // Show loading while checking
+  // Show minimal loading while checking authentication
   if (status === 'loading') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600 font-medium">Verifying access...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600 text-sm">Verifying access...</p>
         </div>
       </div>
     )
   }
 
-  // Block if not authenticated
+  // If public route, allow access
+  if (isPublicRoute) {
+    return <>{children}</>
+  }
+
+  // If not authenticated, show clean access denied (NO REDIRECTS, NO FLICKERING)
   if (status === 'unauthenticated' || !session?.user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-red-50">
-        <div className="text-center">
-          <div className="text-red-600 text-6xl mb-4">🚫</div>
-          <h1 className="text-2xl font-bold text-red-800 mb-2">Access Denied</h1>
-          <p className="text-red-600 mb-4">This admin dashboard requires authentication.</p>
+        <div className="max-w-md w-full text-center p-8">
+          <div className="text-red-600 text-8xl mb-6">🚫</div>
+          <h1 className="text-3xl font-bold text-red-800 mb-4">Access Denied</h1>
+          <p className="text-red-600 mb-6 text-lg">
+            This admin dashboard requires authentication from validated users only.
+          </p>
+          <div className="bg-red-100 border border-red-200 rounded-lg p-4 mb-6">
+            <p className="text-red-800 text-sm font-medium">
+              🔒 Only authorized personnel from the users database can access this system.
+            </p>
+          </div>
           <button
             onClick={() => window.location.href = '/auth/login'}
-            className="bg-red-600 text-white px-6 py-2 rounded hover:bg-red-700"
+            className="bg-red-600 text-white px-8 py-3 rounded-lg hover:bg-red-700 transition-colors font-semibold shadow-lg"
           >
             Go to Login
           </button>
