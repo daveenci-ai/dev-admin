@@ -5,9 +5,10 @@ import { fetchEmailBodyViaImap } from '@/lib/zohoMail'
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
-  console.log('[Email Body API] Starting request handler...')
-  
+  // Single comprehensive try-catch to prevent HTML responses
   try {
+    console.log('[Email Body API] Starting request handler...')
+    
     const messageId = request.nextUrl.searchParams.get('messageId')
     const mailboxEmail = request.nextUrl.searchParams.get('mailboxEmail')
 
@@ -21,6 +22,15 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    // Add environment diagnostics
+    console.log('[Email Body API] Environment check - NODE_ENV:', process.env.NODE_ENV)
+    console.log('[Email Body API] IMAP passwords available:', {
+      anton: !!process.env.ZOHO_PASSWORD_ANTON,
+      astrid: !!process.env.ZOHO_PASSWORD_ASTRID,
+      ops: !!process.env.ZOHO_PASSWORD_OPS,
+      hello: !!process.env.ZOHO_PASSWORD_HELLO
+    })
+    
     console.log('[Email Body API] Calling fetchEmailBodyViaImap...')
     const emailBody = await fetchEmailBodyViaImap(messageId, mailboxEmail)
     console.log('[Email Body API] IMAP function returned body length:', emailBody?.length || 0)
@@ -33,27 +43,24 @@ export async function GET(request: NextRequest) {
     })
 
   } catch (error: any) {
-    console.error('[Email Body API] Detailed error:', {
+    console.error('[Email Body API] Comprehensive error handler:', {
       message: error.message,
       stack: error.stack,
       name: error.name,
       toString: error.toString()
     })
     
-    // Ensure we always return JSON, never HTML
-    return NextResponse.json(
-      { 
-        error: 'Failed to fetch email body',
-        details: error.message || 'Unknown error',
-        errorName: error.name || 'UnknownError',
-        timestamp: new Date().toISOString()
-      },
-      { 
-        status: 500,
-        headers: {
-          'Content-Type': 'application/json'
-        }
+    // Always return JSON, never HTML - even for catastrophic errors
+    return new Response(JSON.stringify({
+      error: 'Failed to fetch email body',
+      details: error.message || 'Unknown error',
+      errorName: error.name || 'UnknownError',
+      timestamp: new Date().toISOString()
+    }), {
+      status: 500,
+      headers: {
+        'Content-Type': 'application/json'
       }
-    )
+    })
   }
 } 
