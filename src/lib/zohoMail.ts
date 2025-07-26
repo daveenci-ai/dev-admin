@@ -554,28 +554,16 @@ export async function fetchEmailBodyViaImap(messageId: string, mailboxEmail: str
       console.log(`[IMAP Body] Available UIDs in mailbox:`, allMessages.slice(0, 10), `(showing first 10 of ${allMessages.length})`);
       console.log(`[IMAP Body] Looking for UID: ${uid}, Available UIDs include:`, allMessages.includes(uid));
       
-      // Check if the specific message exists
-      let messageExists = false;
-      for await (const message of client.fetch(`${uid}`, { uid: true, envelope: true })) {
-        messageExists = true;
-        console.log(`[IMAP Body] Found message with UID ${uid}, subject: ${message.envelope?.subject || 'No subject'}`);
-        break;
-      }
-      console.log(`[IMAP Body] Message UID ${uid} exists: ${messageExists}`);
-      
-      if (!messageExists) {
-        // Try to find the message by subject as fallback
-        console.log(`[IMAP Body] UID ${uid} not found, attempting to find by most recent messages...`);
-        const recentMessages = [];
-        for await (const message of client.fetch('1:10', { uid: true, envelope: true })) {
-          recentMessages.push({
-            uid: message.uid,
-            subject: message.envelope?.subject || 'No subject'
-          });
+             // Simply check if UID exists in the available UIDs list
+        const messageExists = allMessages.includes(uid);
+        console.log(`[IMAP Body] Message UID ${uid} exists in available UIDs: ${messageExists}`);
+        
+        if (!messageExists) {
+          console.log(`[IMAP Body] UID ${uid} not found in available UIDs:`, allMessages);
+          throw new Error(`Message with UID ${uid} not found in mailbox. Available UIDs: ${allMessages.join(', ')}`);
         }
-        console.log(`[IMAP Body] Recent messages:`, recentMessages);
-        throw new Error(`Message with UID ${uid} not found in mailbox. Available UIDs: ${allMessages.join(', ')}`);
-      }
+        
+        console.log(`[IMAP Body] UID ${uid} confirmed to exist, proceeding with body fetch...`);
     } catch (existsError) {
       console.error(`[IMAP Body] Error checking if message exists:`, existsError);
       throw new Error(`Failed to check message existence: ${existsError instanceof Error ? existsError.message : 'Unknown error'}`);
@@ -586,11 +574,15 @@ export async function fetchEmailBodyViaImap(messageId: string, mailboxEmail: str
     console.log(`[IMAP Body] Starting body fetch for UID: ${uid}`);
     
     try {
+      console.log(`[IMAP Body] Executing IMAP fetch command for UID ${uid} with bodyParts...`);
+      let messageCount = 0;
       for await (const message of client.fetch(`${uid}`, {
         bodyParts: ['TEXT', 'HTML'],
         envelope: true,
         bodyStructure: true
       })) {
+        messageCount++;
+        console.log(`[IMAP Body] Processing message ${messageCount} with UID ${message.uid}`);
       console.log(`[IMAP Body] Processing message body parts...`);
       
       // Try to get text or HTML content
@@ -632,6 +624,8 @@ export async function fetchEmailBodyViaImap(messageId: string, mailboxEmail: str
       
       break; // We only expect one message
     }
+    
+    console.log(`[IMAP Body] Finished processing ${messageCount} messages`);
     
     if (!emailBody) {
       emailBody = '[No email content available]';
