@@ -542,13 +542,33 @@ export async function fetchEmailBodyViaImap(messageId: string, mailboxEmail: str
     
     console.log(`[IMAP Body] Fetching body for UID: ${uid}`);
     
+    // First check if the message exists
+    try {
+      let messageExists = false;
+      for await (const message of client.fetch(`${uid}`, { uid: true, envelope: true })) {
+        messageExists = true;
+        break; // We only need to know if at least one message is returned
+      }
+      console.log(`[IMAP Body] Message UID ${uid} exists: ${messageExists}`);
+      
+      if (!messageExists) {
+        throw new Error(`Message with UID ${uid} not found in mailbox`);
+      }
+    } catch (existsError) {
+      console.error(`[IMAP Body] Error checking if message exists:`, existsError);
+      throw new Error(`Failed to check message existence: ${existsError instanceof Error ? existsError.message : 'Unknown error'}`);
+    }
+    
     // Fetch the message body
     let emailBody = '';
-    for await (const message of client.fetch(`${uid}`, {
-      bodyParts: ['TEXT', 'HTML'],
-      envelope: true,
-      bodyStructure: true
-    })) {
+    console.log(`[IMAP Body] Starting body fetch for UID: ${uid}`);
+    
+    try {
+      for await (const message of client.fetch(`${uid}`, {
+        bodyParts: ['TEXT', 'HTML'],
+        envelope: true,
+        bodyStructure: true
+      })) {
       console.log(`[IMAP Body] Processing message body parts...`);
       
       // Try to get text or HTML content
@@ -597,6 +617,11 @@ export async function fetchEmailBodyViaImap(messageId: string, mailboxEmail: str
     
     console.log(`[IMAP Body] Successfully fetched email body, length: ${emailBody.length}`);
     return emailBody;
+    
+    } catch (fetchError) {
+      console.error(`[IMAP Body] Error during body fetch:`, fetchError);
+      throw new Error(`Failed to fetch message body: ${fetchError instanceof Error ? fetchError.message : 'Unknown fetch error'}`);
+    }
     
   } catch (error: any) {
     console.error(`[IMAP Body] Error fetching email body:`, error);
