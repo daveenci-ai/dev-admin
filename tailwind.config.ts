@@ -8,6 +8,22 @@ const config: Config = {
     './app/**/*.{ts,tsx}',
     './src/**/*.{ts,tsx}',
   ],
+  safelist: [
+    // CRM Status Card Border Colors
+    'border-gray-500', 'border-gray-600', 'border-gray-700',
+    'border-red-500', 'border-red-600', 'border-red-700',
+    'border-blue-500', 'border-blue-600', 'border-blue-700',
+    'border-yellow-500', 'border-yellow-600', 'border-yellow-700',
+    'border-green-500', 'border-green-600', 'border-green-700',
+    'border-purple-500', 'border-purple-600', 'border-purple-700',
+    // Border bottom variants
+    'border-b-gray-500', 'border-b-gray-600', 'border-b-gray-700',
+    'border-b-red-500', 'border-b-red-600', 'border-b-red-700',
+    'border-b-blue-500', 'border-b-blue-600', 'border-b-blue-700',
+    'border-b-yellow-500', 'border-b-yellow-600', 'border-b-yellow-700',
+    'border-b-green-500', 'border-b-green-600', 'border-b-green-700',
+    'border-b-purple-500', 'border-b-purple-600', 'border-b-purple-700',
+  ],
   prefix: "",
   theme: {
     container: {
