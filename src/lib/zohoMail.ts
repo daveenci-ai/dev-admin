@@ -104,6 +104,72 @@ async function createImapConnection(config: ImapConfig): Promise<ImapFlow> {
   }
 }
 
+// Helper function to clean and decode email text
+function cleanEmailText(text: string): string {
+  let cleaned = text;
+  
+  // 1. Decode quoted-printable encoding (=XX format)
+  cleaned = cleaned.replace(/=([0-9A-F]{2})/gi, (match, hex) => {
+    try {
+      return String.fromCharCode(parseInt(hex, 16));
+    } catch {
+      return match; // Keep original if decode fails
+    }
+  });
+  
+  // 2. Remove soft line breaks (= at end of line)
+  cleaned = cleaned.replace(/=\s*$/gm, '');
+  
+  // 3. Decode common HTML entities
+  const htmlEntities: { [key: string]: string } = {
+    '&nbsp;': ' ',
+    '&amp;': '&',
+    '&lt;': '<',
+    '&gt;': '>',
+    '&quot;': '"',
+    '&#39;': "'",
+    '&apos;': "'",
+    '&copy;': '©',
+    '&reg;': '®',
+    '&trade;': '™'
+  };
+  
+  Object.entries(htmlEntities).forEach(([entity, char]) => {
+    cleaned = cleaned.replace(new RegExp(entity, 'gi'), char);
+  });
+  
+  // 4. Decode numeric HTML entities (&#123; format)
+  cleaned = cleaned.replace(/&#(\d+);/g, (match, num) => {
+    try {
+      return String.fromCharCode(parseInt(num));
+    } catch {
+      return match;
+    }
+  });
+  
+  // 5. Replace common Unicode sequences
+  cleaned = cleaned
+    .replace(/\u00A0/g, ' ')  // Non-breaking space
+    .replace(/\u2019/g, "'")  // Right single quotation mark
+    .replace(/\u2018/g, "'")  // Left single quotation mark
+    .replace(/\u201C/g, '"')  // Left double quotation mark
+    .replace(/\u201D/g, '"')  // Right double quotation mark
+    .replace(/\u2013/g, '-')  // En dash
+    .replace(/\u2014/g, '--') // Em dash
+    .replace(/\u2026/g, '...'); // Ellipsis
+  
+  // 6. Remove or replace non-printable characters
+  cleaned = cleaned.replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/g, '');
+  
+  // 7. Clean up whitespace
+  cleaned = cleaned
+    .replace(/\s+/g, ' ')     // Multiple spaces to single space
+    .replace(/\n\s*\n/g, '\n') // Multiple newlines to single
+    .trim();
+  
+  return cleaned;
+}
+
 // Helper function to extract email preview (first 3 lines of content)
 function extractEmailPreview(emailSource: string): string {
   try {
@@ -131,7 +197,9 @@ function extractEmailPreview(emailSource: string): string {
     
     // Extract content lines, skipping MIME boundaries and metadata
     const contentLines = [];
-    for (let i = bodyStartIndex; i < lines.length && contentLines.length < 3; i++) {
+    let foundContentLines = 0;
+    
+    for (let i = bodyStartIndex; i < lines.length && foundContentLines < 3; i++) {
       const line = lines[i].trim();
       
       // Skip empty lines, MIME boundaries, and technical metadata
@@ -140,25 +208,90 @@ function extractEmailPreview(emailSource: string): string {
           line.startsWith('Content-') ||
           line.startsWith('MIME-') ||
           line.includes('boundary=') ||
-          line.match(/^[a-zA-Z-]+:/)) {
+          line.match(/^[a-zA-Z-]+:/) ||
+          line.startsWith('<') && line.endsWith('>')) { // Skip HTML tags
         continue;
       }
       
-      // Decode quoted-printable encoding
-      let cleanLine = line
-        .replace(/=([0-9A-F]{2})/g, (match, hex) => String.fromCharCode(parseInt(hex, 16)))
-        .replace(/=\s*$/g, ''); // Remove soft line breaks
+      // Clean and decode the line
+      const cleanLine = cleanEmailText(line);
       
-      // Only add non-empty, meaningful content
-      if (cleanLine && cleanLine.length > 3) {
+      // Only add meaningful content (more than just punctuation)
+      if (cleanLine && cleanLine.length > 2 && /[a-zA-Z0-9]/.test(cleanLine)) {
+        contentLines.push(cleanLine);
+        foundContentLines++;
+      }
+    }
+    
+    // Join lines and limit length
+    const preview = contentLines.join(' ').substring(0, 200);
+    
+    // Final cleanup - ensure it ends nicely
+    return preview.length === 200 ? preview + '...' : preview;
+    
+  } catch (err) {
+    console.log('[Preview] Error extracting preview:', err);
+    return '';
+  }
+}
+
+// Helper function to extract full email content (cleaned and decoded)
+function extractFullEmailContent(emailSource: string): string {
+  try {
+    // Split email source into lines
+    const lines = emailSource.split('\n');
+    
+    // Find the start of the email body (after headers)
+    let bodyStartIndex = -1;
+    let inHeaders = true;
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      
+      // Empty line typically marks end of headers
+      if (inHeaders && line.trim() === '') {
+        bodyStartIndex = i + 1;
+        inHeaders = false;
+        break;
+      }
+    }
+    
+    if (bodyStartIndex === -1 || bodyStartIndex >= lines.length) {
+      return 'No content available';
+    }
+    
+    // Extract all content lines, skipping MIME boundaries and metadata
+    const contentLines = [];
+    
+    for (let i = bodyStartIndex; i < lines.length; i++) {
+      const line = lines[i].trim();
+      
+      // Skip empty lines, MIME boundaries, and technical metadata
+      if (line === '' || 
+          line.startsWith('--') || 
+          line.startsWith('Content-') ||
+          line.startsWith('MIME-') ||
+          line.includes('boundary=') ||
+          line.match(/^[a-zA-Z-]+:/) ||
+          line.startsWith('<') && line.endsWith('>')) { // Skip HTML tags
+        continue;
+      }
+      
+      // Clean and decode the line
+      const cleanLine = cleanEmailText(line);
+      
+      // Add all meaningful content (no length limit for full content)
+      if (cleanLine && /[a-zA-Z0-9]/.test(cleanLine)) {
         contentLines.push(cleanLine);
       }
     }
     
-    return contentLines.join('\n').substring(0, 200); // Limit to 200 chars
+    // Join all lines with proper spacing
+    return contentLines.join('\n').trim() || 'No content available';
+    
   } catch (err) {
-    console.log('[Preview] Error extracting preview:', err);
-    return '';
+    console.log('[Full Content] Error extracting full content:', err);
+    return 'Error loading content';
   }
 }
 
@@ -408,20 +541,24 @@ async function fetchEmailsViaImap(config: ImapConfig, limit = 10): Promise<any[]
       const fromName = envelope?.from?.[0]?.name || envelope?.from?.[0]?.address || 'Unknown sender';
       const subject = envelope?.subject || 'No Subject';
       
-      // Extract preview from email source
+      // Extract both preview and full content from email source
       let bodyContent = 'Click to expand and view full email content';
       let preview = '';
+      let fullContent = '';
       
       if (message.source) {
         try {
           const emailSource = message.source.toString();
-          // Extract email content preview (first few lines)
+          // Extract preview (first few lines)
           preview = extractEmailPreview(emailSource);
+          // Extract full clean content for expansion
+          fullContent = extractFullEmailContent(emailSource);
+          
           if (preview && preview.trim()) {
             bodyContent = preview;
           }
         } catch (err) {
-          console.log(`[IMAP-${config.name}] Error extracting preview:`, err);
+          console.log(`[IMAP-${config.name}] Error extracting content:`, err);
         }
       }
       
@@ -437,6 +574,7 @@ async function fetchEmailsViaImap(config: ImapConfig, limit = 10): Promise<any[]
         isRead: !flags.has('\\Seen') ? false : true,
         flag: Array.from(flags).join(', '),
         summary: bodyContent ? bodyContent.substring(0, 300) : 'No content available',
+        fullContent: fullContent || 'No content available', // Store full content for expansion
         mailboxName: config.name,
         mailboxEmail: config.email,
         calendarType: 0,

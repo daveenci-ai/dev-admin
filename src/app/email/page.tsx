@@ -157,7 +157,7 @@ export default function EmailPage() {
         return newSet;
       });
     } else {
-      // Expand email, fetch body, and mark as read
+      // Expand email and mark as read
       console.log('[Email Card] Expanding email:', email.subject);
       setExpandedEmails(prev => new Set(prev).add(emailKey));
       
@@ -170,14 +170,15 @@ export default function EmailPage() {
         )
       );
       
-      // Fetch full body content
+      // Use full content from email object (already fetched during initial load)
       if (!emailBodies[emailKey]) {
-        const body = await fetchEmailBody(email);
-        setEmailBodies(prev => ({ ...prev, [emailKey]: body }));
+        const fullContent = (email as any).fullContent || 'No content available';
+        console.log('[Email Expansion] Using fullContent:', fullContent.substring(0, 100) + '...');
+        setEmailBodies(prev => ({ ...prev, [emailKey]: fullContent }));
       }
       
-      // Mark as read on server
-      await markEmailAsRead(email);
+      // Mark as read on server (async, but don't wait for it)
+      markEmailAsRead(email);
     }
   };
 
