@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
+import DOMPurify from 'dompurify';
 import { 
   Mail, 
   RefreshCw, 
@@ -57,6 +58,36 @@ interface ZohoAccount {
   accountCreatedTime?: string;
   isActive?: boolean;
 }
+
+// Helper function to safely render HTML content
+const sanitizeAndRenderHTML = (htmlContent: string): { __html: string } => {
+  if (typeof window === 'undefined') {
+    // Server-side: return as-is for now
+    return { __html: htmlContent };
+  }
+  
+  // Client-side: sanitize HTML
+  const cleanHTML = DOMPurify.sanitize(htmlContent, {
+    ALLOWED_TAGS: ['p', 'br', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'strong', 'b', 'em', 'i', 'u', 'div', 'span'],
+    ALLOWED_ATTR: []
+  });
+  
+  return { __html: cleanHTML };
+};
+
+// Helper function to detect if content is HTML
+const isHTMLContent = (content: string): boolean => {
+  return content.includes('<') && (
+    content.includes('<p>') || 
+    content.includes('<div>') || 
+    content.includes('<h1>') || 
+    content.includes('<h2>') || 
+    content.includes('<h3>') || 
+    content.includes('<ul>') || 
+    content.includes('<li>') ||
+    content.includes('<br>')
+  );
+};
 
 export default function EmailPage() {
   const { data: session } = useSession();
@@ -1022,9 +1053,16 @@ export default function EmailPage() {
                             {isExpanded ? (
                               // Show full email content inline
                               emailBody && emailBody !== 'Click to expand and view full email content' ? (
-                                <div className="text-base text-gray-700 leading-relaxed whitespace-pre-line break-words">
-                                  {emailBody}
-                                </div>
+                                isHTMLContent(emailBody) ? (
+                                  <div 
+                                    className="text-base text-gray-700 leading-relaxed prose prose-sm max-w-none"
+                                    dangerouslySetInnerHTML={sanitizeAndRenderHTML(emailBody)}
+                                  />
+                                ) : (
+                                  <div className="text-base text-gray-700 leading-relaxed whitespace-pre-line break-words">
+                                    {emailBody}
+                                  </div>
+                                )
                               ) : (
                                 <div className="flex items-center gap-2 text-gray-500">
                                   <RefreshCw className="w-4 h-4 animate-spin" />
@@ -1036,9 +1074,16 @@ export default function EmailPage() {
                               email.summary && 
                               email.summary !== 'No content available' && 
                               email.summary !== 'Click to expand and view full email content' && (
-                                <p className="text-base text-gray-600 line-clamp-3 leading-relaxed">
-                                  {email.summary}
-                                </p>
+                                isHTMLContent(email.summary) ? (
+                                  <div 
+                                    className="text-base text-gray-600 line-clamp-3 leading-relaxed prose prose-sm max-w-none"
+                                    dangerouslySetInnerHTML={sanitizeAndRenderHTML(email.summary)}
+                                  />
+                                ) : (
+                                  <p className="text-base text-gray-600 line-clamp-3 leading-relaxed">
+                                    {email.summary}
+                                  </p>
+                                )
                               )
                             )}
                           </div>

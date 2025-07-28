@@ -323,7 +323,7 @@ function extractEmailPreview(emailSource: string): string {
   }
 }
 
-// Helper function to extract full email content (cleaned and decoded)
+// Helper function to extract full email content (preserve HTML formatting)
 function extractFullEmailContent(emailSource: string): string {
   try {
     // Split email source into lines
@@ -348,39 +348,91 @@ function extractFullEmailContent(emailSource: string): string {
       return 'No content available';
     }
     
-    // Extract all content lines, skipping MIME boundaries and metadata
+    // Extract content, but preserve HTML if it exists
     const contentLines = [];
+    let inHTMLBody = false;
+    let htmlContent = '';
+    let plainContent = [];
     
     for (let i = bodyStartIndex; i < lines.length; i++) {
-      const line = lines[i].trim();
+      const line = lines[i];
       
-      // Skip empty lines, MIME boundaries, and technical metadata
-      if (line === '' || 
-          line.startsWith('--') || 
+      // Skip MIME boundaries and technical metadata
+      if (line.startsWith('--') || 
           line.startsWith('Content-') ||
           line.startsWith('MIME-') ||
-          line.includes('boundary=') ||
-          line.match(/^[a-zA-Z-]+:/) ||
-          line.startsWith('<') && line.endsWith('>')) { // Skip HTML tags
+          line.includes('boundary=')) {
         continue;
       }
       
-      // Clean and decode the line
-      const cleanLine = cleanEmailText(line);
+      // Check if this line contains HTML
+      if (line.includes('<html') || line.includes('<body') || line.includes('<div') || 
+          line.includes('<p>') || line.includes('<h1') || line.includes('<h2') || 
+          line.includes('<h3') || line.includes('<ul>') || line.includes('<li>')) {
+        inHTMLBody = true;
+      }
       
-      // Add all meaningful content (no length limit for full content)
-      if (cleanLine && /[a-zA-Z0-9]/.test(cleanLine)) {
-        contentLines.push(cleanLine);
+      if (inHTMLBody) {
+        htmlContent += line + '\n';
+      } else {
+        // Handle plain text lines
+        const trimmedLine = line.trim();
+        if (trimmedLine && !trimmedLine.match(/^[a-zA-Z-]+:/) && /[a-zA-Z0-9]/.test(trimmedLine)) {
+          const cleanLine = cleanEmailText(trimmedLine);
+          if (cleanLine) {
+            plainContent.push(cleanLine);
+          }
+        }
       }
     }
     
-    // Join all lines with proper spacing
-    return contentLines.join('\n').trim() || 'No content available';
+    // Return HTML content if found, otherwise return enhanced plain text
+    if (inHTMLBody && htmlContent.trim()) {
+      // Clean up HTML but preserve structure
+      return htmlContent
+        .replace(/style="[^"]*"/gi, '') // Remove inline styles for security
+        .replace(/on\w+="[^"]*"/gi, '') // Remove event handlers for security
+        .trim();
+    } else {
+      // Enhance plain text with basic HTML formatting
+      return enhancePlainTextFormatting(plainContent.join('\n'));
+    }
     
   } catch (err) {
     console.log('[Full Content] Error extracting full content:', err);
     return 'Error loading content';
   }
+}
+
+// Helper function to enhance plain text with basic HTML formatting
+function enhancePlainTextFormatting(text: string): string {
+  if (!text || text.trim() === '') {
+    return 'No content available';
+  }
+  
+  let enhanced = text;
+  
+  // Convert common patterns to HTML
+  // Bullet points
+  enhanced = enhanced.replace(/^[\s]*[•·*-]\s+(.+)$/gm, '<li>$1</li>');
+  
+  // If we have list items, wrap in ul
+  if (enhanced.includes('<li>')) {
+    enhanced = enhanced.replace(/(<li>[\s\S]*?<\/li>)/g, '<ul>$1</ul>');
+  }
+  
+  // Headers (lines that end with : and are followed by content)
+  enhanced = enhanced.replace(/^(.+):[\s]*$/gm, '<h3>$1:</h3>');
+  
+  // Paragraph breaks (double newlines)
+  enhanced = enhanced.replace(/\n\n+/g, '</p><p>');
+  enhanced = '<p>' + enhanced + '</p>';
+  
+  // Clean up empty paragraphs
+  enhanced = enhanced.replace(/<p><\/p>/g, '');
+  enhanced = enhanced.replace(/<p>\s*<\/p>/g, '');
+  
+  return enhanced.trim();
 }
 
 // IMAP function to delete email (move to Trash)
