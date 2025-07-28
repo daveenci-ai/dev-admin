@@ -246,6 +246,13 @@ function cleanEmailText(text: string): string {
     .replace(/[ \t]+/g, ' ')       // Multiple spaces/tabs to single space
     .replace(/\n\s*\n\s*\n/g, '\n\n') // Triple+ newlines to double
     .replace(/^\s+|\s+$/gm, '')    // Trim each line
+    
+    // 14. Consolidate short lines to improve readability
+    // Join lines that are likely part of the same sentence/paragraph
+    .replace(/(\w)\n([a-z])/g, '$1 $2')  // Join if lowercase letter follows
+    .replace(/(\w)\n(\w)/g, '$1 $2')     // Join consecutive words split by single newline
+    .replace(/([,.;:])\n([A-Z])/g, '$1 $2') // Join after punctuation if capital follows
+    
     .trim();
   
   return cleaned;

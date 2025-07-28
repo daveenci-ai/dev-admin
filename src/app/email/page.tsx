@@ -1022,9 +1022,9 @@ export default function EmailPage() {
                             {isExpanded ? (
                               // Show full email content inline
                               emailBody && emailBody !== 'Click to expand and view full email content' ? (
-                                <p className="text-base text-gray-700 leading-relaxed whitespace-pre-wrap">
+                                <div className="text-base text-gray-700 leading-relaxed whitespace-pre-line break-words">
                                   {emailBody}
-                                </p>
+                                </div>
                               ) : (
                                 <div className="flex items-center gap-2 text-gray-500">
                                   <RefreshCw className="w-4 h-4 animate-spin" />
