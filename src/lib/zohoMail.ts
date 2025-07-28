@@ -707,7 +707,8 @@ export async function fetchEmailBodyViaImap(messageId: string, mailboxEmail: str
             }
 
             
-            emailBody = `Subject: ${subject}\n\nFrom: ${fromName} (${fromEmail})\nDate: ${date}\n\n--- EMAIL CONTENT ---\n\n${bodyContent}`;
+            // Return just the clean email content, no metadata wrapper
+            emailBody = bodyContent;
             
             console.log(`[IMAP Body] Successfully extracted envelope for: ${subject}`);
           } else {
@@ -812,7 +813,8 @@ export async function fetchEmailBodyViaImap(messageId: string, mailboxEmail: str
                   bodyContent = bodyContent.substring(0, 1000) + '\n\n... [Content truncated for preview]';
                 }
                 
-                emailBody = `Subject: ${subject}\n\nFrom: ${fromName} (${fromEmail})\nDate: ${date}\n\n--- EMAIL CONTENT ---\n\n${bodyContent}`;
+                // Return just the clean email content, no metadata wrapper
+                emailBody = bodyContent;
                 console.log(`[IMAP Body] Successfully processed direct fetch for: ${subject}`);
               }
               break;
