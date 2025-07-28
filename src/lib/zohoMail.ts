@@ -624,24 +624,57 @@ export async function fetchEmailBodyViaImap(messageId: string, mailboxEmail: str
                  if (bodyStart > 0) {
                    let rawBody = sourceText.substring(bodyStart + 4).trim();
                    
-                   // Clean up MIME content - remove boundaries and headers
+                   // COMPREHENSIVE email content cleanup
                    rawBody = rawBody
-                     // Remove MIME boundary lines (--000000000...)
-                     .replace(/^--[0-9a-f]+.*$/gm, '')
-                     // Remove Content-Type lines
-                     .replace(/^Content-Type:.*$/gm, '')
-                     // Remove Content-Transfer-Encoding lines  
-                     .replace(/^Content-Transfer-Encoding:.*$/gm, '')
-                     // Remove other Content-* headers
-                     .replace(/^Content-[^:]*:.*$/gm, '')
-                     // Remove empty lines created by header removal
+                     // Remove all MIME boundary lines (various formats)
+                     .replace(/^--[=_\-a-zA-Z0-9]+.*$/gm, '')
+                     .replace(/^------=.*$/gm, '')
+                     .replace(/^----boundary.*$/gm, '')
+                     // Remove Content-* headers
+                     .replace(/^Content-Type:.*$/gmi, '')
+                     .replace(/^Content-Transfer-Encoding:.*$/gmi, '')
+                     .replace(/^Content-Disposition:.*$/gmi, '')
+                     .replace(/^Content-[^:]*:.*$/gmi, '')
+                     // Remove MIME version headers
+                     .replace(/^MIME-Version:.*$/gmi, '')
+                     // Decode quoted-printable encoding
+                     .replace(/=([0-9A-F]{2})/g, (match, hex) => {
+                       try {
+                         return String.fromCharCode(parseInt(hex, 16));
+                       } catch {
+                         return match;
+                       }
+                     })
+                     // Remove soft line breaks (=\r\n or =\n)
+                     .replace(/=\r?\n/g, '')
+                     // Clean up common encoded characters
+                     .replace(/=20/g, ' ')    // space
+                     .replace(/=0D=0A/g, '\n') // CRLF
+                     .replace(/=0A/g, '\n')    // LF
+                     .replace(/=09/g, '\t')    // tab
+                     // Remove excessive whitespace
                      .replace(/\n\s*\n\s*\n/g, '\n\n')
+                     .replace(/\t+/g, ' ')
+                     .replace(/  +/g, ' ')
                      .trim();
                    
-                   // Only use content if it has substantial text (not just headers)
-                   if (rawBody.length > 20 && rawBody.includes(' ')) {
-                     bodyContent = rawBody;
-                     console.log(`[IMAP Body] Extracted and cleaned body from source, length:`, bodyContent.length);
+                   // Extract meaningful content (skip MIME artifacts)
+                   const lines = rawBody.split('\n');
+                   const meaningfulLines = lines.filter(line => {
+                     const trimmed = line.trim();
+                     // Skip empty lines, MIME artifacts, and encoding markers
+                     return trimmed.length > 0 && 
+                            !trimmed.startsWith('--') &&
+                            !trimmed.includes('=_') &&
+                            !trimmed.match(/^[A-Za-z-]+:\s/) &&
+                            trimmed.length > 3;
+                   });
+                   
+                   if (meaningfulLines.length > 0) {
+                     bodyContent = meaningfulLines.join('\n').trim();
+                     console.log(`[IMAP Body] Extracted and cleaned body from source, lines: ${meaningfulLines.length}, length: ${bodyContent.length}`);
+                   } else {
+                     console.log(`[IMAP Body] No meaningful content found after cleanup, raw length was: ${rawBody.length}`);
                    }
                  }
                }
@@ -669,7 +702,7 @@ export async function fetchEmailBodyViaImap(messageId: string, mailboxEmail: str
               }
               console.log(`[IMAP Body] Successfully extracted and cleaned body content, final length:`, bodyContent.length);
             } else {
-              bodyContent = `[Email body content not found in available message properties]\n\nThe email envelope was successfully fetched. Body content may require different IMAP fetch parameters.`;
+              bodyContent = `[Unable to extract readable content from this email]\n\nThis email may use complex formatting, attachments, or encoding that requires different processing. The email was received but the text content could not be cleanly extracted.`;
               console.log(`[IMAP Body] No substantial body content found in message properties`);
             }
 
@@ -715,23 +748,64 @@ export async function fetchEmailBodyViaImap(messageId: string, mailboxEmail: str
                     if (bodyStart > 0) {
                       let rawBody = sourceText.substring(bodyStart + 4).trim();
                       
+                      // COMPREHENSIVE email content cleanup (same as main fetch)
                       rawBody = rawBody
-                        .replace(/^--[0-9a-f]+.*$/gm, '')
-                        .replace(/^Content-Type:.*$/gm, '')
-                        .replace(/^Content-Transfer-Encoding:.*$/gm, '')
-                        .replace(/^Content-[^:]*:.*$/gm, '')
+                        // Remove all MIME boundary lines (various formats)
+                        .replace(/^--[=_\-a-zA-Z0-9]+.*$/gm, '')
+                        .replace(/^------=.*$/gm, '')
+                        .replace(/^----boundary.*$/gm, '')
+                        // Remove Content-* headers
+                        .replace(/^Content-Type:.*$/gmi, '')
+                        .replace(/^Content-Transfer-Encoding:.*$/gmi, '')
+                        .replace(/^Content-Disposition:.*$/gmi, '')
+                        .replace(/^Content-[^:]*:.*$/gmi, '')
+                        // Remove MIME version headers
+                        .replace(/^MIME-Version:.*$/gmi, '')
+                        // Decode quoted-printable encoding
+                        .replace(/=([0-9A-F]{2})/g, (match, hex) => {
+                          try {
+                            return String.fromCharCode(parseInt(hex, 16));
+                          } catch {
+                            return match;
+                          }
+                        })
+                        // Remove soft line breaks (=\r\n or =\n)
+                        .replace(/=\r?\n/g, '')
+                        // Clean up common encoded characters
+                        .replace(/=20/g, ' ')    // space
+                        .replace(/=0D=0A/g, '\n') // CRLF
+                        .replace(/=0A/g, '\n')    // LF
+                        .replace(/=09/g, '\t')    // tab
+                        // Remove excessive whitespace
                         .replace(/\n\s*\n\s*\n/g, '\n\n')
+                        .replace(/\t+/g, ' ')
+                        .replace(/  +/g, ' ')
                         .trim();
                       
-                      if (rawBody.length > 20 && rawBody.includes(' ')) {
-                        bodyContent = rawBody;
+                      // Extract meaningful content (skip MIME artifacts)
+                      const lines = rawBody.split('\n');
+                      const meaningfulLines = lines.filter(line => {
+                        const trimmed = line.trim();
+                        // Skip empty lines, MIME artifacts, and encoding markers
+                        return trimmed.length > 0 && 
+                               !trimmed.startsWith('--') &&
+                               !trimmed.includes('=_') &&
+                               !trimmed.match(/^[A-Za-z-]+:\s/) &&
+                               trimmed.length > 3;
+                      });
+                      
+                      if (meaningfulLines.length > 0) {
+                        bodyContent = meaningfulLines.join('\n').trim();
+                        console.log(`[IMAP Body] Direct fetch: Extracted and cleaned body, lines: ${meaningfulLines.length}, length: ${bodyContent.length}`);
+                      } else {
+                        console.log(`[IMAP Body] Direct fetch: No meaningful content found after cleanup`);
                       }
                     }
                   }
                 }
                 
                 if (!bodyContent) {
-                  bodyContent = `[Email body content not available for this message]`;
+                  bodyContent = `[Unable to extract readable content from this email]\n\nThis email may use complex formatting, attachments, or encoding that requires different processing. The email was received but the text content could not be cleanly extracted.`;
                 }
                 
                 if (bodyContent.length > 1000) {
