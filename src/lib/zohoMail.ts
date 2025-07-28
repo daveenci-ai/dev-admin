@@ -104,6 +104,64 @@ async function createImapConnection(config: ImapConfig): Promise<ImapFlow> {
   }
 }
 
+// Helper function to extract email preview (first 3 lines of content)
+function extractEmailPreview(emailSource: string): string {
+  try {
+    // Split email source into lines
+    const lines = emailSource.split('\n');
+    
+    // Find the start of the email body (after headers)
+    let bodyStartIndex = -1;
+    let inHeaders = true;
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      
+      // Empty line typically marks end of headers
+      if (inHeaders && line.trim() === '') {
+        bodyStartIndex = i + 1;
+        inHeaders = false;
+        break;
+      }
+    }
+    
+    if (bodyStartIndex === -1 || bodyStartIndex >= lines.length) {
+      return '';
+    }
+    
+    // Extract content lines, skipping MIME boundaries and metadata
+    const contentLines = [];
+    for (let i = bodyStartIndex; i < lines.length && contentLines.length < 3; i++) {
+      const line = lines[i].trim();
+      
+      // Skip empty lines, MIME boundaries, and technical metadata
+      if (line === '' || 
+          line.startsWith('--') || 
+          line.startsWith('Content-') ||
+          line.startsWith('MIME-') ||
+          line.includes('boundary=') ||
+          line.match(/^[a-zA-Z-]+:/)) {
+        continue;
+      }
+      
+      // Decode quoted-printable encoding
+      let cleanLine = line
+        .replace(/=([0-9A-F]{2})/g, (match, hex) => String.fromCharCode(parseInt(hex, 16)))
+        .replace(/=\s*$/g, ''); // Remove soft line breaks
+      
+      // Only add non-empty, meaningful content
+      if (cleanLine && cleanLine.length > 3) {
+        contentLines.push(cleanLine);
+      }
+    }
+    
+    return contentLines.join('\n').substring(0, 200); // Limit to 200 chars
+  } catch (err) {
+    console.log('[Preview] Error extracting preview:', err);
+    return '';
+  }
+}
+
 // IMAP function to delete email (move to Trash)
 export async function deleteEmailViaImap(messageId: string, mailboxEmail?: string): Promise<boolean> {
   console.log(`[IMAP] Deleting email ${messageId}, mailbox: ${mailboxEmail}`);
@@ -333,27 +391,39 @@ async function fetchEmailsViaImap(config: ImapConfig, limit = 10): Promise<any[]
     
     console.log(`[IMAP-${config.name}] Fetching messages in range: ${range}`);
     
-    // Fetch message headers and flags
+    // Fetch message headers, flags, and preview content
     const messages = [];
     for await (const message of client.fetch(range, {
       envelope: true,
       flags: true,
       internalDate: true,
       uid: true,
-      bodyStructure: true
+      bodyStructure: true,
+      source: true // Get email source for preview
     })) {
       const envelope = message.envelope;
       const flags = message.flags || new Set();
       
-      // Try to get a basic preview or show placeholder
+      // Try to get a basic preview from email source
       const fromName = envelope?.from?.[0]?.name || envelope?.from?.[0]?.address || 'Unknown sender';
       const subject = envelope?.subject || 'No Subject';
       
-      // For now, show a simple placeholder - full content will be loaded on expansion
+      // Extract preview from email source
       let bodyContent = 'Click to expand and view full email content';
+      let preview = '';
       
-      // If there's any basic text structure available, we could try to extract a preview
-      // But for performance, we'll keep it simple and load full content on demand
+      if (message.source) {
+        try {
+          const emailSource = message.source.toString();
+          // Extract email content preview (first few lines)
+          preview = extractEmailPreview(emailSource);
+          if (preview && preview.trim()) {
+            bodyContent = preview;
+          }
+        } catch (err) {
+          console.log(`[IMAP-${config.name}] Error extracting preview:`, err);
+        }
+      }
       
       // Convert IMAP message to our format
       const emailMessage = {
