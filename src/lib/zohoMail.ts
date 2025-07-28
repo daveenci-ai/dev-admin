@@ -122,6 +122,7 @@ function cleanEmailText(text: string): string {
     'â€¹': '‹',     // Single left angle quotation mark
     'Â ': ' ',      // Non-breaking space encoding issue
     'Â': '',        // Stray non-breaking space marker
+    'â': '',        // Common orphaned character
     'â€™ll': "'ll", // Common contraction fix
     'â€™t': "'t",   // Common contraction fix
     'â€™s': "'s",   // Common contraction fix
@@ -135,7 +136,16 @@ function cleanEmailText(text: string): string {
     'thatâ€™s': "that's",
     'donâ€™t': "don't",
     'canâ€™t': "can't",
-    'wonâ€™t': "won't"
+    'wonâ€™t': "won't",
+    // Additional problematic sequences
+    'â€‹': '',      // Zero-width space
+    'â€Œ': '',      // Zero-width non-joiner
+    'â€¯': ' ',      // Narrow no-break space
+    'âˆ': '',        // Mathematical symbols prefix
+    'â†': '',        // Arrow symbols prefix
+    'â„': '',        // Mathematical symbols
+    'âœ': '',        // Checkmark and X symbols prefix
+    'â˜': ''         // Weather and misc symbols prefix
   };
   
   Object.entries(utf8Fixes).forEach(([bad, good]) => {
