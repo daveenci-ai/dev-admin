@@ -833,7 +833,7 @@ export default function EmailPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
         {/* Error Alert */}
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
@@ -986,7 +986,7 @@ export default function EmailPage() {
                   return (
                     <div
                       key={`${email.mailboxEmail}-${email.messageId}-${index}`}
-                      className={`border border-gray-200 rounded-lg p-6 transition-all duration-300 cursor-pointer w-full ${
+                      className={`border border-gray-200 rounded-lg p-4 transition-all duration-300 cursor-pointer ${
                         isUnread ? 'bg-blue-50 border-blue-200' : 'bg-white'
                       } ${isExpanded ? 'shadow-lg border-blue-400' : 'hover:bg-gray-50 hover:shadow-md'}`}
                       onClick={() => handleEmailCardClick(email)}
@@ -1018,20 +1018,19 @@ export default function EmailPage() {
                                 : email.fromAddress}
                             </p>
                             
-                            {/* Email Body - Full when expanded, only show if not placeholder */}
+                            {/* Email Content - Show summary when collapsed, full content when expanded */}
                             {isExpanded ? (
-                              <div className="mt-4 p-6 bg-gray-50 rounded-lg border border-gray-200 w-full">
-                                {emailBody && emailBody !== 'Click to expand and view full email content' ? (
-                                  <div className="text-base text-gray-800 leading-relaxed whitespace-pre-wrap max-h-96 overflow-y-auto w-full max-w-none">
-                                    {emailBody}
-                                  </div>
-                                ) : (
-                                  <div className="text-center py-4">
-                                    <RefreshCw className="w-4 h-4 text-gray-400 animate-spin mx-auto mb-2" />
-                                    <p className="text-gray-500 text-xs">Loading full email content...</p>
-                                  </div>
-                                )}
-                              </div>
+                              // Show full email content inline
+                              emailBody && emailBody !== 'Click to expand and view full email content' ? (
+                                <p className="text-base text-gray-700 leading-relaxed whitespace-pre-wrap">
+                                  {emailBody}
+                                </p>
+                              ) : (
+                                <div className="flex items-center gap-2 text-gray-500">
+                                  <RefreshCw className="w-4 h-4 animate-spin" />
+                                  <span className="text-sm">Loading full email content...</span>
+                                </div>
+                              )
                             ) : (
                               // Only show summary if it's not the placeholder text
                               email.summary && 
