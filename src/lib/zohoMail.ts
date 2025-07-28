@@ -108,7 +108,54 @@ async function createImapConnection(config: ImapConfig): Promise<ImapFlow> {
 function cleanEmailText(text: string): string {
   let cleaned = text;
   
-  // 1. Decode quoted-printable encoding (=XX format)
+  // 1. Fix common UTF-8 encoding issues first
+  const utf8Fixes: { [key: string]: string } = {
+    'â€™': "'",     // Right single quotation mark
+    'â€œ': '"',     // Left double quotation mark  
+    'â€': '"',      // Right double quotation mark
+    'â€"': '—',     // Em dash
+    'â€¦': '...',   // Ellipsis
+    'â€¢': '•',     // Bullet point
+    'â€š': ',',     // Single low quotation mark
+    'â€ž': '"',     // Double low quotation mark
+    'â€º': '›',     // Single right angle quotation mark
+    'â€¹': '‹',     // Single left angle quotation mark
+    'Â ': ' ',      // Non-breaking space encoding issue
+    'Â': '',        // Stray non-breaking space marker
+    'â€™ll': "'ll", // Common contraction fix
+    'â€™t': "'t",   // Common contraction fix
+    'â€™s': "'s",   // Common contraction fix
+    'â€™re': "'re", // Common contraction fix
+    'â€™ve': "'ve", // Common contraction fix
+    'â€™d': "'d",   // Common contraction fix
+    'weâ€™ll': "we'll",
+    'youâ€™ll': "you'll",
+    'Iâ€™ll': "I'll",
+    'itâ€™s': "it's",
+    'thatâ€™s': "that's",
+    'donâ€™t': "don't",
+    'canâ€™t': "can't",
+    'wonâ€™t': "won't"
+  };
+  
+  Object.entries(utf8Fixes).forEach(([bad, good]) => {
+    cleaned = cleaned.replace(new RegExp(bad, 'gi'), good);
+  });
+  
+  // 2. Strip HTML tags completely (but preserve line breaks)
+  cleaned = cleaned
+    .replace(/<br\s*\/?>/gi, '\n')           // Convert <br> to newlines
+    .replace(/<\/p>/gi, '\n\n')              // Convert </p> to double newlines
+    .replace(/<\/div>/gi, '\n')              // Convert </div> to newlines
+    .replace(/<\/li>/gi, '\n')               // Convert </li> to newlines
+    .replace(/<\/h[1-6]>/gi, '\n\n')         // Convert headings to double newlines
+    .replace(/<[^>]*>/g, '');                // Remove all other HTML tags
+  
+  // 3. Remove CSS styles and inline styles
+  cleaned = cleaned.replace(/style\s*=\s*"[^"]*"/gi, '');
+  cleaned = cleaned.replace(/class\s*=\s*"[^"]*"/gi, '');
+  
+  // 4. Decode quoted-printable encoding (=XX format)
   cleaned = cleaned.replace(/=([0-9A-F]{2})/gi, (match, hex) => {
     try {
       return String.fromCharCode(parseInt(hex, 16));
@@ -117,10 +164,10 @@ function cleanEmailText(text: string): string {
     }
   });
   
-  // 2. Remove soft line breaks (= at end of line)
+  // 5. Remove soft line breaks (= at end of line)
   cleaned = cleaned.replace(/=\s*$/gm, '');
   
-  // 3. Decode common HTML entities
+  // 6. Decode HTML entities
   const htmlEntities: { [key: string]: string } = {
     '&nbsp;': ' ',
     '&amp;': '&',
@@ -131,14 +178,21 @@ function cleanEmailText(text: string): string {
     '&apos;': "'",
     '&copy;': '©',
     '&reg;': '®',
-    '&trade;': '™'
+    '&trade;': '™',
+    '&mdash;': '—',
+    '&ndash;': '–',
+    '&hellip;': '...',
+    '&lsquo;': "'",
+    '&rsquo;': "'",
+    '&ldquo;': '"',
+    '&rdquo;': '"'
   };
   
   Object.entries(htmlEntities).forEach(([entity, char]) => {
     cleaned = cleaned.replace(new RegExp(entity, 'gi'), char);
   });
   
-  // 4. Decode numeric HTML entities (&#123; format)
+  // 7. Decode numeric HTML entities (&#123; format)
   cleaned = cleaned.replace(/&#(\d+);/g, (match, num) => {
     try {
       return String.fromCharCode(parseInt(num));
@@ -147,7 +201,7 @@ function cleanEmailText(text: string): string {
     }
   });
   
-  // 5. Replace common Unicode sequences
+  // 8. Replace Unicode sequences
   cleaned = cleaned
     .replace(/\u00A0/g, ' ')  // Non-breaking space
     .replace(/\u2019/g, "'")  // Right single quotation mark
@@ -155,16 +209,33 @@ function cleanEmailText(text: string): string {
     .replace(/\u201C/g, '"')  // Left double quotation mark
     .replace(/\u201D/g, '"')  // Right double quotation mark
     .replace(/\u2013/g, '-')  // En dash
-    .replace(/\u2014/g, '--') // Em dash
-    .replace(/\u2026/g, '...'); // Ellipsis
+    .replace(/\u2014/g, '—')  // Em dash
+    .replace(/\u2026/g, '...') // Ellipsis
+    .replace(/\u2022/g, '•');  // Bullet point
   
-  // 6. Remove or replace non-printable characters
+  // 9. Remove email signatures and metadata
+  cleaned = cleaned.replace(/(<img[^>]*>|cid:\S+)/gi, '[Image]');
+  cleaned = cleaned.replace(/mailto:\S+/gi, '[Email Link]');
+  
+  // 10. Clean up forwarded message headers
+  cleaned = cleaned.replace(/={10,}/g, '---'); // Replace long equal signs
+  cleaned = cleaned.replace(/Forwarded message/gi, 'Forwarded message');
+  
+  // 11. Remove excessive MIME boundaries and artifacts
+  cleaned = cleaned.replace(/--[\w\-_]+(\r?\n|$)/g, '');
+  cleaned = cleaned.replace(/Content-[^:]+:[^\r\n]*/gi, '');
+  cleaned = cleaned.replace(/MIME-[^:]+:[^\r\n]*/gi, '');
+  
+  // 12. Remove or replace non-printable characters
   cleaned = cleaned.replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/g, '');
   
-  // 7. Clean up whitespace
+  // 13. Clean up whitespace and formatting
   cleaned = cleaned
-    .replace(/\s+/g, ' ')     // Multiple spaces to single space
-    .replace(/\n\s*\n/g, '\n') // Multiple newlines to single
+    .replace(/\r\n/g, '\n')        // Normalize line endings
+    .replace(/\r/g, '\n')          // Normalize line endings
+    .replace(/[ \t]+/g, ' ')       // Multiple spaces/tabs to single space
+    .replace(/\n\s*\n\s*\n/g, '\n\n') // Triple+ newlines to double
+    .replace(/^\s+|\s+$/gm, '')    // Trim each line
     .trim();
   
   return cleaned;
