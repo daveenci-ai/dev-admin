@@ -774,8 +774,8 @@ export default function CRMPageComponent() {
                   {selectedContact.name}
                 </h2>
                 
-                {/* Sentiment and Status Row */}
-                <div className="flex items-center gap-3">
+                {/* Sentiment, Status, Source, and Added Date Row */}
+                <div className="flex items-center gap-3 flex-wrap">
                   {/* Sentiment Dropdown */}
                   <div className="relative sentiment-dropdown">
                     <button
@@ -847,43 +847,61 @@ export default function CRMPageComponent() {
                       </div>
                     )}
                   </div>
+
+                  {/* Source */}
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-gray-500">Source:</span>
+                    <span className="text-xs px-2 py-1 bg-gray-100 rounded-full text-gray-700">
+                      {selectedContact.source || 'N/A'}
+                    </span>
+                  </div>
+
+                  {/* Added Date */}
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-gray-500">Added:</span>
+                    <span className="text-xs text-gray-700">
+                      {new Date(selectedContact.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Edit/Save Buttons */}
-            <div className="mb-6 flex gap-2">
-              {!isEditingContact ? (
-                <button
-                  onClick={handleEditContact}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  Edit Contact
-                </button>
-              ) : (
-                <div className="flex gap-2">
-                  <button
-                    onClick={handleSaveContact}
-                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                  >
-                    Save Changes
-                  </button>
-                  <button
-                    onClick={() => {
-                      setIsEditingContact(false)
-                      setEditedContact(null)
-                    }}
-                    className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              )}
-            </div>
-
             {/* Contact Information */}
             <div className="space-y-4 mb-6">
-              <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Contact Information</h3>
+              <div className="flex justify-between items-center border-b pb-2">
+                <h3 className="text-lg font-semibold text-gray-900">Contact Information</h3>
+                
+                {/* Edit/Save Buttons */}
+                <div className="flex gap-2">
+                  {!isEditingContact ? (
+                    <button
+                      onClick={handleEditContact}
+                      className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 transition-colors"
+                    >
+                      Edit Contact
+                    </button>
+                  ) : (
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleSaveContact}
+                        className="px-3 py-1.5 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 transition-colors"
+                      >
+                        Save Changes
+                      </button>
+                      <button
+                        onClick={() => {
+                          setIsEditingContact(false)
+                          setEditedContact(null)
+                        }}
+                        className="px-3 py-1.5 bg-gray-600 text-white text-sm rounded-md hover:bg-gray-700 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
               
               <div className="grid grid-cols-2 gap-4">
                 <div>
