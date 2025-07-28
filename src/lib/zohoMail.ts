@@ -581,7 +581,7 @@ export async function fetchEmailBodyViaImap(messageId: string, mailboxEmail: str
       let targetMessageFound = false;
       
       // Use the UID list to build a targeted sequence - fetch only known UIDs from the check above
-      const uidString = allMessages.slice(0, 10).join(','); // Limit to first 10 UIDs for speed
+      const uidString = allMessages.slice(0, 5).join(','); // Limit to first 5 UIDs for speed
       console.log(`[IMAP Body] Fetching UIDs: ${uidString}`);
       
       for await (const message of client.fetch(uidString, {
@@ -618,14 +618,33 @@ export async function fetchEmailBodyViaImap(messageId: string, mailboxEmail: str
               console.log(`[IMAP Body] Found source, length:`, message.source.length);
               // Extract text from source if available
               const sourceText = message.source.toString();
-              if (sourceText.length > 100) {
-                // Try to extract content after headers
-                const bodyStart = sourceText.indexOf('\r\n\r\n');
-                if (bodyStart > 0) {
-                  bodyContent = sourceText.substring(bodyStart + 4).trim();
-                  console.log(`[IMAP Body] Extracted body from source, length:`, bodyContent.length);
-                }
-              }
+                             if (sourceText.length > 100) {
+                 // Try to extract content after headers
+                 const bodyStart = sourceText.indexOf('\r\n\r\n');
+                 if (bodyStart > 0) {
+                   let rawBody = sourceText.substring(bodyStart + 4).trim();
+                   
+                   // Clean up MIME content - remove boundaries and headers
+                   rawBody = rawBody
+                     // Remove MIME boundary lines (--000000000...)
+                     .replace(/^--[0-9a-f]+.*$/gm, '')
+                     // Remove Content-Type lines
+                     .replace(/^Content-Type:.*$/gm, '')
+                     // Remove Content-Transfer-Encoding lines  
+                     .replace(/^Content-Transfer-Encoding:.*$/gm, '')
+                     // Remove other Content-* headers
+                     .replace(/^Content-[^:]*:.*$/gm, '')
+                     // Remove empty lines created by header removal
+                     .replace(/\n\s*\n\s*\n/g, '\n\n')
+                     .trim();
+                   
+                   // Only use content if it has substantial text (not just headers)
+                   if (rawBody.length > 20 && rawBody.includes(' ')) {
+                     bodyContent = rawBody;
+                     console.log(`[IMAP Body] Extracted and cleaned body from source, length:`, bodyContent.length);
+                   }
+                 }
+               }
             }
             
             if (!bodyContent && (message as any).text) {
@@ -667,7 +686,67 @@ export async function fetchEmailBodyViaImap(messageId: string, mailboxEmail: str
       }
       
       if (!targetMessageFound) {
-        console.log(`[IMAP Body] Target UID ${uid} not found in fetched messages (processed ${messageCount} messages)`);
+        console.log(`[IMAP Body] Target UID ${uid} not found in first 5 UIDs, trying direct fetch...`);
+        
+        // Try fetching just the specific UID directly
+        try {
+          for await (const message of client.fetch(uid.toString(), {
+            envelope: true,
+            uid: true,
+            source: true
+          })) {
+            if (message.uid === uid) {
+              targetMessageFound = true;
+              console.log(`[IMAP Body] Found target message with direct UID fetch: ${message.uid}`);
+              
+              // Same processing logic as above
+              if (message.envelope) {
+                const subject = message.envelope.subject || 'No Subject';
+                const fromName = message.envelope.from?.[0]?.name || 'Unknown';
+                const fromEmail = message.envelope.from?.[0]?.address || 'No email';
+                const date = message.envelope.date ? new Date(message.envelope.date).toLocaleString() : 'Unknown';
+                
+                let bodyContent = '';
+                
+                if (message.source) {
+                  const sourceText = message.source.toString();
+                  if (sourceText.length > 100) {
+                    const bodyStart = sourceText.indexOf('\r\n\r\n');
+                    if (bodyStart > 0) {
+                      let rawBody = sourceText.substring(bodyStart + 4).trim();
+                      
+                      rawBody = rawBody
+                        .replace(/^--[0-9a-f]+.*$/gm, '')
+                        .replace(/^Content-Type:.*$/gm, '')
+                        .replace(/^Content-Transfer-Encoding:.*$/gm, '')
+                        .replace(/^Content-[^:]*:.*$/gm, '')
+                        .replace(/\n\s*\n\s*\n/g, '\n\n')
+                        .trim();
+                      
+                      if (rawBody.length > 20 && rawBody.includes(' ')) {
+                        bodyContent = rawBody;
+                      }
+                    }
+                  }
+                }
+                
+                if (!bodyContent) {
+                  bodyContent = `[Email body content not available for this message]`;
+                }
+                
+                if (bodyContent.length > 1000) {
+                  bodyContent = bodyContent.substring(0, 1000) + '\n\n... [Content truncated for preview]';
+                }
+                
+                emailBody = `Subject: ${subject}\n\nFrom: ${fromName} (${fromEmail})\nDate: ${date}\n\n--- EMAIL CONTENT ---\n\n${bodyContent}`;
+                console.log(`[IMAP Body] Successfully processed direct fetch for: ${subject}`);
+              }
+              break;
+            }
+          }
+        } catch (directFetchError) {
+          console.log(`[IMAP Body] Direct fetch also failed:`, directFetchError);
+        }
       }
     
     console.log(`[IMAP Body] Finished processing ${messageCount} messages`);
@@ -695,7 +774,7 @@ export async function fetchEmailBodyViaImap(messageId: string, mailboxEmail: str
         // Add timeout to just the logout operation
         const logoutPromise = client.logout();
         const logoutTimeout = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error('Logout timeout')), 5000);
+          setTimeout(() => reject(new Error('Logout timeout')), 2000);
         });
         
         await Promise.race([logoutPromise, logoutTimeout]);

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { format } from 'date-fns'
 import { CheckCircle, AlertCircle, XCircle, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
-import { Modal } from '@/components/ui/modal'
+
 
 interface Contact {
   id: number
@@ -723,7 +723,29 @@ export default function CRMPageComponent() {
 
             {/* Contact Details Modal */}
       {showContactDetails && selectedContact && (
-        <Modal isOpen={showContactDetails} onClose={handleCloseContactDetails} className="max-w-4xl">
+        <div className="fixed inset-0 z-50 overflow-hidden">
+          {/* Backdrop */}
+          <div 
+            className="absolute inset-0 bg-black bg-opacity-50 transition-opacity"
+            onClick={handleCloseContactDetails}
+          />
+          
+          {/* Panel */}
+          <div className={`absolute right-0 top-0 h-full w-1/2 min-w-[600px] bg-white shadow-xl transform transition-transform duration-300 ease-in-out ${
+            showContactDetails ? 'translate-x-0' : 'translate-x-full'
+          }`}>
+            {/* Close button */}
+            <button
+              onClick={handleCloseContactDetails}
+              className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600 transition-colors z-10"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            
+            {/* Scrollable content */}
+            <div className="h-full overflow-y-auto">
           <div className="p-6">
             {/* Header */}
             <div className="flex justify-between items-start mb-6 border-b pb-4">
@@ -930,7 +952,9 @@ export default function CRMPageComponent() {
               </div>
             </div>
           </div>
-        </Modal>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
