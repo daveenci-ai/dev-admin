@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth/next'
+import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
@@ -9,6 +11,12 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
+    // Check authentication
+    const session = await getServerSession(authOptions)
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const contactId = parseInt(params.id)
     const { note } = await request.json()
 
@@ -25,12 +33,13 @@ export async function POST(
       return NextResponse.json({ error: 'Contact not found' }, { status: 404 })
     }
 
-    // Create touchpoint
+    // Create touchpoint with addedBy field
     const touchpoint = await prisma.touchpoint.create({
       data: {
         note: note.trim(),
         contactId,
-        source: 'MANUAL'
+        source: 'MANUAL',
+        addedBy: session.user.email
       }
     })
 

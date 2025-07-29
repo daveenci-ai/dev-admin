@@ -30,6 +30,7 @@ interface Contact {
     note: string
     source: string
     createdAt: string
+    addedBy?: string
   }>
 }
 
@@ -1040,9 +1041,16 @@ export default function CRMPageComponent() {
                   selectedContact.touchpoints.map((touchpoint) => (
                     <div key={touchpoint.id} className="bg-white border border-gray-200 rounded-lg p-3">
                       <div className="flex justify-between items-start mb-2">
-                        <span className="text-xs text-gray-500">
-                          {format(new Date(touchpoint.createdAt), 'MMM d, yyyy h:mm a')}
-                        </span>
+                        <div className="flex flex-col">
+                          <span className="text-xs text-gray-500">
+                            {format(new Date(touchpoint.createdAt), 'MMM d, yyyy h:mm a')}
+                          </span>
+                          {touchpoint.addedBy && (
+                            <span className="text-xs text-gray-400 mt-1">
+                              Added by: {touchpoint.addedBy}
+                            </span>
+                          )}
+                        </div>
                         <span className="text-xs text-blue-600 font-medium">
                           {touchpoint.source}
                         </span>
