@@ -12,6 +12,12 @@ datasource db {
 
 enum TouchpointSource {
   MANUAL
+  EMAIL
+  SMS
+  PHONE
+  IN_PERSON
+  EVENT
+  OTHER
   @@map("touchpoint_source")
 }
 
