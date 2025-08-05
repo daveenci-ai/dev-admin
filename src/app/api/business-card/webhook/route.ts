@@ -96,62 +96,94 @@ async function fetchImageFromGitHub(imagePath: string) {
 export async function POST(req: NextRequest) {
     let imagePath = '';
     try {
+        console.log('🚀 [WEBHOOK] Business card webhook received. Starting process...');
+        
         const signature = req.headers.get('x-hub-signature-256');
+        const eventType = req.headers.get('x-github-event');
         const secret = process.env.GITHUB_WEBHOOK_SECRET;
+
+        console.log(`[WEBHOOK] Event Type: ${eventType}`);
+        console.log(`[WEBHOOK] Signature received: ${signature ? 'Yes' : 'No'}`);
+        console.log(`[WEBHOOK] Webhook secret configured: ${secret ? 'Yes' : 'No'}`);
+
         const bodyBuffer = await req.clone().arrayBuffer();
 
         if (!secret || !signature) {
+            console.error('❌ [WEBHOOK] Validation failed: Missing webhook secret or signature.');
             return NextResponse.json({ error: 'Missing webhook secret or signature' }, { status: 401 });
         }
         
         const hmac = crypto.createHmac('sha256', secret);
         const digest = 'sha256=' + hmac.update(Buffer.from(bodyBuffer)).digest('hex');
 
+        console.log(`[WEBHOOK] Calculated Digest: ${digest}`);
+        console.log(`[WEBHOOK] Received Signature: ${signature}`);
+
         if (!crypto.timingSafeEqual(Buffer.from(digest), Buffer.from(signature))) {
+            console.error('❌ [WEBHOOK] Validation failed: Invalid signature.');
             return NextResponse.json({ error: 'Invalid webhook signature' }, { status: 401 });
         }
+        
+        console.log('✅ [WEBHOOK] Signature validated successfully.');
 
         const payload = await req.json();
         
-        if (req.headers.get('x-github-event') !== 'push' || payload.ref !== 'refs/heads/main') {
+        if (eventType !== 'push' || payload.ref !== 'refs/heads/main') {
+            console.log(`[WEBHOOK] Ignoring event: Not a push to main branch. (Ref: ${payload.ref})`);
             return NextResponse.json({ message: 'Ignoring event: Not a push to main' }, { status: 200 });
         }
 
         const addedFiles = payload.commits.flatMap((c: any) => c.added || []).filter((f: string) => /\.(jpg|jpeg|png|gif|webp)$/i.test(f));
+        console.log(`[WEBHOOK] Found ${addedFiles.length} new image file(s):`, addedFiles);
+
         if (addedFiles.length === 0) {
+            console.log('[WEBHOOK] No new images to process in this push.');
             return NextResponse.json({ message: 'No new images to process' }, { status: 200 });
         }
 
         imagePath = addedFiles[0];
+        console.log(`[WEBHOOK] Processing image: ${imagePath}`);
+
         const imageData = await fetchImageFromGitHub(imagePath);
+        console.log(`[WEBHOOK] Fetched image data from GitHub (${imageData.data.length} bytes).`);
+
         const extracted = await extractBusinessCardData(imageData);
 
         if (!extracted.success) {
+            console.error(`❌ [WEBHOOK] Data extraction failed: ${extracted.error}`);
             await sendTelegramError(`Failed to extract data: ${extracted.error}`, extractPersonFromImagePath(imagePath));
             return NextResponse.json({ error: 'Data extraction failed', details: extracted.error }, { status: 400 });
         }
+        console.log('✅ [WEBHOOK] Data extraction successful.');
 
         const validation = validateExtractedData(extracted.data);
         if (!validation.valid) {
+            console.error(`❌ [WEBHOOK] Data validation failed: ${validation.errors.join(', ')}`);
             await sendTelegramError(`Invalid data extracted: ${validation.errors.join(', ')}`, extractPersonFromImagePath(imagePath));
             return NextResponse.json({ error: 'Data validation failed', details: validation.errors }, { status: 400 });
         }
+        console.log('✅ [WEBHOOK] Data validation successful.');
         
         const researchData = {
             success: !!extracted.research,
             telegramMessage: extracted.research?.opportunities?.join('\n\n') || 'Research could not be completed.',
         };
 
+        console.log('[WEBHOOK] Starting database operations...');
         const dbResult = await handleDatabaseOperations(extracted.data, extracted.research, imagePath);
-        
+        console.log(`✅ [WEBHOOK] Database operations complete. New contact: ${dbResult.isNewContact}`);
+
         if (extracted.data) {
+            console.log('[WEBHOOK] Sending Telegram notification...');
             await sendTelegramNotification(extracted.data, researchData, dbResult, imagePath);
+            console.log('✅ [WEBHOOK] Telegram notification sent.');
         }
 
+        console.log('🎉 [WEBHOOK] Process completed successfully!');
         return NextResponse.json({ success: true, isNewContact: dbResult.isNewContact, contactId: dbResult.contactId });
 
     } catch (error: any) {
-        console.error('❌ Business Card Pipeline Error:', error);
+        console.error('❌ [WEBHOOK] An unexpected error occurred in the pipeline:', error);
         await sendTelegramError(`Pipeline Error: ${error.message}`, extractPersonFromImagePath(imagePath));
         return NextResponse.json({ error: 'Internal server error', details: error.message }, { status: 500 });
     }
