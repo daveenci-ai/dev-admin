@@ -12,7 +12,7 @@ class GitHubImageStorage {
     if (this.initialized) return
 
     // Parse GITHUB_REPO environment variable (format: "owner/repo")
-    const repoPath = process.env.GITHUB_REPO || 'daveenci-ai/daveenci-ai-avatar-images'
+    const repoPath = process.env.GITHUB_REPO_AVATAR || 'daveenci-ai/daveenci-ai-avatar-images'
     const [owner, repo] = repoPath.split('/')
     
     if (!owner || !repo) {
