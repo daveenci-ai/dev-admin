@@ -126,7 +126,26 @@ export async function POST(req: NextRequest) {
         
         console.log('✅ [WEBHOOK] Signature validated successfully.');
 
-        const payload = await req.json();
+        // Handle both JSON and URL-encoded form payloads
+        const bodyText = Buffer.from(bodyBuffer).toString('utf8');
+        let payload;
+        try {
+            if (bodyText.startsWith('payload=')) {
+                console.log('[WEBHOOK] Detected URL-encoded form payload. Parsing...');
+                const urlParams = new URLSearchParams(bodyText);
+                const payloadJson = urlParams.get('payload');
+                if (!payloadJson) {
+                    throw new Error('Payload parameter is empty in form data.');
+                }
+                payload = JSON.parse(payloadJson);
+            } else {
+                console.log('[WEBHOOK] Detected JSON payload. Parsing...');
+                payload = JSON.parse(bodyText);
+            }
+        } catch (error: any) {
+            console.error('❌ [WEBHOOK] Failed to parse payload:', error.message);
+            return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 });
+        }
         
         if (eventType !== 'push' || payload.ref !== 'refs/heads/main') {
             console.log(`[WEBHOOK] Ignoring event: Not a push to main branch. (Ref: ${payload.ref})`);
