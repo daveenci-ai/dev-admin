@@ -106,7 +106,8 @@ export async function POST(req: NextRequest) {
         console.log(`[WEBHOOK] Signature received: ${signature ? 'Yes' : 'No'}`);
         console.log(`[WEBHOOK] Webhook secret configured: ${secret ? 'Yes' : 'No'}`);
 
-        const bodyBuffer = await req.clone().arrayBuffer();
+        // Get the raw body as text to prevent Next.js from auto-parsing
+        const bodyText = await req.text();
 
         if (!secret || !signature) {
             console.error('❌ [WEBHOOK] Validation failed: Missing webhook secret or signature.');
@@ -114,7 +115,7 @@ export async function POST(req: NextRequest) {
         }
         
         const hmac = crypto.createHmac('sha256', secret);
-        const digest = 'sha256=' + hmac.update(Buffer.from(bodyBuffer)).digest('hex');
+        const digest = 'sha256=' + hmac.update(bodyText).digest('hex');
 
         console.log(`[WEBHOOK] Calculated Digest: ${digest}`);
         console.log(`[WEBHOOK] Received Signature: ${signature}`);
@@ -127,7 +128,6 @@ export async function POST(req: NextRequest) {
         console.log('✅ [WEBHOOK] Signature validated successfully.');
 
         // Handle both JSON and URL-encoded form payloads
-        const bodyText = Buffer.from(bodyBuffer).toString('utf8');
         let payload;
         try {
             if (bodyText.startsWith('payload=')) {
