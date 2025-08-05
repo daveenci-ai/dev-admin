@@ -67,15 +67,19 @@ export async function sendTelegramNotification(
     } else {
       messageText = `🔄 ${contactData.name}\n🏢 ${contactData.company || 'Not specified'}`;
       if (dbResult.touchpointHistory && dbResult.touchpointHistory.length > 0) {
-        messageText += `\n\n📅 **Previous interactions:**`;
+        messageText += `\n\n📅 Previous Interactions`;
         dbResult.touchpointHistory.slice(0, 5).forEach(tp => {
-          const date = new Date(tp.created_at).toLocaleDateString();
+          const date = new Date(tp.created_at).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+          });
           const addedBy = tp.added_by ? ` (${tp.added_by})` : '';
           messageText += `\n• ${date}: ${tp.source}${addedBy}`;
         });
       }
       if (dbResult.contactNotes) {
-        messageText += `\n\n💡 **Notes:**\n${dbResult.contactNotes}`;
+        messageText += `\n\n💡 Notes:\n${dbResult.contactNotes}`;
       }
     }
 
@@ -101,7 +105,7 @@ export async function sendTelegramError(errorMessage: string, personName?: strin
 
         await axios.post(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
             chat_id: chatId,
-            text: escapeMarkdown(`❌ **Business Card Processing Error**\n\n${errorMessage}`),
+            text: escapeMarkdown(`❌ Business Card Processing Error\n\n${errorMessage}`),
             parse_mode: 'MarkdownV2',
         });
     } catch (error: any) {
