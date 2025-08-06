@@ -101,8 +101,6 @@ export default function EmailPage() {
   const [selectedMailbox, setSelectedMailbox] = useState<string>('');
   const [isReplyOpen, setIsReplyOpen] = useState(false);
   const [replyingToEmail, setReplyingToEmail] = useState<EmailMessage | null>(null);
-  const [expandedEmails, setExpandedEmails] = useState<Set<string>>(new Set());
-  const [emailBodies, setEmailBodies] = useState<Record<string, string>>({});
 
   // Compose form state
   const [composeForm, setComposeForm] = useState({
@@ -129,88 +127,6 @@ export default function EmailPage() {
       total: mailboxEmails.length,
       unread: unreadEmails.length
     };
-  };
-
-  // Fetch full email body for expanded view
-  const fetchEmailBody = async (email: EmailMessage) => {
-    console.warn('🚨 FETCH EMAIL BODY CALLED!', { messageId: email.messageId, mailbox: email.mailboxEmail });
-    
-    try {
-      console.log('[Email Body] Fetching full body for:', email.messageId, 'from mailbox:', email.mailboxEmail);
-      const url = `/api/email/body?messageId=${email.messageId}&mailboxEmail=${email.mailboxEmail}`;
-      console.log('[Email Body] API URL:', url);
-      
-      console.warn('🌐 MAKING FETCH REQUEST to:', url);
-      const response = await fetch(url);
-      console.warn('📡 FETCH RESPONSE STATUS:', response.status, response.statusText);
-      
-      // Check if response is actually JSON
-      const contentType = response.headers.get('content-type');
-      console.warn('📄 CONTENT TYPE:', contentType);
-      
-      if (!contentType || !contentType.includes('application/json')) {
-        const htmlText = await response.text();
-        console.error('🚨 SERVER RETURNED HTML INSTEAD OF JSON:', htmlText.substring(0, 500));
-        return `Server Error: Received HTML instead of JSON. Content: ${htmlText.substring(0, 200)}...`;
-      }
-      
-      const data = await response.json();
-      console.warn('📦 FETCH RESPONSE DATA:', data);
-      
-      console.log('[Email Body] Response status:', response.status);
-      console.log('[Email Body] Response data:', data);
-      
-      if (response.ok) {
-        console.warn('✅ SUCCESS: Returning email body');
-        return data.body || 'No content available';
-      } else {
-        console.error('[Email Body] API Error:', data.error, data.details);
-        console.warn('❌ API ERROR:', data.error, 'Details:', data.details);
-        return `API Error: ${data.error || 'Failed to load email content'} - Details: ${data.details || 'No details'}`;
-      }
-    } catch (error) {
-      console.error('[Email Body] Network/Parse Error:', error);
-      console.warn('💥 NETWORK/PARSE ERROR:', error);
-      return `Network Error: ${error instanceof Error ? error.message : 'Error loading email content'}`;
-    }
-  };
-
-  // Handle email card click for expansion and mark as read
-  const handleEmailCardClick = async (email: EmailMessage) => {
-    const emailKey = `${email.mailboxEmail}-${email.messageId}`;
-    
-    if (expandedEmails.has(emailKey)) {
-      // Collapse if already expanded
-      console.log('[Email Card] Collapsing email:', email.subject);
-      setExpandedEmails(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(emailKey);
-        return newSet;
-      });
-    } else {
-      // Expand email and mark as read
-      console.log('[Email Card] Expanding email:', email.subject);
-      setExpandedEmails(prev => new Set(prev).add(emailKey));
-      
-      // Mark email as read in UI immediately
-      setEmails(prevEmails => 
-        prevEmails.map(e => 
-          e.messageId === email.messageId && e.mailboxEmail === email.mailboxEmail
-            ? { ...e, isRead: true, flagInfo: e.flagInfo?.replace('unread', '').trim() }
-            : e
-        )
-      );
-      
-      // Use full content from email object (already fetched during initial load)
-      if (!emailBodies[emailKey]) {
-        const fullContent = (email as any).fullContent || 'No content available';
-        console.log('[Email Expansion] Using fullContent:', fullContent.substring(0, 100) + '...');
-        setEmailBodies(prev => ({ ...prev, [emailKey]: fullContent }));
-      }
-      
-      // Mark as read on server (async, but don't wait for it)
-      markEmailAsRead(email);
-    }
   };
 
   // Mark email as read via IMAP
@@ -1011,16 +927,13 @@ export default function EmailPage() {
                 .map((email, index) => {
                   const isUnread = email.isRead === false || email.flagInfo?.includes('unread');
                   const emailKey = `${email.mailboxEmail}-${email.messageId}`;
-                  const isExpanded = expandedEmails.has(emailKey);
-                  const emailBody = emailBodies[emailKey];
                   
                   return (
                     <div
                       key={`${email.mailboxEmail}-${email.messageId}-${index}`}
-                      className={`border border-gray-200 rounded-lg p-4 transition-all duration-300 cursor-pointer ${
-                        isUnread ? 'bg-blue-50 border-blue-200' : 'bg-white'
-                      } ${isExpanded ? 'shadow-lg border-blue-400' : 'hover:bg-gray-50 hover:shadow-md'}`}
-                      onClick={() => handleEmailCardClick(email)}
+                      className={`border border-gray-200 rounded-lg p-4 transition-all duration-300 ${
+                        isUnread ? 'bg-blue-50 border-blue-200' : 'bg-white hover:bg-gray-50 hover:shadow-md'
+                      }`}
                     >
                       <div className="relative">
                         <div className="flex items-start justify-between mb-3">
@@ -1037,11 +950,6 @@ export default function EmailPage() {
                                   {email.flag}
                                 </Badge>
                               )}
-                              {isExpanded && (
-                                <Badge variant="secondary" className="text-xs">
-                                  Expanded
-                                </Badge>
-                              )}
                             </div>
                             <p className={`text-sm text-gray-600 mb-2 ${isUnread ? 'font-medium' : ''}`}>
                               From: {email.fromName && email.fromName !== email.fromAddress 
@@ -1049,41 +957,19 @@ export default function EmailPage() {
                                 : email.fromAddress}
                             </p>
                             
-                            {/* Email Content - Show summary when collapsed, full content when expanded */}
-                            {isExpanded ? (
-                              // Show full email content inline
-                              emailBody && emailBody !== 'Click to expand and view full email content' ? (
-                                isHTMLContent(emailBody) ? (
-                                  <div 
-                                    className="text-base text-gray-700 leading-relaxed prose prose-sm max-w-none"
-                                    dangerouslySetInnerHTML={sanitizeAndRenderHTML(emailBody)}
-                                  />
-                                ) : (
-                                  <div className="text-base text-gray-700 leading-relaxed whitespace-pre-line break-words">
-                                    {emailBody}
-                                  </div>
-                                )
+                            {/* Email Content - Show only summary/preview */}
+                            {email.summary && 
+                            email.summary !== 'No content available' && 
+                            email.summary !== 'Click to expand and view full email content' && (
+                              isHTMLContent(email.summary) ? (
+                                <div 
+                                  className="text-base text-gray-600 line-clamp-3 leading-relaxed prose prose-sm max-w-none"
+                                  dangerouslySetInnerHTML={sanitizeAndRenderHTML(email.summary)}
+                                />
                               ) : (
-                                <div className="flex items-center gap-2 text-gray-500">
-                                  <RefreshCw className="w-4 h-4 animate-spin" />
-                                  <span className="text-sm">Loading full email content...</span>
-                                </div>
-                              )
-                            ) : (
-                              // Only show summary if it's not the placeholder text
-                              email.summary && 
-                              email.summary !== 'No content available' && 
-                              email.summary !== 'Click to expand and view full email content' && (
-                                isHTMLContent(email.summary) ? (
-                                  <div 
-                                    className="text-base text-gray-600 line-clamp-3 leading-relaxed prose prose-sm max-w-none"
-                                    dangerouslySetInnerHTML={sanitizeAndRenderHTML(email.summary)}
-                                  />
-                                ) : (
-                                  <p className="text-base text-gray-600 line-clamp-3 leading-relaxed">
-                                    {email.summary}
-                                  </p>
-                                )
+                                <p className="text-base text-gray-600 line-clamp-3 leading-relaxed">
+                                  {email.summary}
+                                </p>
                               )
                             )}
                           </div>
@@ -1101,14 +987,8 @@ export default function EmailPage() {
                           </div>
                         </div>
                         
-                        {/* Bottom row with expand/collapse button and action buttons */}
-                        <div className="flex justify-between items-center mt-4">
-                          {/* Click to expand - Bottom Left */}
-                          <div className="text-xs text-blue-600 hover:text-blue-800 font-medium">
-                            {isExpanded ? 'Click to collapse' : 'Click to expand'}
-                          </div>
-                          
-                          {/* Email Action Buttons - Bottom Right */}
+                        {/* Email Action Buttons */}
+                        <div className="flex justify-end items-center mt-4">
                           <div className="flex gap-2">
                           <Button
                             size="sm"

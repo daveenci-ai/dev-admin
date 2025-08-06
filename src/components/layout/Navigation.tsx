@@ -16,7 +16,7 @@ import {
 
 const navigation = [
   { name: 'CRM', href: '/crm', icon: Users },
-  { name: 'Email', href: '/email', icon: Mail },
+  { name: 'Zoho', href: '/email', icon: Mail },
   { name: 'Blog', href: '/blog', icon: FileText },
   { name: 'Avatar', href: '/avatar', icon: ImageIcon },
   { name: 'Chatbot', href: '/chatbot', icon: MessageSquare },
