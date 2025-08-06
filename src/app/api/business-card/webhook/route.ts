@@ -5,6 +5,20 @@ import { prisma } from '@/lib/db';
 import { extractBusinessCardData, validateExtractedData } from '@/lib/gemini';
 import { sendTelegramNotification, sendTelegramError } from '@/lib/telegram';
 
+// Type definitions for business card extraction results
+interface ExtractionSuccess {
+    success: true;
+    data: any;
+    research: any;
+}
+
+interface ExtractionError {
+    success: false;
+    error: string;
+}
+
+type ExtractionResult = ExtractionSuccess | ExtractionError;
+
 async function handleDatabaseOperations(contactData: any, research: any, imagePath: string) {
     const addedBy = extractPersonFromImagePath(imagePath);
     const user = await prisma.user.findFirst({ where: { name: 'Admin' } });
@@ -99,6 +113,15 @@ async function fetchImageFromGitHub(imagePath: string) {
 
 
 export async function POST(req: NextRequest) {
+    // Skip business card processing in development environment
+    if (process.env.NODE_ENV === 'development') {
+        console.log('🚫 [WEBHOOK] Business card processing disabled in development environment');
+        return NextResponse.json({ 
+            message: 'Business card processing is disabled in development environment',
+            environment: process.env.NODE_ENV 
+        }, { status: 200 });
+    }
+
     let imagePath = '';
     try {
         console.log('🚀 [WEBHOOK] Business card webhook received. Starting process...');
@@ -174,13 +197,19 @@ export async function POST(req: NextRequest) {
         const extracted = await extractBusinessCardData(imageData);
 
         if (!extracted.success) {
-            console.error(`❌ [WEBHOOK] Data extraction failed: ${extracted.error}`);
-            await sendTelegramError(`Failed to extract data: ${extracted.error}`, extractPersonFromImagePath(imagePath));
-            return NextResponse.json({ error: 'Data extraction failed', details: extracted.error }, { status: 400 });
+            const errorMessage = 'error' in extracted ? extracted.error : 'Unknown extraction error';
+            console.error(`❌ [WEBHOOK] Data extraction failed: ${errorMessage}`);
+            await sendTelegramError(`Failed to extract data: ${errorMessage}`, extractPersonFromImagePath(imagePath));
+            return NextResponse.json({ error: 'Data extraction failed', details: errorMessage }, { status: 400 });
         }
         console.log('✅ [WEBHOOK] Data extraction successful.');
 
-        const validation = validateExtractedData(extracted.data);
+        // At this point, we know extracted.success is true, so we can safely cast
+        const successResult = extracted as ExtractionSuccess;
+        const extractedData = successResult.data;
+        const extractedResearch = successResult.research;
+
+        const validation = validateExtractedData(extractedData);
         if (!validation.valid) {
             console.error(`❌ [WEBHOOK] Data validation failed: ${validation.errors.join(', ')}`);
             await sendTelegramError(`Invalid data extracted: ${validation.errors.join(', ')}`, extractPersonFromImagePath(imagePath));
@@ -189,17 +218,17 @@ export async function POST(req: NextRequest) {
         console.log('✅ [WEBHOOK] Data validation successful.');
         
         const researchData = {
-            success: !!extracted.research,
-            telegramMessage: extracted.research?.opportunities?.join('\n\n') || 'Research could not be completed.',
+            success: !!extractedResearch,
+            telegramMessage: extractedResearch?.opportunities?.join('\n\n') || 'Research could not be completed.',
         };
 
         console.log('[WEBHOOK] Starting database operations...');
-        const dbResult = await handleDatabaseOperations(extracted.data, extracted.research, imagePath);
+        const dbResult = await handleDatabaseOperations(extractedData, extractedResearch, imagePath);
         console.log(`✅ [WEBHOOK] Database operations complete. New contact: ${dbResult.isNewContact}`);
 
-        if (extracted.data) {
+        if (extractedData) {
             console.log('[WEBHOOK] Sending Telegram notification...');
-            await sendTelegramNotification(extracted.data, researchData, dbResult, imagePath);
+            await sendTelegramNotification(extractedData, researchData, dbResult, imagePath);
             console.log('✅ [WEBHOOK] Telegram notification sent.');
         }
 
