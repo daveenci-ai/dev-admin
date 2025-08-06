@@ -7,10 +7,56 @@ interface ImageData {
   contentType: string;
 }
 
+// Retry function with exponential backoff
+async function retryWithBackoff<T>(
+  fn: () => Promise<T>,
+  maxRetries: number = 3,
+  baseDelay: number = 1000
+): Promise<T> {
+  let lastError: Error;
+  
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error: any) {
+      lastError = error;
+      
+      // Don't retry on non-retryable errors
+      if (error.message?.includes('API key') || 
+          error.message?.includes('Invalid') ||
+          error.message?.includes('Authentication')) {
+        throw error;
+      }
+      
+      // If this is the last attempt, throw the error
+      if (attempt === maxRetries) {
+        throw error;
+      }
+      
+      // Calculate delay with exponential backoff and jitter
+      const delay = baseDelay * Math.pow(2, attempt) + Math.random() * 1000;
+      
+      console.log(`[Gemini Retry] Attempt ${attempt + 1} failed: ${error.message}`);
+      console.log(`[Gemini Retry] Retrying in ${Math.round(delay)}ms...`);
+      
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+  
+  throw lastError!;
+}
+
 export async function extractBusinessCardData(imageData: ImageData) {
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-    const prompt = `You are an expert OCR and research assistant trained to extract data from business cards and deliver concise, actionable insights to support AI, automation, and digital‐marketing outreach for Daveenci.ai.
+    console.log('[Gemini] Starting business card data extraction...');
+    
+    const extractData = async () => {
+      if (!process.env.GEMINI_API_KEY) {
+        throw new Error('GEMINI_API_KEY environment variable is not set.');
+      }
+
+      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+      const prompt = `You are an expert OCR and research assistant trained to extract data from business cards and deliver concise, actionable insights to support AI, automation, and digital‐marketing outreach for Daveenci.ai.
 
 Instructions:
 
@@ -20,7 +66,7 @@ Instructions:
 2. Contact Data Extraction  
    - Extract all contact fields (emails, phones, social links, website, address).  
    - If a field is missing, set it to null.  
-   - Infer the website URL from the email’s domain when absent.
+   - Infer the website URL from the email's domain when absent.
 
 3. Research Phase  
    - Use full_name, company_name, website_url, and any public social links to quickly surface:  
@@ -30,11 +76,11 @@ Instructions:
 
 4. Opportunity Generation (Highly Customized)  
    - You know Daveenci.ai provides AI‑driven automation, CRM integration, and digital‑marketing solutions.  
-   - For each new contact, produce **three** bullet‑point “opportunities” that:  
-     a) Reference the contact’s specific industry and business model.  
-     b) Tie directly to Daveenci.ai’s strengths (e.g., AI‑powered lead scoring, automated campaign orchestration, CRM system build‑outs, data‑driven content personalization).  
-     c) Indicate a clear value or outcome (e.g., “boost lead conversion by X%,” “reduce manual data entry,” “deepen customer engagement”).  
-   - Use a leading emoji for each bullet (e.g., “🤖”, “📈”, “🔗”).
+   - For each new contact, produce **three** bullet‑point "opportunities" that:  
+     a) Reference the contact's specific industry and business model.  
+     b) Tie directly to Daveenci.ai's strengths (e.g., AI‑powered lead scoring, automated campaign orchestration, CRM system build‑outs, data‑driven content personalization).  
+     c) Indicate a clear value or outcome (e.g., "boost lead conversion by X%," "reduce manual data entry," "deepen customer engagement").  
+   - Use a leading emoji for each bullet (e.g., "🤖", "📈", "🔗").
 
 5. JSON Structure:
 
@@ -62,35 +108,37 @@ json
     "about_person": "👤 Randy Miller is a Vistage Chair in Austin, TX, guiding senior executives through peer advisory groups and strategic coaching.",
     "opportunities": [
       "🤖 Deploy AI‑driven cohort segmentation to match executives with peers sharing similar challenges, boosting group cohesion and attendee satisfaction by 20%.",
-      "📈 Automate targeted digital campaigns highlighting Vistage’s success stories to attract new executive members, increasing qualified leads by 30%.",
+      "📈 Automate targeted digital campaigns highlighting Vistage's success stories to attract new executive members, increasing qualified leads by 30%.",
       "🔗 Integrate a custom CRM workflow to streamline member onboarding, track session outcomes, and reduce manual admin work by 50%."
     ]
   }
 }`;
 
-    const imagePart = {
-      inlineData: {
-        data: imageData.data.toString('base64'),
-        mimeType: imageData.contentType,
-      },
-    };
+      const imagePart = {
+        inlineData: {
+          data: imageData.data.toString('base64'),
+          mimeType: imageData.contentType,
+        },
+      };
 
-    const result = await model.generateContent([prompt, imagePart]);
-    const response = await result.response;
-    const text = response.text();
+      console.log('[Gemini] Sending request to Gemini API...');
+      const result = await model.generateContent([prompt, imagePart]);
+      const response = await result.response;
+      const text = response.text();
 
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      return { success: false, error: 'No JSON found in Gemini response' };
-    }
+      console.log('[Gemini] Received response, parsing JSON...');
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        throw new Error('No JSON found in Gemini response');
+      }
 
-    const extracted = JSON.parse(jsonMatch[0]);
-    if (!extracted.contact_data) {
-        return { success: false, error: 'Missing contact_data in response' };
-    }
+      const extracted = JSON.parse(jsonMatch[0]);
+      if (!extracted.contact_data) {
+        throw new Error('Missing contact_data in response');
+      }
 
-    const contactData = extracted.contact_data;
-    const cleanedData = {
+      const contactData = extracted.contact_data;
+      const cleanedData = {
         name: contactData.full_name || "Unknown Person",
         company: contactData.company_name || "Unknown Company",
         industry: contactData.industry || "Unknown Industry",
@@ -107,26 +155,30 @@ json
         youtube_url: contactData.youtube_url || null,
         tiktok_url: contactData.tiktok_url || null,
         pinterest_url: contactData.pinterest_url || null,
-    };
+      };
 
-    // Basic validation
-    const emailRegex = /^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$/;
-    if (!cleanedData.primary_email || !emailRegex.test(cleanedData.primary_email)) {
+      // Basic validation
+      const emailRegex = /^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$/;
+      if (!cleanedData.primary_email || !emailRegex.test(cleanedData.primary_email)) {
         cleanedData.primary_email = "invalid@email.com"; // Mark as invalid
-    }
-     if (cleanedData.website && !cleanedData.website.startsWith('http')) {
-      cleanedData.website = 'https://' + cleanedData.website;
-    }
+      }
+      if (cleanedData.website && !cleanedData.website.startsWith('http')) {
+        cleanedData.website = 'https://' + cleanedData.website;
+      }
 
+      const researchInsights = extracted.research_insights || {};
 
-    const researchInsights = extracted.research_insights || {};
-
-    return {
-      success: true,
-      data: cleanedData,
-      research: researchInsights,
+      console.log('[Gemini] Successfully extracted business card data');
+      return {
+        success: true,
+        data: cleanedData,
+        research: researchInsights,
+      };
     };
+
+    return await retryWithBackoff(extractData);
   } catch (error: any) {
+    console.error('[Gemini] Final error after all retries:', error.message);
     return { success: false, error: error.message };
   }
 }
