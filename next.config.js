@@ -1,6 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // App Router is stable in Next.js 13+, no experimental config needed
+  // Basic configuration for stable builds
+  experimental: {
+    serverComponentsExternalPackages: ['@prisma/client'],
+  },
 }
 
 module.exports = nextConfig 
