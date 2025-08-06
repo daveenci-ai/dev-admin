@@ -14,7 +14,7 @@ interface ResearchData {
 
 interface DbResult {
   isNewContact: boolean;
-  touchpointHistory?: any[];
+  touchpointHistory?: { createdAt: Date; source: string; addedBy: string | null }[];
   contactNotes?: string | null;
 }
 
@@ -69,12 +69,12 @@ export async function sendTelegramNotification(
       if (dbResult.touchpointHistory && dbResult.touchpointHistory.length > 0) {
         messageText += `\n\n📅 Previous Interactions`;
         dbResult.touchpointHistory.slice(0, 5).forEach(tp => {
-          const date = new Date(tp.created_at).toLocaleDateString('en-US', {
+          const date = new Date(tp.createdAt).toLocaleDateString('en-US', {
             year: 'numeric',
             month: 'short',
             day: 'numeric',
           });
-          const addedBy = tp.added_by ? ` (${tp.added_by})` : '';
+          const addedBy = tp.addedBy ? ` (${tp.addedBy})` : '';
           messageText += `\n• ${date}: ${tp.source}${addedBy}`;
         });
       }

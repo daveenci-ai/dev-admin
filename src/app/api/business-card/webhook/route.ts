@@ -67,6 +67,11 @@ async function handleDatabaseOperations(contactData: any, research: any, imagePa
             where: { contactId: existingContact.id },
             orderBy: { createdAt: 'desc' },
             take: 5,
+            select: {
+                createdAt: true,
+                source: true,
+                addedBy: true,
+            },
         });
         return { success: true, isNewContact: false, contactId: existingContact.id, touchpointHistory: touchpoints, contactNotes: existingContact.notes };
     }
