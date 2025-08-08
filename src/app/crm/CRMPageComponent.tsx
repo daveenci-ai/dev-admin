@@ -546,7 +546,7 @@ export default function CRMPageComponent() {
             <div 
               key={stat.label}
               onClick={() => handleStatusCardClick(stat.status)}
-              className={`bg-white p-4 rounded-lg shadow-sm transition-all duration-200 cursor-pointer ${
+              className={`app-card app-card--p transition-all duration-200 cursor-pointer ${
                 isActive 
                   ? `${stat.activeBg} border-2 ${stat.activeBorder} shadow-md scale-105` 
                   : `border border-gray-200 ${stat.borderColor} border-b-2 ${stat.hoverBg} hover:shadow-md`
@@ -654,12 +654,12 @@ export default function CRMPageComponent() {
       </div>
 
       {/* Full Screen Contacts Table */}
-      <div className="bg-white shadow rounded-lg overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+      <div className="app-card overflow-hidden">
+        <table className="app-table">
+          <thead className="app-thead">
             <tr>
               <th 
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                className="app-th cursor-pointer hover:bg-gray-100 transition-colors"
                 onClick={() => handleSort('name')}
               >
                 <div className="flex items-center space-x-1">
@@ -668,7 +668,7 @@ export default function CRMPageComponent() {
                 </div>
               </th>
               <th 
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                className="app-th cursor-pointer hover:bg-gray-100 transition-colors"
                 onClick={() => handleSort('status')}
               >
                 <div className="flex items-center space-x-1">
@@ -677,7 +677,7 @@ export default function CRMPageComponent() {
                 </div>
               </th>
               <th 
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                className="app-th cursor-pointer hover:bg-gray-100 transition-colors"
                 onClick={() => handleSort('source')}
               >
                 <div className="flex items-center space-x-1">
@@ -686,7 +686,7 @@ export default function CRMPageComponent() {
                 </div>
               </th>
               <th 
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                className="app-th cursor-pointer hover:bg-gray-100 transition-colors"
                 onClick={() => handleSort('primaryEmail')}
               >
                 <div className="flex items-center space-x-1">
@@ -695,7 +695,7 @@ export default function CRMPageComponent() {
                 </div>
               </th>
               <th 
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                className="app-th cursor-pointer hover:bg-gray-100 transition-colors"
                 onClick={() => handleSort('primaryPhone')}
               >
                 <div className="flex items-center space-x-1">
@@ -704,7 +704,7 @@ export default function CRMPageComponent() {
                 </div>
               </th>
               <th 
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                className="app-th cursor-pointer hover:bg-gray-100 transition-colors"
                 onClick={() => handleSort('createdAt')}
               >
                 <div className="flex items-center space-x-1">
@@ -717,7 +717,7 @@ export default function CRMPageComponent() {
           <tbody className="bg-white divide-y divide-gray-200">
             {loading ? (
               <tr>
-                <td colSpan={6} className="px-6 py-12 text-center">
+                <td colSpan={6} className="app-td text-center py-12">
                   <div className="flex items-center justify-center">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                     <span className="ml-3 text-gray-500">Loading contacts...</span>
@@ -726,7 +726,7 @@ export default function CRMPageComponent() {
               </tr>
             ) : contacts.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
+                <td colSpan={6} className="app-td text-center py-12 text-gray-500">
                   No contacts found
                 </td>
               </tr>
@@ -734,10 +734,10 @@ export default function CRMPageComponent() {
               sortedContacts.map((contact) => (
                 <tr 
                   key={contact.id} 
-                  className="hover:bg-gray-50 cursor-pointer transition-colors"
+                  className="app-tr cursor-pointer"
                   onClick={() => handleContactClick(contact)}
                 >
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="app-td">
                     <div className="flex items-center">
                       <div className="mr-3 flex-shrink-0">
                         {getSentimentIcon(contact.sentiment)}
@@ -750,23 +750,23 @@ export default function CRMPageComponent() {
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="app-td">
                     <span className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full uppercase tracking-wide ${getStatusColor(contact.status)}`}>
                       {contact.status}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="app-td text-gray-900">
                     {contact.source || '-'}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="app-td">
                     <a href={`mailto:${contact.primaryEmail}`} className="text-sm text-blue-600 hover:text-blue-900">
                       {contact.primaryEmail}
                     </a>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="app-td text-gray-900">
                     {formatInternationalPhone(contact.primaryPhone).formatted}
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-500 max-w-xs">
+                  <td className="app-td text-gray-500 max-w-xs">
                     {contact.touchpoints && contact.touchpoints.length > 0 ? (
                       <div className="space-y-1">
                         <div className="text-gray-900 font-medium truncate" title={contact.touchpoints[0].note}>

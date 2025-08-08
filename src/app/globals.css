@@ -74,3 +74,36 @@
     @apply bg-background text-foreground;
   }
 } 
+
+/* App-wide design tokens */
+@layer components {
+  /* Page container full-height */
+  .app-page {
+    @apply min-h-screen bg-gray-50;
+  }
+
+  /* Top stat cards */
+  .app-card {
+    @apply bg-white rounded-lg border border-gray-200 shadow-sm;
+  }
+  .app-card--p {
+    @apply p-4;
+  }
+
+  /* Consistent table look */
+  .app-table {
+    @apply min-w-full divide-y divide-gray-200;
+  }
+  .app-thead {
+    @apply bg-gray-50;
+  }
+  .app-th {
+    @apply px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider;
+  }
+  .app-td {
+    @apply px-6 py-4 whitespace-nowrap text-sm;
+  }
+  .app-tr {
+    @apply hover:bg-gray-50 transition-colors;
+  }
+}
