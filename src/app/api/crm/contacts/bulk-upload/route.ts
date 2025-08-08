@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
       try {
         const data = contactCreateSchema.parse(rec)
         // 3) Upsert by email
-        const existing = await prisma.contact.findUnique({ where: { primaryEmail: data.primaryEmail } })
+        const existing = await prisma.contact.findFirst({ where: { primaryEmail: { equals: data.primaryEmail, mode: 'insensitive' } } })
         if (existing) {
           // Minimal update (non-destructive)
           await prisma.contact.update({ where: { id: existing.id }, data: {
