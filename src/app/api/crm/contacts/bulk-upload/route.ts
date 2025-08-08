@@ -49,7 +49,9 @@ export async function POST(req: NextRequest) {
   try {
     const form = await req.formData()
     const files: File[] = []
-    for (const [_, v] of form.entries()) {
+    const allEntries = Array.from(form.entries())
+    for (const entry of allEntries) {
+      const v = entry[1]
       if (v instanceof File) files.push(v)
     }
     if (files.length === 0) return badRequest('No files uploaded')
