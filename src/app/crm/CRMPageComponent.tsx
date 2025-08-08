@@ -1108,39 +1108,88 @@ export default function CRMPageComponent() {
         </div>
       )}
 
-      {/* New Contact Modal */}
+      {/* New Contact Drawer (slide-in) */}
       {showNewContact && (
-        <div className="fixed inset-0 z-50">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setShowNewContact(false)} />
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-xl w-[520px] p-6">
-            <h3 className="text-lg font-semibold mb-4">Add Contact</h3>
-            <div className="space-y-3">
-              {['name','primaryEmail','primaryPhone','company'].map((k) => (
-                <div key={k}>
-                  <label className="block text-sm text-gray-600 mb-1 capitalize">{k}</label>
+        <div className="fixed inset-0 z-50 overflow-hidden">
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black bg-opacity-50" onClick={() => setShowNewContact(false)} />
+
+          {/* Drawer Panel */}
+          <div className={`absolute right-0 top-0 h-full w-1/2 min-w-[600px] bg-white shadow-xl transform transition-transform duration-300 ease-in-out ${showNewContact ? 'translate-x-0' : 'translate-x-full'}`}>
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b">
+              <h3 className="text-xl font-bold text-gray-900">Add Contact</h3>
+              <button className="text-gray-400 hover:text-gray-600" onClick={() => setShowNewContact(false)}>
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2">
+                  <label className="block text-sm text-gray-600 mb-1">Name</label>
                   <input
-                    value={(newContactForm as any)[k]}
-                    onChange={(e) => setNewContactForm({ ...newContactForm, [k]: e.target.value })}
+                    value={newContactForm.name}
+                    onChange={(e) => setNewContactForm({ ...newContactForm, name: e.target.value })}
                     className="w-full border rounded px-3 py-2"
+                    placeholder="Full name"
                   />
                 </div>
-              ))}
-            </div>
-            <div className="mt-5 flex justify-end gap-2">
-              <button className="px-3 py-2 text-sm" onClick={() => setShowNewContact(false)}>Cancel</button>
-              <button
-                className="px-4 py-2 bg-emerald-600 text-white rounded"
-                onClick={async () => {
-                  const res = await fetch('/api/crm/contacts', { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify({ ...newContactForm, status: 'PROSPECT', source: 'Manual' }) })
-                  if (res.ok) {
-                    setShowNewContact(false)
-                    setNewContactForm({ name: '', primaryEmail: '', primaryPhone: '', company: '' })
-                    fetchContacts()
-                  }
-                }}
-              >
-                Save
-              </button>
+                <div className="col-span-2">
+                  <label className="block text-sm text-gray-600 mb-1">Primary Email</label>
+                  <input
+                    value={newContactForm.primaryEmail}
+                    onChange={(e) => setNewContactForm({ ...newContactForm, primaryEmail: e.target.value })}
+                    className="w-full border rounded px-3 py-2"
+                    placeholder="name@company.com"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">Primary Phone</label>
+                  <input
+                    value={newContactForm.primaryPhone}
+                    onChange={(e) => setNewContactForm({ ...newContactForm, primaryPhone: e.target.value })}
+                    className="w-full border rounded px-3 py-2"
+                    placeholder="(123) 123-1234"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">Company</label>
+                  <input
+                    value={newContactForm.company}
+                    onChange={(e) => setNewContactForm({ ...newContactForm, company: e.target.value })}
+                    className="w-full border rounded px-3 py-2"
+                    placeholder="Company"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button className="px-3 py-2 text-sm" onClick={() => setShowNewContact(false)}>Cancel</button>
+                <button
+                  className="px-4 py-2 bg-emerald-600 text-white rounded disabled:opacity-50"
+                  disabled={!newContactForm.name || !newContactForm.primaryEmail}
+                  onClick={async () => {
+                    const payload = {
+                      ...newContactForm,
+                      status: 'PROSPECT',
+                      source: 'Manual',
+                      userId: 1,
+                    }
+                    const res = await fetch('/api/crm/contacts', { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(payload) })
+                    if (res.ok) {
+                      setShowNewContact(false)
+                      setNewContactForm({ name: '', primaryEmail: '', primaryPhone: '', company: '' })
+                      fetchContacts()
+                    }
+                  }}
+                >
+                  Save
+                </button>
+              </div>
             </div>
           </div>
         </div>
