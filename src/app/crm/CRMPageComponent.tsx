@@ -530,11 +530,11 @@ export default function CRMPageComponent() {
 
   return (
     <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
-      <PageHeader title="CRM" description="Manage your contacts, track activity, and take action quickly.">
+      <PageHeader title="CRM">
         <div className="hidden md:flex gap-2">
-          {/* Mirror key actions for quick access */}
           <button onClick={() => setShowNewContact(true)} className="px-3 py-1.5 bg-emerald-600 text-white rounded text-sm">New Contact</button>
           <button onClick={() => setShowBulkImport(true)} className="px-3 py-1.5 bg-orange-600 text-white rounded text-sm">Bulk Import</button>
+          <button onClick={() => { fetchDuplicateGroups(); setShowMergeUI(true); }} className="px-3 py-1.5 bg-purple-600 text-white rounded text-sm">Find Duplicates</button>
         </div>
       </PageHeader>
 
@@ -627,27 +627,6 @@ export default function CRMPageComponent() {
               className="whitespace-nowrap px-5 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 shadow-sm"
             >
               Reset Filters
-            </button>
-
-            <button
-              onClick={() => setShowNewContact(true)}
-              className="whitespace-nowrap px-5 py-2 bg-emerald-600 text-white rounded-md text-sm font-medium hover:bg-emerald-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 shadow-sm"
-            >
-              New Contact
-            </button>
-
-            <button
-              onClick={() => setShowBulkImport(true)}
-              className="whitespace-nowrap px-5 py-2 bg-orange-600 text-white rounded-md text-sm font-medium hover:bg-orange-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 shadow-sm"
-            >
-              Bulk Import (Images)
-            </button>
-
-            <button
-              onClick={() => { fetchDuplicateGroups(); setShowMergeUI(true); }}
-              className="whitespace-nowrap px-5 py-2 bg-purple-600 text-white rounded-md text-sm font-medium hover:bg-purple-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 shadow-sm"
-            >
-              Find Duplicates
             </button>
           </div>
         </div>
@@ -946,6 +925,22 @@ export default function CRMPageComponent() {
                         className="px-3 py-1.5 bg-gray-600 text-white text-sm rounded-md hover:bg-gray-700 transition-colors"
                       >
                         Cancel
+                      </button>
+                      <button
+                        onClick={async () => {
+                          if (!selectedContact) return
+                          if (!confirm('Delete this contact and related touchpoints?')) return
+                          const res = await fetch(`/api/crm/contacts/${selectedContact.id}`, { method: 'DELETE' })
+                          if (res.ok) {
+                            setShowContactDetails(false)
+                            setSelectedContact(null)
+                            fetchContacts()
+                            fetchStats()
+                          }
+                        }}
+                        className="px-3 py-1.5 bg-red-600 text-white text-sm rounded-md hover:bg-red-700 transition-colors"
+                      >
+                        Delete
                       </button>
                     </div>
                   )}

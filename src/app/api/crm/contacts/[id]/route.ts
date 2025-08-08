@@ -62,3 +62,20 @@ export async function PUT(
     return NextResponse.json({ error: 'Failed to update contact' }, { status: 500 })
   }
 } 
+
+// DELETE contact by ID
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const contactId = parseInt(params.id)
+    await prisma.touchpoint.deleteMany({ where: { contactId } })
+    await prisma.avatar.updateMany({ where: { contactId }, data: { contactId: null } })
+    await prisma.contact.delete({ where: { id: contactId } })
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Error deleting contact:', error)
+    return NextResponse.json({ error: 'Failed to delete contact' }, { status: 500 })
+  }
+}
