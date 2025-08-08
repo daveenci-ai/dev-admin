@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { archiveEmailViaImap } from '@/lib/zohoMail';
+import { archiveEmailViaImap } from '@/lib/zoho/actions';
 
 export const dynamic = 'force-dynamic';
 

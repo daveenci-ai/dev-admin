@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { deleteEmailViaImap } from '@/lib/zohoMail';
+import { deleteEmailViaImap } from '@/lib/zoho/actions';
 
 export const dynamic = 'force-dynamic';
 

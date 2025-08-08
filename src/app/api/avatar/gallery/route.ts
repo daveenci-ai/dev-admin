@@ -1,5 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
+import { ok, badRequest, notFound, serverError } from '@/lib/http'
+import logger from '@/lib/logger'
+import { serializePrisma } from '@/lib/serialize'
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,7 +16,7 @@ export async function GET(request: NextRequest) {
     const skip = (page - 1) * limit
 
     // Build where clause for generations using existing avatars_generated table
-    const where: any = {
+    const where: Record<string, unknown> = {
       // Only show approved images (not pending review)
       githubImageUrl: {
         not: {
@@ -31,7 +34,11 @@ export async function GET(request: NextRequest) {
 
     // Filter by specific avatar
     if (avatar !== 'all') {
-      where.avatarId = parseInt(avatar)
+      const parsed = Number(avatar)
+      if (Number.isNaN(parsed)) {
+        return badRequest('Invalid avatar filter')
+      }
+      ;(where as any).avatarId = parsed
     }
 
     // Filter by timeframe based on creation date
@@ -83,7 +90,7 @@ export async function GET(request: NextRequest) {
     ])
 
     // Process generations to match expected format
-    const processedGenerations = generations.map((generation: any) => {
+    const processedGenerations = generations.map((generation) => {
       const isPendingReview = generation.githubImageUrl?.startsWith('PENDING_REVIEW:') || false
       const imageUrl = isPendingReview 
         ? generation.githubImageUrl?.replace('PENDING_REVIEW:', '') 
@@ -108,7 +115,7 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    return NextResponse.json({
+    return ok({
       generations: processedGenerations,
       pagination: {
         page,
@@ -119,11 +126,8 @@ export async function GET(request: NextRequest) {
     })
 
   } catch (error: any) {
-    console.error('Error fetching avatar gallery:', error)
-    return NextResponse.json(
-      { error: 'Internal server error', details: error.message },
-      { status: 500 }
-    )
+    logger.error('Error fetching avatar gallery:', error)
+    return serverError('Internal server error', error.message)
   }
 }
 
@@ -133,10 +137,7 @@ export async function DELETE(request: NextRequest) {
     const { id } = await request.json()
     
     if (!id) {
-      return NextResponse.json(
-        { error: 'Generation ID is required' },
-        { status: 400 }
-      )
+      return badRequest('Generation ID is required')
     }
 
     const generationId = BigInt(id)
@@ -147,10 +148,7 @@ export async function DELETE(request: NextRequest) {
     })
 
     if (!generation) {
-      return NextResponse.json(
-        { error: 'Generation not found' },
-        { status: 404 }
-      )
+      return notFound('Generation not found')
     }
 
     let githubDeletionError = null
@@ -159,16 +157,16 @@ export async function DELETE(request: NextRequest) {
     if (generation.githubImageUrl && !generation.githubImageUrl.startsWith('PENDING_REVIEW:')) {
       try {
         const { default: githubStorage } = await import('@/lib/github-storage')
-        console.log(`🗑️ Deleting image from GitHub: ${generation.githubImageUrl}`)
+        logger.info('Deleting image from GitHub:', generation.githubImageUrl)
         await githubStorage.deleteImage(generation.githubImageUrl)
-        console.log(`✅ Successfully deleted from GitHub`)
+        logger.info('Successfully deleted from GitHub')
       } catch (error: any) {
-        console.error('❌ GitHub deletion failed:', error)
+        logger.warn('GitHub deletion failed:', error)
         githubDeletionError = error.message
         // Continue with database deletion even if GitHub deletion fails
       }
     } else if (generation.githubImageUrl?.startsWith('PENDING_REVIEW:')) {
-      console.log('⏭️ Skipping GitHub deletion for PENDING_REVIEW image')
+      logger.debug('Skipping GitHub deletion for PENDING_REVIEW image')
     }
 
     // Delete from database
@@ -176,7 +174,7 @@ export async function DELETE(request: NextRequest) {
       where: { id: generationId }
     })
 
-    console.log(`✅ Successfully deleted from database: ${id}`)
+    logger.info('Successfully deleted from database:', id)
 
     const response: any = { 
       message: 'Avatar generation deleted successfully',
@@ -188,13 +186,10 @@ export async function DELETE(request: NextRequest) {
       response.warnings = [`GitHub deletion failed: ${githubDeletionError}`]
     }
 
-    return NextResponse.json(response)
+    return ok(response)
     
   } catch (error) {
-    console.error('Avatar deletion error:', error)
-    return NextResponse.json(
-      { error: 'Failed to delete avatar generation' },
-      { status: 500 }
-    )
+    logger.error('Avatar deletion error:', error)
+    return serverError('Failed to delete avatar generation')
   }
 } 

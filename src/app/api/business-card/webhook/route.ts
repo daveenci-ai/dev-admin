@@ -4,6 +4,7 @@ import axios from 'axios';
 import { prisma } from '@/lib/db';
 import { extractBusinessCardData, validateExtractedData } from '@/lib/gemini';
 import { sendTelegramNotification, sendTelegramError } from '@/lib/telegram';
+import logger from '@/lib/logger';
 
 // Type definitions for business card extraction results
 interface ExtractionSuccess {
@@ -115,7 +116,7 @@ async function fetchImageFromGitHub(imagePath: string) {
 export async function POST(req: NextRequest) {
     // Skip business card processing in development environment
     if (process.env.NODE_ENV === 'development') {
-        console.log('🚫 [WEBHOOK] Business card processing disabled in development environment');
+        logger.info('[WEBHOOK] Business card processing disabled in development environment');
         return NextResponse.json({ 
             message: 'Business card processing is disabled in development environment',
             environment: process.env.NODE_ENV 
@@ -124,42 +125,42 @@ export async function POST(req: NextRequest) {
 
     let imagePath = '';
     try {
-        console.log('🚀 [WEBHOOK] Business card webhook received. Starting process...');
+        logger.info('[WEBHOOK] Business card webhook received. Starting process...');
         
         const signature = req.headers.get('x-hub-signature-256');
         const eventType = req.headers.get('x-github-event');
         const secret = process.env.GITHUB_WEBHOOK_SECRET;
 
-        console.log(`[WEBHOOK] Event Type: ${eventType}`);
-        console.log(`[WEBHOOK] Signature received: ${signature ? 'Yes' : 'No'}`);
-        console.log(`[WEBHOOK] Webhook secret configured: ${secret ? 'Yes' : 'No'}`);
+        logger.debug('[WEBHOOK] Event Type:', eventType);
+        logger.debug('[WEBHOOK] Signature received:', !!signature);
+        logger.debug('[WEBHOOK] Webhook secret configured:', !!secret);
 
         // Get the raw body as text to prevent Next.js from auto-parsing
         const bodyText = await req.text();
 
         if (!secret || !signature) {
-            console.error('❌ [WEBHOOK] Validation failed: Missing webhook secret or signature.');
+            logger.error('[WEBHOOK] Validation failed: Missing webhook secret or signature.');
             return NextResponse.json({ error: 'Missing webhook secret or signature' }, { status: 401 });
         }
         
         const hmac = crypto.createHmac('sha256', secret);
         const digest = 'sha256=' + hmac.update(bodyText).digest('hex');
 
-        console.log(`[WEBHOOK] Calculated Digest: ${digest}`);
-        console.log(`[WEBHOOK] Received Signature: ${signature}`);
+        logger.debug('[WEBHOOK] Calculated Digest:', digest);
+        logger.debug('[WEBHOOK] Received Signature:', signature);
 
         if (!crypto.timingSafeEqual(Buffer.from(digest), Buffer.from(signature))) {
-            console.error('❌ [WEBHOOK] Validation failed: Invalid signature.');
+            logger.error('[WEBHOOK] Validation failed: Invalid signature.');
             return NextResponse.json({ error: 'Invalid webhook signature' }, { status: 401 });
         }
         
-        console.log('✅ [WEBHOOK] Signature validated successfully.');
+        logger.info('[WEBHOOK] Signature validated successfully.');
 
         // Handle both JSON and URL-encoded form payloads
         let payload;
         try {
             if (bodyText.startsWith('payload=')) {
-                console.log('[WEBHOOK] Detected URL-encoded form payload. Parsing...');
+                logger.debug('[WEBHOOK] Detected URL-encoded form payload. Parsing...');
                 const urlParams = new URLSearchParams(bodyText);
                 const payloadJson = urlParams.get('payload');
                 if (!payloadJson) {
@@ -167,42 +168,42 @@ export async function POST(req: NextRequest) {
                 }
                 payload = JSON.parse(payloadJson);
             } else {
-                console.log('[WEBHOOK] Detected JSON payload. Parsing...');
+                logger.debug('[WEBHOOK] Detected JSON payload. Parsing...');
                 payload = JSON.parse(bodyText);
             }
         } catch (error: any) {
-            console.error('❌ [WEBHOOK] Failed to parse payload:', error.message);
+            logger.error('[WEBHOOK] Failed to parse payload:', error.message);
             return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 });
         }
         
         if (eventType !== 'push' || payload.ref !== 'refs/heads/main') {
-            console.log(`[WEBHOOK] Ignoring event: Not a push to main branch. (Ref: ${payload.ref})`);
+            logger.info('[WEBHOOK] Ignoring event: Not a push to main branch. Ref:', payload.ref);
             return NextResponse.json({ message: 'Ignoring event: Not a push to main' }, { status: 200 });
         }
 
         const addedFiles = payload.commits.flatMap((c: any) => c.added || []).filter((f: string) => /\.(jpg|jpeg|png|gif|webp)$/i.test(f));
-        console.log(`[WEBHOOK] Found ${addedFiles.length} new image file(s):`, addedFiles);
+        logger.info('[WEBHOOK] Found image files:', addedFiles.length);
 
         if (addedFiles.length === 0) {
-            console.log('[WEBHOOK] No new images to process in this push.');
+            logger.info('[WEBHOOK] No new images to process in this push.');
             return NextResponse.json({ message: 'No new images to process' }, { status: 200 });
         }
 
         imagePath = addedFiles[0];
-        console.log(`[WEBHOOK] Processing image: ${imagePath}`);
+        logger.info('[WEBHOOK] Processing image:', imagePath);
 
         const imageData = await fetchImageFromGitHub(imagePath);
-        console.log(`[WEBHOOK] Fetched image data from GitHub (${imageData.data.length} bytes).`);
+        logger.debug('[WEBHOOK] Fetched image data from GitHub bytes:', imageData.data.length);
 
         const extracted = await extractBusinessCardData(imageData);
 
         if (!extracted.success) {
             const errorMessage = 'error' in extracted ? extracted.error : 'Unknown extraction error';
-            console.error(`❌ [WEBHOOK] Data extraction failed: ${errorMessage}`);
+            logger.error('[WEBHOOK] Data extraction failed:', errorMessage);
             await sendTelegramError(`Failed to extract data: ${errorMessage}`, extractPersonFromImagePath(imagePath));
             return NextResponse.json({ error: 'Data extraction failed', details: errorMessage }, { status: 400 });
         }
-        console.log('✅ [WEBHOOK] Data extraction successful.');
+        logger.info('[WEBHOOK] Data extraction successful.');
 
         // At this point, we know extracted.success is true, so we can safely cast
         const successResult = extracted as ExtractionSuccess;
@@ -211,32 +212,32 @@ export async function POST(req: NextRequest) {
 
         const validation = validateExtractedData(extractedData);
         if (!validation.valid) {
-            console.error(`❌ [WEBHOOK] Data validation failed: ${validation.errors.join(', ')}`);
+            logger.error('[WEBHOOK] Data validation failed:', validation.errors.join(', '));
             await sendTelegramError(`Invalid data extracted: ${validation.errors.join(', ')}`, extractPersonFromImagePath(imagePath));
             return NextResponse.json({ error: 'Data validation failed', details: validation.errors }, { status: 400 });
         }
-        console.log('✅ [WEBHOOK] Data validation successful.');
+        logger.info('[WEBHOOK] Data validation successful.');
         
         const researchData = {
             success: !!extractedResearch,
             telegramMessage: extractedResearch?.opportunities?.join('\n\n') || 'Research could not be completed.',
         };
 
-        console.log('[WEBHOOK] Starting database operations...');
+        logger.info('[WEBHOOK] Starting database operations...');
         const dbResult = await handleDatabaseOperations(extractedData, extractedResearch, imagePath);
-        console.log(`✅ [WEBHOOK] Database operations complete. New contact: ${dbResult.isNewContact}`);
+        logger.info('[WEBHOOK] Database operations complete. New contact:', dbResult.isNewContact);
 
         if (extractedData) {
-            console.log('[WEBHOOK] Sending Telegram notification...');
+            logger.info('[WEBHOOK] Sending Telegram notification...');
             await sendTelegramNotification(extractedData, researchData, dbResult, imagePath);
-            console.log('✅ [WEBHOOK] Telegram notification sent.');
+            logger.info('[WEBHOOK] Telegram notification sent.');
         }
 
-        console.log('🎉 [WEBHOOK] Process completed successfully!');
+        logger.info('[WEBHOOK] Process completed successfully!');
         return NextResponse.json({ success: true, isNewContact: dbResult.isNewContact, contactId: dbResult.contactId });
 
     } catch (error: any) {
-        console.error('❌ [WEBHOOK] An unexpected error occurred in the pipeline:', error);
+        logger.error('[WEBHOOK] An unexpected error occurred in the pipeline:', error);
         await sendTelegramError(`Pipeline Error: ${error.message}`, extractPersonFromImagePath(imagePath));
         return NextResponse.json({ error: 'Internal server error', details: error.message }, { status: 500 });
     }

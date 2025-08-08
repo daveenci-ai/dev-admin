@@ -10,7 +10,7 @@
     "postinstall": "prisma generate"
   },
   "dependencies": {
-    "@google/generative-ai": "^0.24.1",
+    "openai": "^4.56.0",
     "@octokit/rest": "^22.0.0",
     "@prisma/client": "^5.22.0",
     "@tailwindcss/typography": "^0.5.16",

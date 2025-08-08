@@ -1,11 +1,12 @@
 import { cn } from '@/lib/utils'
+import * as React from 'react'
 
 interface ButtonProps {
   children: React.ReactNode
   className?: string
   variant?: 'default' | 'secondary' | 'outline' | 'ghost' | 'destructive'
   size?: 'default' | 'sm' | 'lg'
-  onClick?: (e: any) => void
+  onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void
   disabled?: boolean
   type?: 'button' | 'submit' | 'reset'
 }

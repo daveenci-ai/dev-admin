@@ -1,14 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { z } from 'zod'
+import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
+import { ok, badRequest, notFound, serverError } from '@/lib/http'
+import logger from '@/lib/logger'
+import { avatarSchema } from '@/lib/schemas/avatar'
+import { ZodError } from 'zod'
 
-const avatarSchema = z.object({
-  fullName: z.string().min(2).max(255),
-  replicateModelUrl: z.string().min(1),
-  triggerWord: z.string().min(1).max(100),
-  description: z.string().optional(),
-  visible: z.boolean().default(true)
-})
+// Using shared avatarSchema
 
 // Get single avatar
 export async function GET(
@@ -36,7 +33,7 @@ export async function GET(
     })
 
     if (!avatar) {
-      return NextResponse.json({ error: 'Avatar not found' }, { status: 404 })
+      return notFound('Avatar not found')
     }
 
     // Convert BigInt to string for JSON serialization
@@ -45,13 +42,10 @@ export async function GET(
       id: avatar.id.toString()
     }
 
-    return NextResponse.json({ avatar: serializedAvatar })
+    return ok({ avatar: serializedAvatar })
   } catch (error: any) {
-    console.error('Avatar fetch error:', error)
-    return NextResponse.json(
-      { error: 'Error fetching avatar' },
-      { status: 500 }
-    )
+    logger.error('Avatar fetch error:', error)
+    return serverError('Error fetching avatar')
   }
 }
 
@@ -72,7 +66,7 @@ export async function PUT(
     })
 
     if (!existingAvatar) {
-      return NextResponse.json({ error: 'Avatar not found' }, { status: 404 })
+      return notFound('Avatar not found')
     }
 
     const body = await request.json()
@@ -85,10 +79,7 @@ export async function PUT(
       })
 
       if (duplicateRepo) {
-        return NextResponse.json(
-          { error: 'This Replicate model URL is already in use' },
-          { status: 400 }
-        )
+        return badRequest('This Replicate model URL is already in use')
       }
     }
 
@@ -120,24 +111,18 @@ export async function PUT(
       id: updatedAvatar.id.toString()
     }
 
-    return NextResponse.json({
+    return ok({
       message: 'Avatar updated successfully',
       avatar: serializedUpdatedAvatar
     })
   } catch (error: any) {
-    console.error('Avatar update error:', error)
+    logger.error('Avatar update error:', error)
     
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: 'Invalid input data', details: error.issues },
-        { status: 400 }
-      )
+    if (error instanceof ZodError) {
+      return badRequest('Invalid input data', error.issues)
     }
     
-    return NextResponse.json(
-      { error: 'Error updating avatar' },
-      { status: 500 }
-    )
+    return serverError('Error updating avatar')
   }
 }
 
@@ -158,19 +143,16 @@ export async function DELETE(
     })
 
     if (!existingAvatar) {
-      return NextResponse.json({ error: 'Avatar not found' }, { status: 404 })
+      return notFound('Avatar not found')
     }
 
     await prisma.avatar.delete({
       where: { id: avatarId }
     })
 
-    return NextResponse.json({ message: 'Avatar deleted successfully' })
+    return ok({ message: 'Avatar deleted successfully' })
   } catch (error: any) {
-    console.error('Avatar deletion error:', error)
-    return NextResponse.json(
-      { error: 'Error deleting avatar' },
-      { status: 500 }
-    )
+    logger.error('Avatar deletion error:', error)
+    return serverError('Error deleting avatar')
   }
 } 

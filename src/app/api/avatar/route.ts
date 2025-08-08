@@ -1,14 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { z } from 'zod'
+import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
+import { ok, created, badRequest, serverError } from '@/lib/http'
+import logger from '@/lib/logger'
+import { avatarSchema } from '@/lib/schemas/avatar'
+import { ZodError } from 'zod'
 
-const avatarSchema = z.object({
-  fullName: z.string().min(2).max(255),
-  replicateModelUrl: z.string().min(1),
-  triggerWord: z.string().min(1).max(100),
-  description: z.string().optional(),
-  visible: z.boolean().default(true)
-})
 
 // Get all avatars
 export async function GET(request: NextRequest) {
@@ -31,18 +27,15 @@ export async function GET(request: NextRequest) {
     })
 
     // Convert BigInt to string for JSON serialization
-    const serializedAvatars = avatars.map((avatar: any) => ({
+    const serializedAvatars = avatars.map((avatar) => ({
       ...avatar,
       id: avatar.id.toString()
     }))
 
-    return NextResponse.json({ avatars: serializedAvatars })
+    return ok({ avatars: serializedAvatars })
   } catch (error: any) {
-    console.error('Avatars fetch error:', error)
-    return NextResponse.json(
-      { error: 'Error fetching avatars' },
-      { status: 500 }
-    )
+    logger.error('Avatars fetch error:', error)
+    return serverError('Error fetching avatars')
   }
 }
 
@@ -58,10 +51,7 @@ export async function POST(request: NextRequest) {
     })
 
     if (existingAvatar) {
-      return NextResponse.json(
-        { error: 'This Replicate model URL is already in use' },
-        { status: 400 }
-      )
+      return badRequest('This Replicate model URL is already in use')
     }
 
     const avatar = await prisma.avatar.create({
@@ -91,26 +81,17 @@ export async function POST(request: NextRequest) {
       id: avatar.id.toString()
     }
 
-    return NextResponse.json(
-      {
-        message: 'Avatar created successfully',
-        avatar: serializedAvatar
-      },
-      { status: 201 }
-    )
+    return created({
+      message: 'Avatar created successfully',
+      avatar: serializedAvatar
+    })
   } catch (error: any) {
-    console.error('Avatar creation error:', error)
+    logger.error('Avatar creation error:', error)
     
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: 'Invalid input data', details: error.issues },
-        { status: 400 }
-      )
+    if (error instanceof ZodError) {
+      return badRequest('Invalid input data', error.issues)
     }
     
-    return NextResponse.json(
-      { error: 'Error creating avatar' },
-      { status: 500 }
-    )
+    return serverError('Error creating avatar')
   }
 } 

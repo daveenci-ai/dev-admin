@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { markEmailAsSpamViaImap } from '@/lib/zohoMail';
+import { markEmailAsSpamViaImap } from '@/lib/zoho/actions';
 
 export const dynamic = 'force-dynamic';
 

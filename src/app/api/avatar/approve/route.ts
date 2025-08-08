@@ -1,5 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
+import { ok, serverError } from '@/lib/http'
+import logger from '@/lib/logger'
 
 export async function POST(request: NextRequest) {
   try {
@@ -30,7 +32,7 @@ export async function POST(request: NextRequest) {
               // Upload to GitHub using the GitHub storage class
               const { default: githubStorage } = await import('@/lib/github-storage')
               
-              console.log(`🚀 Uploading approved image to GitHub for generation: ${generation.id}`)
+              logger.info('Uploading approved image to GitHub for generation:', generation.id.toString())
               const uploadResult = await githubStorage.uploadImage(
                 replicateUrl,
                 generation.prompt,
@@ -52,10 +54,10 @@ export async function POST(request: NextRequest) {
                 replicateUrl: replicateUrl
               })
 
-              console.log(`✅ Image approved and uploaded to GitHub: ${uploadResult.url}`)
+              logger.info('Image approved and uploaded to GitHub:', uploadResult.url)
               
             } catch (uploadError: any) {
-              console.error(`❌ Failed to upload image to GitHub for generation ${approval.id}:`, uploadError)
+              logger.warn('Failed to upload image to GitHub for generation', approval.id, uploadError)
               
               // Fall back to just removing PENDING_REVIEW prefix if upload fails
               const fallbackUrl = replicateUrl
@@ -86,7 +88,7 @@ export async function POST(request: NextRequest) {
           })
         }
       } catch (error: any) {
-        console.error(`Error processing approval for ${approval.id}:`, error)
+        logger.error('Error processing approval for', approval.id, error)
         results.push({
           id: approval.id,
           status: 'error',
@@ -95,13 +97,10 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({ results })
+    return ok({ results })
 
   } catch (error: any) {
-    console.error('Error processing approvals:', error)
-    return NextResponse.json(
-      { error: 'Internal server error', details: error.message },
-      { status: 500 }
-    )
+    logger.error('Error processing approvals:', error)
+    return serverError('Internal server error', error.message)
   }
 } 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { fetchEmailBodyViaImap } from '@/lib/zohoMail'
+import { fetchEmailBodyViaImap } from '@/lib/zoho/actions'
 
 // Force this route to be dynamic (not statically generated)
 export const dynamic = 'force-dynamic'

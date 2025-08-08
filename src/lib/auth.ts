@@ -2,6 +2,7 @@ import { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import bcrypt from 'bcryptjs'
 import { prisma } from './db'
+import logger from '@/lib/logger'
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -24,7 +25,7 @@ export const authOptions: NextAuthOptions = {
           })
 
           if (!user || !user.validated) {
-            console.log('Authentication failed: User not found or not validated')
+            logger.info('Authentication failed: User not found or not validated')
             return null // User doesn't exist or isn't validated
           }
 
@@ -34,18 +35,18 @@ export const authOptions: NextAuthOptions = {
           )
 
           if (!isPasswordValid) {
-            console.log('Authentication failed: Invalid password')
+            logger.info('Authentication failed: Invalid password')
             return null
           }
 
-          console.log('Authentication successful for user:', user.email)
+          logger.info('Authentication successful for user:', user.email)
           return {
             id: user.id.toString(),
             email: user.email,
             name: user.name
           }
         } catch (error) {
-          console.error('Authentication error:', error)
+          logger.error('Authentication error:', error)
           return null
         }
       }

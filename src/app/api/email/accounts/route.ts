@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getAllAccountsViaImap } from '@/lib/zohoMail';
+import { getAllAccountsViaImap } from '@/lib/zoho/actions';
 
 export const dynamic = 'force-dynamic';
 

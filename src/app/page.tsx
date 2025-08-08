@@ -11,7 +11,7 @@ export default function HomePage() {
   useEffect(() => {
     // Simple redirect for authenticated users only
     if (status === 'authenticated' && session?.user) {
-      console.log('[HOME_PAGE] Authenticated user, redirecting to CRM')
+      // Avoid noisy logs in production
       router.push('/crm')
     }
   }, [status, session, router])

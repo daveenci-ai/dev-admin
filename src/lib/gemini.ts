@@ -1,6 +1,9 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import logger from '@/lib/logger'
+import { getOpenAIClient, OpenAIModels } from '@/lib/openai'
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+// We keep the same export names but switch implementation to OpenAI
+// Use CASE key by default for business-card extraction/research
+const openaiCase = () => getOpenAIClient('CASE')
 
 interface ImageData {
   data: Buffer;
@@ -36,8 +39,8 @@ async function retryWithBackoff<T>(
       // Calculate delay with exponential backoff and jitter
       const delay = baseDelay * Math.pow(2, attempt) + Math.random() * 1000;
       
-      console.log(`[Gemini Retry] Attempt ${attempt + 1} failed: ${error.message}`);
-      console.log(`[Gemini Retry] Retrying in ${Math.round(delay)}ms...`);
+      logger.warn('[Gemini Retry] Attempt failed:', attempt + 1, error.message)
+      logger.debug('[Gemini Retry] Retrying in (ms):', Math.round(delay))
       
       await new Promise(resolve => setTimeout(resolve, delay));
     }
@@ -48,14 +51,9 @@ async function retryWithBackoff<T>(
 
 export async function extractBusinessCardData(imageData: ImageData) {
   try {
-    console.log('[Gemini] Starting business card data extraction...');
+    logger.info('[OpenAI] Starting business card data extraction...');
     
     const extractData = async () => {
-      if (!process.env.GEMINI_API_KEY) {
-        throw new Error('GEMINI_API_KEY environment variable is not set.');
-      }
-
-      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
       const prompt = `You are an expert OCR and research assistant trained to extract data from business cards and deliver concise, actionable insights to support AI, automation, and digital‐marketing outreach for Daveenci.ai.
 
 Instructions:
@@ -114,19 +112,26 @@ json
   }
 }`;
 
-      const imagePart = {
-        inlineData: {
-          data: imageData.data.toString('base64'),
-          mimeType: imageData.contentType,
-        },
-      };
+      const base64 = imageData.data.toString('base64')
+      const dataUrl = `data:${imageData.contentType};base64,${base64}`
+      logger.debug('[OpenAI] Sending request (vision) ...');
+      const client = openaiCase()
+      const completion = await client.chat.completions.create({
+        model: OpenAIModels.visionPreferred,
+        messages: [
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: prompt },
+              { type: 'image_url', image_url: { url: dataUrl } },
+            ] as any,
+          },
+        ],
+        temperature: 0,
+      })
+      const text = completion.choices?.[0]?.message?.content || ''
 
-      console.log('[Gemini] Sending request to Gemini API...');
-      const result = await model.generateContent([prompt, imagePart]);
-      const response = await result.response;
-      const text = response.text();
-
-      console.log('[Gemini] Received response, parsing JSON...');
+      logger.debug('[OpenAI] Received response, parsing JSON...');
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
         throw new Error('No JSON found in Gemini response');
@@ -168,7 +173,7 @@ json
 
       const researchInsights = extracted.research_insights || {};
 
-      console.log('[Gemini] Successfully extracted business card data');
+      logger.info('[OpenAI] Successfully extracted business card data');
       return {
         success: true,
         data: cleanedData,
@@ -178,7 +183,7 @@ json
 
     return await retryWithBackoff(extractData);
   } catch (error: any) {
-    console.error('[Gemini] Final error after all retries:', error.message);
+    logger.error('[OpenAI] Final error after all retries:', error.message);
     return { success: false, error: error.message };
   }
 }

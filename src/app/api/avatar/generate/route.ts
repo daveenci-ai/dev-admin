@@ -1,7 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/db'
-import { GoogleGenerativeAI } from '@google/generative-ai'
+import logger from '@/lib/logger'
+import { ok, badRequest, notFound, serverError } from '@/lib/http'
+import { getOpenAIClient, OpenAIModels } from '@/lib/openai'
 
 const generateImageSchema = z.object({
   prompt: z.string().min(10).max(1000),
@@ -17,10 +19,7 @@ const generateImageSchema = z.object({
   previewOnly: z.boolean().default(false).optional() // For getting optimized prompt only
 })
 
-// Initialize Gemini AI
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
-
-async function optimizePromptWithGemini(
+async function optimizePromptWithOpenAI(
   originalPrompt: string, 
   triggerWord: string, 
   avatarDescription?: string, 
@@ -108,57 +107,28 @@ OPTION3: [Third composition approach prompt]
 Return ONLY the three prompts in the exact format above, nothing else.
 `
 
-  // Try Gemini 2.5 Pro first
   try {
-    console.log(`🤖 Trying Gemini 2.5 Pro for 3 prompt options...`)
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" })
-    
-    const result = await model.generateContent(optimizationPrompt)
-    const response = await result.response
-    const text = response.text().trim()
-
-    // Parse the 3 options from response
-    const lines = text.split('\n').filter(line => line.trim())
-    const option1 = lines.find(line => line.startsWith('OPTION1:'))?.replace('OPTION1:', '').trim() || ''
-    const option2 = lines.find(line => line.startsWith('OPTION2:'))?.replace('OPTION2:', '').trim() || ''
-    const option3 = lines.find(line => line.startsWith('OPTION3:'))?.replace('OPTION3:', '').trim() || ''
-
-    console.log(`✅ Gemini 2.5 Pro generated 3 prompt options`)
+    logger.debug('Requesting 3 prompt options from OpenAI (gpt-5) ...')
+    const client = getOpenAIClient('AVATAR')
+    const completion = await client.chat.completions.create({
+      model: OpenAIModels.AVATAR_TEXT,
+      messages: [{ role: 'user', content: optimizationPrompt }],
+      temperature: 0.4,
+    })
+    const text = completion.choices?.[0]?.message?.content?.trim() || ''
+    const lines = text.split('\n').filter((l) => l.trim())
+    const option1 = lines.find((l) => l.startsWith('OPTION1:'))?.replace('OPTION1:', '').trim() || ''
+    const option2 = lines.find((l) => l.startsWith('OPTION2:'))?.replace('OPTION2:', '').trim() || ''
+    const option3 = lines.find((l) => l.startsWith('OPTION3:'))?.replace('OPTION3:', '').trim() || ''
     return { option1, option2, option3 }
-
   } catch (error: any) {
-    console.warn(`⚠️ Gemini 2.5 Pro failed: ${error.message || error}`)
-    
-    // Fallback to Gemini 2.5 Flash
-    try {
-      console.log(`🔄 Falling back to Gemini 2.5 Flash...`)
-      const fallbackModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash" })
-      
-      const result = await fallbackModel.generateContent(optimizationPrompt)
-      const response = await result.response
-      const text = response.text().trim()
-
-      // Parse the 3 options from response
-      const lines = text.split('\n').filter(line => line.trim())
-      const option1 = lines.find(line => line.startsWith('OPTION1:'))?.replace('OPTION1:', '').trim() || ''
-      const option2 = lines.find(line => line.startsWith('OPTION2:'))?.replace('OPTION2:', '').trim() || ''
-      const option3 = lines.find(line => line.startsWith('OPTION3:'))?.replace('OPTION3:', '').trim() || ''
-
-      console.log(`✅ Gemini 2.5 Flash generated 3 prompt options`)
-      return { option1, option2, option3 }
-
-    } catch (fallbackError: any) {
-      console.error(`❌ Both Gemini models failed. Pro: ${error.message}, Flash: ${fallbackError.message}`)
-      
-      // Final fallback: create 3 manual variations
-      const avatarInfo = avatarDescription ? `, ${avatarDescription}` : ''
-      const basePrompt = `Photorealistic image of ${triggerWord}${avatarInfo} ${originalPrompt}`
-      
-      return {
-        option1: `${basePrompt}, medium portrait shot, professional photography, sharp focus, detailed lighting`,
-        option2: `${basePrompt}, medium shot, cinematic composition, high quality, dramatic lighting`, 
-        option3: `${basePrompt}, wide angle view, environmental context, professional photography, balanced composition`
-      }
+    logger.error('OpenAI prompt optimization failed:', error?.message || error)
+    const add = avatarDescription ? `, ${avatarDescription}` : ''
+    const basePrompt = `Photorealistic image of ${triggerWord}${add} ${originalPrompt}`
+    return {
+      option1: `${basePrompt}, medium portrait shot, professional photography, sharp focus, detailed lighting`,
+      option2: `${basePrompt}, medium shot, cinematic composition, high quality, dramatic lighting`,
+      option3: `${basePrompt}, wide angle view, environmental context, professional photography, balanced composition`,
     }
   }
 }
@@ -174,14 +144,14 @@ export async function POST(request: NextRequest) {
     })
 
     if (!avatar) {
-      return NextResponse.json({ error: 'Avatar not found' }, { status: 404 })
+      return notFound('Avatar not found')
     }
 
-    console.log(`🎨 ${validatedData.previewOnly ? 'Getting prompt optimization' : `Generating ${validatedData.numImages} images`} with avatar: "${avatar.fullName}"`)
-    console.log(`🎯 Trigger word: ${avatar.triggerWord}`)
-    console.log(`📝 Avatar description: ${avatar.description || 'None'}`)
-    console.log(`📝 Original prompt: "${validatedData.prompt}"`)
-    console.log(`🔗 Replicate model URL: ${avatar.replicateModelUrl}`)
+    logger.info(validatedData.previewOnly ? 'Getting prompt optimization' : `Generating ${validatedData.numImages} images`, 'with avatar:', avatar.fullName)
+    logger.debug('Trigger word:', avatar.triggerWord)
+    logger.debug('Avatar description:', avatar.description || 'None')
+    logger.debug('Original prompt:', validatedData.prompt)
+    logger.debug('Replicate model URL:', avatar.replicateModelUrl)
 
     // Extract version ID from full Replicate URL
     // URL format: https://replicate.com/daveenci/astridwmn/versions/109fcb3d676fac1f2a4b45d126abf39f0b57bc42b1f04870f63679f61b0b6134
@@ -198,11 +168,11 @@ export async function POST(request: NextRequest) {
     }
 
     const loraVersionId = extractVersionId(avatar.replicateModelUrl)
-    console.log(`📦 Extracted LoRA version ID: ${loraVersionId}`)
+    logger.debug('Extracted LoRA version ID:', loraVersionId)
 
-    // Step 1: Always optimize prompt with Gemini AI (tiered approach)
-    console.log(`🤖 Optimizing prompt with Gemini AI (2.5 Pro → 2.5 Flash fallback)...`)
-    const optimizedPrompts = await optimizePromptWithGemini(
+    // Step 1: Optimize prompt with OpenAI (gpt-5)
+    logger.info('Optimizing prompt with OpenAI (gpt-5)...')
+    const optimizedPrompts = await optimizePromptWithOpenAI(
       validatedData.prompt,
       avatar.triggerWord,
       avatar.description || undefined, // Convert null to undefined for TypeScript
@@ -211,7 +181,7 @@ export async function POST(request: NextRequest) {
 
     // If this is preview mode, just return the optimized prompts
     if (validatedData.previewOnly) {
-      return NextResponse.json({
+      return ok({
         optimizedPrompts: optimizedPrompts,
         originalPrompt: validatedData.prompt,
         avatar: {
@@ -227,7 +197,7 @@ export async function POST(request: NextRequest) {
     const imageGenerations = []
     
     for (let i = 0; i < validatedData.numImages; i++) {
-      console.log(`🎨 Starting generation ${i + 1} of ${validatedData.numImages}`)
+      logger.info(`Starting generation ${i + 1} of ${validatedData.numImages}`)
 
       // Prepare Replicate input with correct parameter names
       const input = {
@@ -242,7 +212,7 @@ export async function POST(request: NextRequest) {
         ...(validatedData.seed && { seed: validatedData.seed + i }) // Increment seed for variety
       }
 
-      console.log(`📋 Replicate input for image ${i + 1}:`, JSON.stringify(input, null, 2))
+      logger.debug('Replicate input for image', i + 1, input)
 
       try {
         const response = await fetch('https://api.replicate.com/v1/predictions', {
@@ -259,11 +229,11 @@ export async function POST(request: NextRequest) {
 
         if (!response.ok) {
           const errorText = await response.text()
-          console.error(`❌ Replicate API error for image ${i + 1}:`, errorText)
+          logger.error('Replicate API error for image', i + 1, errorText)
           // Log error but still continue to try creating the database record
         } else {
           const prediction = await response.json()
-          console.log(`✅ Replicate prediction ${i + 1} created:`, prediction.id)
+          logger.info('Replicate prediction created:', i + 1, prediction.id)
 
           // Create record in existing avatars_generated table with placeholder
           const avatarGeneration = await prisma.avatarGenerated.create({
@@ -286,13 +256,13 @@ export async function POST(request: NextRequest) {
         }
 
       } catch (error: any) {
-        console.error(`❌ Avatar generation error for image ${i + 1}:`, error)
+        logger.error('Avatar generation error for image', i + 1, error)
         // Log error but continue with other generations
       }
     }
 
     // Return results
-    return NextResponse.json({
+    return ok({
       message: `${imageGenerations.length} images started generating`,
       generations: imageGenerations,
       optimizedPrompt: optimizedPrompts, // Return the optimized prompts
@@ -306,18 +276,12 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error: any) {
-    console.error('❌ Avatar generation error:', error)
+    logger.error('Avatar generation error:', error)
     
     if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: 'Invalid input data', details: error.issues },
-        { status: 400 }
-      )
+      return badRequest('Invalid input data', error.issues)
     }
     
-    return NextResponse.json(
-      { error: 'Internal server error', details: error.message },
-      { status: 500 }
-    )
+    return serverError('Internal server error', error.message)
   }
 } 

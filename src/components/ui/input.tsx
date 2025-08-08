@@ -1,11 +1,12 @@
 import { cn } from '@/lib/utils'
+import * as React from 'react'
 
 interface InputProps {
   className?: string
   placeholder?: string
   value?: string | number
-  onChange?: (e: any) => void
-  onInput?: (e: any) => void
+  onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void
+  onInput?: (e: React.FormEvent<HTMLInputElement>) => void
   type?: string
   id?: string
   name?: string

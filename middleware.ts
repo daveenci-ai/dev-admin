@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getToken } from 'next-auth/jwt'
+import logger from '@/lib/logger'
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   
   // Log all requests for debugging
-  console.log(`[MIDDLEWARE] ${new Date().toISOString()} - Request to: ${pathname}`)
+  logger.debug('[MIDDLEWARE] Request to:', pathname)
   
   // Allow static files and Next.js internal routes
   if (
@@ -14,7 +15,7 @@ export async function middleware(request: NextRequest) {
     pathname === '/favicon.ico' ||
     pathname === '/auth/login'
   ) {
-    console.log(`[MIDDLEWARE] Allowing public route: ${pathname}`)
+    logger.debug('[MIDDLEWARE] Allowing public route:', pathname)
     return NextResponse.next()
   }
 
@@ -25,21 +26,21 @@ export async function middleware(request: NextRequest) {
       secret: process.env.NEXTAUTH_SECRET,
     })
 
-    console.log(`[MIDDLEWARE] Token check for ${pathname}:`, !!token)
+    logger.debug('[MIDDLEWARE] Token check for', pathname, !!token)
 
     if (!token) {
-      console.log(`[MIDDLEWARE] BLOCKING unauthenticated access to: ${pathname}`)
+      logger.info('[MIDDLEWARE] BLOCKING unauthenticated access to:', pathname)
       
       // Redirect to login
       const loginUrl = new URL('/auth/login', request.url)
       return NextResponse.redirect(loginUrl)
     }
 
-    console.log(`[MIDDLEWARE] ALLOWING authenticated access to: ${pathname}`)
+    logger.debug('[MIDDLEWARE] ALLOWING authenticated access to:', pathname)
     return NextResponse.next()
     
   } catch (error) {
-    console.error(`[MIDDLEWARE] Error checking authentication:`, error)
+    logger.error('[MIDDLEWARE] Error checking authentication:', error)
     
     // On error, redirect to login for security
     const loginUrl = new URL('/auth/login', request.url)

@@ -1,10 +1,11 @@
 import { cn } from '@/lib/utils'
+import * as React from 'react'
 
 interface TextareaProps {
   className?: string
   placeholder?: string
   value?: string
-  onChange?: (e: any) => void
+  onChange?: (e: React.ChangeEvent<HTMLTextAreaElement>) => void
   id?: string
   name?: string
   required?: boolean

@@ -1,5 +1,6 @@
 import { Octokit } from '@octokit/rest'
 import crypto from 'crypto'
+import logger from '@/lib/logger'
 
 class GitHubImageStorage {
   private owner?: string
@@ -52,7 +53,7 @@ class GitHubImageStorage {
       const arrayBuffer = await response.arrayBuffer()
       return Buffer.from(arrayBuffer).toString('base64')
     } catch (error: any) {
-      console.error('Error downloading image:', error)
+      logger.error('Error downloading image:', error)
       throw new Error(`Failed to download image: ${error.message}`)
     }
   }
@@ -103,7 +104,7 @@ class GitHubImageStorage {
     
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        console.log(`📤 Upload attempt ${attempt}/${maxRetries} for: ${path}`)
+        logger.debug('Upload attempt', `${attempt}/${maxRetries}`, 'for:', path)
         
         // Get current file info
         const fileInfo = await this.getFileInfo(path)
@@ -120,19 +121,19 @@ class GitHubImageStorage {
         // If file exists, include its SHA for update
         if (fileInfo.exists && fileInfo.sha) {
           uploadParams.sha = fileInfo.sha
-          console.log(`📝 File exists, updating with SHA: ${fileInfo.sha}`)
+          logger.debug('File exists, updating with SHA:', fileInfo.sha)
         } else {
-          console.log(`📝 Creating new file: ${path}`)
+          logger.debug('Creating new file:', path)
         }
         
         // Upload to GitHub
         await this.octokit!.repos.createOrUpdateFileContents(uploadParams)
         
-        console.log(`✅ Upload successful on attempt ${attempt}`)
+        logger.info('Upload successful on attempt', attempt)
         return // Success, exit retry loop
         
       } catch (error: any) {
-        console.error(`❌ Upload attempt ${attempt} failed:`, error.message)
+        logger.warn('Upload attempt failed', attempt, error.message)
         
         if (attempt === maxRetries) {
           throw error // Final attempt failed
@@ -140,7 +141,7 @@ class GitHubImageStorage {
         
         // Check if it's a conflict error
         if (error.message && error.message.includes('but expected')) {
-          console.log(`🔄 Conflict detected, retrying in ${attempt * 1000}ms...`)
+          logger.debug('Conflict detected, retrying...', attempt * 1000)
           await new Promise(resolve => setTimeout(resolve, attempt * 1000)) // Exponential backoff
           continue
         }
@@ -168,7 +169,7 @@ class GitHubImageStorage {
       // Skip owner, repo, and branch to get the file path
       const path = urlParts.slice(3).join('/')
       
-      console.log(`🗑️ Deleting image from GitHub: ${path}`)
+      logger.info('Deleting image from GitHub:', path)
       
       try {
         // Get file info first to get the SHA (required for deletion)
@@ -193,18 +194,18 @@ class GitHubImageStorage {
           branch: this.branch
         })
 
-        console.log(`✅ Image deleted from GitHub: ${path}`)
+        logger.info('Image deleted from GitHub:', path)
         
       } catch (error: any) {
         if (error.status === 404) {
-          console.log(`⚠️ Image not found in GitHub (already deleted): ${path}`)
+          logger.warn('Image not found in GitHub (already deleted):', path)
           return // File doesn't exist, consider it successfully deleted
         }
         throw error
       }
       
     } catch (error: any) {
-      console.error('Error deleting image from GitHub:', error)
+      logger.error('Error deleting image from GitHub:', error)
       throw new Error(`Failed to delete image from GitHub: ${error.message}`)
     }
   }
@@ -216,7 +217,7 @@ class GitHubImageStorage {
     this.initialize()
     
     try {
-      console.log('📸 Downloading image from Replicate...')
+      logger.info('Downloading image from Replicate...')
       const imageBase64 = await this.downloadImage(imageUrl)
       
       // Generate unique filename
@@ -226,7 +227,7 @@ class GitHubImageStorage {
       const safeAvatarName = avatarName.toLowerCase().replace(/[^a-z0-9]/g, '-')
       const path = `avatars/${safeAvatarName}/${filename}`
       
-      console.log(`📤 Uploading image to GitHub: ${path}`)
+      logger.info('Uploading image to GitHub:', path)
       
       // Upload with retry logic
       await this.uploadImageWithRetry(
@@ -238,14 +239,14 @@ class GitHubImageStorage {
       // Generate the raw GitHub URL
       const githubUrl = `https://raw.githubusercontent.com/${this.owner}/${this.repo}/${this.branch}/${path}`
       
-      console.log(`✅ Image uploaded successfully: ${githubUrl}`)
+      logger.info('Image uploaded successfully:', githubUrl)
       
       return {
         url: githubUrl
       }
       
     } catch (error: any) {
-      console.error('Error uploading image to GitHub:', error)
+      logger.error('Error uploading image to GitHub:', error)
       throw new Error(`Failed to upload image to GitHub: ${error.message}`)
     }
   }
@@ -262,10 +263,10 @@ class GitHubImageStorage {
         repo: this.repo!
       })
       
-      console.log(`✅ GitHub connection successful: ${response.data.full_name}`)
+      logger.info('GitHub connection successful:', response.data.full_name)
       return true
     } catch (error: any) {
-      console.error('GitHub connection test failed:', error)
+      logger.error('GitHub connection test failed:', error)
       throw new Error(`GitHub connection failed: ${error.message}`)
     }
   }

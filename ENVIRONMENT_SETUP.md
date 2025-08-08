@@ -23,22 +23,29 @@ REPLICATE_API_TOKEN="r_your_replicate_api_token_here"
 REPLICATE_MODEL_VERSION="black-forest-labs/flux-dev-lora"
 ```
 
-### Google Gemini AI Configuration ⭐ NEW
+### OpenAI Configuration (replaces Gemini)
 ```bash
-GEMINI_API_KEY="your_gemini_api_key_here"
+# Default key (fallback)
+OPENAI_API_KEY=
+# Per-use-case keys
+OPENAI_API_KEY_BLOG=
+OPENAI_API_KEY_CASE=
+OPENAI_API_KEY_AVATAR=
+OPENAI_API_KEY_CHATBOT=
+OPENAI_API_KEY_RESEARCH=
 ```
-**Required for prompt optimization feature. Get your API key from [Google AI Studio](https://makersuite.google.com/app/apikey)**
-
-**Important Notes:**
-- **Primary**: **Gemini 2.0 Flash (Experimental)** for highest quality optimization
-- **Fallback**: **Gemini 1.5 Flash** for reliability when primary model fails
-- **Final Fallback**: Enhanced manual prompt construction with avatar details
-- API quota: Free tier has daily limits, consider upgrading for production
+Models used:
+- Vision: `gpt-4o-mini` (fallback `gpt-4o`)
+- Text optimization: `gpt-4o-mini` (fallback `gpt-4o`)
 
 ### GitHub Storage Configuration
 ```bash
 GITHUB_TOKEN="ghp_your_github_personal_access_token"
-GITHUB_REPO="username/repository-name"
+# Avatar image storage repository (owner/repo)
+GITHUB_REPO_AVATAR="username/repository-name"
+
+# Business cards image repo (owner/repo)
+GITHUB_REPO_BUSINESS_CARDS="username/another-repo"
 ```
 
 ## Setup Instructions

@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils'
+import * as React from 'react'
 
 interface SliderProps {
   value?: number[]
@@ -21,8 +22,8 @@ export function Slider({
 }: SliderProps) {
   const percentage = ((value[0] - min) / (max - min)) * 100
 
-  const handleChange = (e: any) => {
-    const newValue = parseFloat(e.target.value)
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = parseFloat(e.currentTarget.value)
     onValueChange?.([newValue])
   }
 

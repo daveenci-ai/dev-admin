@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { markEmailAsReadViaImap } from '@/lib/zohoMail'
+import { markEmailAsReadViaImap } from '@/lib/zoho/actions'
 
 export async function POST(request: NextRequest) {
   try {
