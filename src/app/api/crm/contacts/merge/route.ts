@@ -7,7 +7,7 @@ import { z } from 'zod'
 const bodySchema = z.object({
   primaryId: z.number(),
   duplicateIds: z.array(z.number()).min(1),
-  overrides: z.record(z.any()).optional(),
+  overrides: z.record(z.string(), z.any()).optional(),
   mergeOptions: z
     .object({
       notes: z.enum(['concat', 'primary']).default('concat'),
