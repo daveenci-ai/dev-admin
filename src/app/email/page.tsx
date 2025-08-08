@@ -20,6 +20,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Modal } from '@/components/ui/modal';
+import { PageHeader } from '@/components/layout/PageHeader'
 
 interface EmailMessage {
   messageId: string;
@@ -781,6 +782,28 @@ export default function EmailPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
+        <PageHeader title="Zoho Email">
+          <div className="hidden md:flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setSelectedMailbox('');
+                setError(null);
+              }}
+            >
+              Reset Filters
+            </Button>
+            <Button
+              onClick={() => {
+                fetchAccounts();
+                fetchEmails();
+                fetchStats();
+              }}
+            >
+              Refresh
+            </Button>
+          </div>
+        </PageHeader>
         {/* Error Alert */}
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
@@ -860,49 +883,6 @@ export default function EmailPage() {
 
         {/* Email List */}
         <Card className="p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold text-gray-900">
-              {selectedMailbox ? (
-                <>
-                  <span className="text-blue-600">Filtered:</span> {accounts.find(a => a.emailAddress === selectedMailbox)?.mailboxName || selectedMailbox} Emails
-                </>
-              ) : (
-                'All Emails'
-              )}
-            </h2>
-            <div className="flex items-center gap-3">
-              {selectedMailbox && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    console.log('[Show All] Clearing mailbox filter');
-                    setSelectedMailbox('');
-                  }}
-                  className="text-xs"
-                >
-                  <X className="w-3 h-3 mr-1" />
-                  Show All
-                </Button>
-              )}
-              <Badge variant="secondary">
-                {filteredEmails.length} emails
-                <Button 
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => {
-                    console.log('[Refresh] Refreshing data, current selectedMailbox:', `"${selectedMailbox}"`);
-                    fetchAccounts();
-                    fetchEmails();
-                    fetchStats();
-                  }} 
-                  className="ml-2 p-1 h-6 w-6"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                </Button>
-              </Badge>
-            </div>
-          </div>
 
           {isLoading ? (
             <div className="text-center py-12">
