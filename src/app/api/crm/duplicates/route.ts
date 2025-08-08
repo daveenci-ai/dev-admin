@@ -48,10 +48,10 @@ export async function GET(_req: NextRequest) {
 
     const groups: Array<{ reason: string; members: DuplicateMember[] }> = []
 
-    for (const [key, arr] of byEmail) {
+    for (const [key, arr] of Array.from(byEmail.entries())) {
       if (arr.length > 1) groups.push({ reason: `Same email: ${key}`, members: arr })
     }
-    for (const [key, arr] of byPhone) {
+    for (const [key, arr] of Array.from(byPhone.entries())) {
       if (arr.length > 1) groups.push({ reason: `Same phone (last 7): ${key}`, members: arr })
     }
 
