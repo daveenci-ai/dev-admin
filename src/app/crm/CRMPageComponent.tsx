@@ -82,6 +82,10 @@ export default function CRMPageComponent() {
   const [showMergeUI, setShowMergeUI] = useState(false)
   const [mergePrimaryId, setMergePrimaryId] = useState<number | null>(null)
   const [mergeSelected, setMergeSelected] = useState<number[]>([])
+  const [showNewContact, setShowNewContact] = useState(false)
+  const [showBulkImport, setShowBulkImport] = useState(false)
+  const [newContactForm, setNewContactForm] = useState({ name: '', primaryEmail: '', primaryPhone: '', company: '' })
+  const [bulkFiles, setBulkFiles] = useState<FileList | null>(null)
 
   useEffect(() => {
     console.log('[CRM_COMPONENT] useEffect triggered - fetching data')
@@ -615,6 +619,20 @@ export default function CRMPageComponent() {
             </button>
 
             <button
+              onClick={() => setShowNewContact(true)}
+              className="whitespace-nowrap px-5 py-2 bg-emerald-600 text-white rounded-md text-sm font-medium hover:bg-emerald-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 shadow-sm"
+            >
+              New Contact
+            </button>
+
+            <button
+              onClick={() => setShowBulkImport(true)}
+              className="whitespace-nowrap px-5 py-2 bg-orange-600 text-white rounded-md text-sm font-medium hover:bg-orange-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 shadow-sm"
+            >
+              Bulk Import (Images)
+            </button>
+
+            <button
               onClick={() => { fetchDuplicateGroups(); setShowMergeUI(true); }}
               className="whitespace-nowrap px-5 py-2 bg-purple-600 text-white rounded-md text-sm font-medium hover:bg-purple-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 shadow-sm"
             >
@@ -1083,6 +1101,75 @@ export default function CRMPageComponent() {
               </div>
             </div>
           </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* New Contact Modal */}
+      {showNewContact && (
+        <div className="fixed inset-0 z-50">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setShowNewContact(false)} />
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-xl w-[520px] p-6">
+            <h3 className="text-lg font-semibold mb-4">Add Contact</h3>
+            <div className="space-y-3">
+              {['name','primaryEmail','primaryPhone','company'].map((k) => (
+                <div key={k}>
+                  <label className="block text-sm text-gray-600 mb-1 capitalize">{k}</label>
+                  <input
+                    value={(newContactForm as any)[k]}
+                    onChange={(e) => setNewContactForm({ ...newContactForm, [k]: e.target.value })}
+                    className="w-full border rounded px-3 py-2"
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <button className="px-3 py-2 text-sm" onClick={() => setShowNewContact(false)}>Cancel</button>
+              <button
+                className="px-4 py-2 bg-emerald-600 text-white rounded"
+                onClick={async () => {
+                  const res = await fetch('/api/crm/contacts', { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify({ ...newContactForm, status: 'PROSPECT', source: 'Manual' }) })
+                  if (res.ok) {
+                    setShowNewContact(false)
+                    setNewContactForm({ name: '', primaryEmail: '', primaryPhone: '', company: '' })
+                    fetchContacts()
+                  }
+                }}
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Import Modal */}
+      {showBulkImport && (
+        <div className="fixed inset-0 z-50">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setShowBulkImport(false)} />
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-xl w-[620px] p-6">
+            <h3 className="text-lg font-semibold mb-4">Bulk Import from Images</h3>
+            <input type="file" accept="image/*" multiple onChange={(e) => setBulkFiles(e.target.files)} className="mb-4" />
+            <div className="flex justify-end gap-2">
+              <button className="px-3 py-2 text-sm" onClick={() => setShowBulkImport(false)}>Cancel</button>
+              <button
+                className="px-4 py-2 bg-orange-600 text-white rounded disabled:opacity-50"
+                disabled={!bulkFiles || bulkFiles.length === 0}
+                onClick={async () => {
+                  if (!bulkFiles) return
+                  const form = new FormData()
+                  Array.from(bulkFiles).forEach((f) => form.append('files', f))
+                  const res = await fetch('/api/crm/contacts/bulk-upload', { method: 'POST', body: form })
+                  const data = await res.json()
+                  console.log('[Bulk Import] result', data)
+                  setShowBulkImport(false)
+                  setBulkFiles(null)
+                  fetchContacts()
+                }}
+              >
+                Upload & Parse
+              </button>
             </div>
           </div>
         </div>
