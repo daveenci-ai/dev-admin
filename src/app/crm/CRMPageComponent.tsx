@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { format } from 'date-fns'
+import { PageHeader } from '@/components/layout/PageHeader'
 import { CheckCircle, AlertCircle, XCircle, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
 
 
@@ -529,6 +530,14 @@ export default function CRMPageComponent() {
 
   return (
     <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
+      <PageHeader title="CRM" description="Manage your contacts, track activity, and take action quickly.">
+        <div className="hidden md:flex gap-2">
+          {/* Mirror key actions for quick access */}
+          <button onClick={() => setShowNewContact(true)} className="px-3 py-1.5 bg-emerald-600 text-white rounded text-sm">New Contact</button>
+          <button onClick={() => setShowBulkImport(true)} className="px-3 py-1.5 bg-orange-600 text-white rounded text-sm">Bulk Import</button>
+        </div>
+      </PageHeader>
+
       {/* Statistics Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-6">
         {statCards.map((stat) => {
