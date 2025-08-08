@@ -406,6 +406,19 @@ export default function CRMPageComponent() {
       : <ChevronDown className="h-4 w-4 text-blue-600" />
   }
 
+  const formatPhone = (raw?: string | null) => {
+    if (!raw) return '-'
+    const digits = raw.replace(/\D/g, '')
+    // Assume US if length 10 or 11 starting with 1
+    let national = digits
+    if (digits.length === 11 && digits.startsWith('1')) national = digits.slice(1)
+    if (national.length !== 10) return raw
+    const area = national.slice(0, 3)
+    const prefix = national.slice(3, 6)
+    const line = national.slice(6)
+    return `( ${area} ) ${prefix}-${line}`.replace(/\s+/g, ' ')
+  }
+
   const sortedContacts = [...contacts].sort((a, b) => {
     if (!sortColumn) return 0
     
@@ -753,7 +766,7 @@ export default function CRMPageComponent() {
                     </a>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {contact.primaryPhone || '-'}
+                    {formatPhone(contact.primaryPhone)}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-500 max-w-xs">
                     {contact.touchpoints && contact.touchpoints.length > 0 ? (

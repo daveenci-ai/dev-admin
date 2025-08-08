@@ -1,29 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { z } from 'zod'
+import { contactCreateSchema } from '@/lib/schemas/contact'
 
-const contactSchema = z.object({
-  name: z.string().min(1),
-  primaryEmail: z.string().email(),
-  secondaryEmail: z.string().email().optional().or(z.literal('')),
-  primaryPhone: z.string().optional(),
-  secondaryPhone: z.string().optional(),
-  company: z.string().optional(),
-  industry: z.string().optional(),
-  website: z.string().optional(),
-  address: z.string().optional(),
-  notes: z.string().optional(),
-  linkedinUrl: z.string().optional(),
-  facebookUrl: z.string().optional(),
-  instagramUrl: z.string().optional(),
-  youtubeUrl: z.string().optional(),
-  tiktokUrl: z.string().optional(),
-  source: z.string().optional(),
-  status: z.enum(['PROSPECT', 'LEAD', 'OPPORTUNITY', 'CLIENT', 'CHURNED', 'DECLINED', 'UNQUALIFIED']),
-  sentiment: z.enum(['GOOD', 'NEUTRAL', 'BAD']).optional(),
+const contactSchema = contactCreateSchema.extend({
+  userId: z.number(),
   leadScore: z.number().min(0).max(1).optional(),
   opportunityScore: z.number().min(0).max(1).optional(),
-  userId: z.number()
 })
 
 export async function GET(request: NextRequest) {
@@ -122,7 +105,11 @@ export async function POST(request: NextRequest) {
     const validatedData = contactSchema.parse(body)
 
     const contact = await prisma.contact.create({
-      data: validatedData
+      data: {
+        ...validatedData,
+        primaryEmail: validatedData.primaryEmail.toLowerCase(),
+        ...(validatedData.secondaryEmail ? { secondaryEmail: validatedData.secondaryEmail.toLowerCase() } : {}),
+      }
     })
 
     return NextResponse.json(contact, { status: 201 })

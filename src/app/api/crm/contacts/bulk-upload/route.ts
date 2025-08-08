@@ -68,7 +68,8 @@ export async function POST(req: NextRequest) {
       try {
         const data = contactCreateSchema.parse(rec)
         // 3) Upsert by email
-        const existing = await prisma.contact.findFirst({ where: { primaryEmail: { equals: data.primaryEmail, mode: 'insensitive' } } })
+        const emailLc = data.primaryEmail.toLowerCase()
+        const existing = await prisma.contact.findFirst({ where: { primaryEmail: { equals: emailLc, mode: 'insensitive' } } })
         if (existing) {
           // Minimal update (non-destructive)
           await prisma.contact.update({ where: { id: existing.id }, data: {
@@ -79,10 +80,10 @@ export async function POST(req: NextRequest) {
             address: data.address || existing.address,
             notes: [existing.notes, data.notes].filter(Boolean).join('\n\n') || existing.notes,
           }})
-          results.push({ status: 'updated', email: data.primaryEmail })
+          results.push({ status: 'updated', email: emailLc })
         } else {
-          const created = await prisma.contact.create({ data: { ...data, userId: 1, source: 'Bulk Import' } })
-          results.push({ status: 'created', id: created.id, email: data.primaryEmail })
+          const created = await prisma.contact.create({ data: { ...data, primaryEmail: emailLc, userId: 1, source: 'Bulk Import' } })
+          results.push({ status: 'created', id: created.id, email: emailLc })
         }
       } catch (e: any) {
         results.push({ status: 'error', error: e.message, input: rec })
