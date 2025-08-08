@@ -78,6 +78,10 @@ export default function CRMPageComponent() {
   const [editedContact, setEditedContact] = useState<Contact | null>(null)
   const [showSentimentDropdown, setShowSentimentDropdown] = useState(false)
   const [showStatusDropdown, setShowStatusDropdown] = useState(false)
+  const [dupGroups, setDupGroups] = useState<Array<{reason: string; members: any[]}>>([])
+  const [showMergeUI, setShowMergeUI] = useState(false)
+  const [mergePrimaryId, setMergePrimaryId] = useState<number | null>(null)
+  const [mergeSelected, setMergeSelected] = useState<number[]>([])
 
   useEffect(() => {
     console.log('[CRM_COMPONENT] useEffect triggered - fetching data')
@@ -109,6 +113,14 @@ export default function CRMPageComponent() {
       }
     } catch (error) {
       console.error('Error fetching sources:', error)
+    }
+  }
+
+  const fetchDuplicateGroups = async () => {
+    const res = await fetch('/api/crm/duplicates')
+    if (res.ok) {
+      const data = await res.json()
+      setDupGroups(data.groups || [])
     }
   }
 
@@ -601,6 +613,13 @@ export default function CRMPageComponent() {
             >
               Reset Filters
             </button>
+
+            <button
+              onClick={() => { fetchDuplicateGroups(); setShowMergeUI(true); }}
+              className="whitespace-nowrap px-5 py-2 bg-purple-600 text-white rounded-md text-sm font-medium hover:bg-purple-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 shadow-sm"
+            >
+              Find Duplicates
+            </button>
           </div>
         </div>
       </div>
@@ -1064,6 +1083,80 @@ export default function CRMPageComponent() {
               </div>
             </div>
           </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Simple Duplicate Merge Drawer */}
+      {showMergeUI && (
+        <div className="fixed inset-0 z-40">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setShowMergeUI(false)} />
+          <div className="absolute right-0 top-0 h-full w-[560px] bg-white shadow-xl p-6 overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Duplicate Candidates</h3>
+              <button className="text-gray-500" onClick={() => setShowMergeUI(false)}>Close</button>
+            </div>
+            {dupGroups.length === 0 ? (
+              <p className="text-gray-500">No candidates found.</p>
+            ) : (
+              <div className="space-y-4">
+                {dupGroups.map((g, idx) => (
+                  <div key={idx} className="border rounded-md p-3">
+                    <div className="text-sm text-gray-600 mb-2">Reason: {g.reason}</div>
+                    <div className="space-y-2">
+                      {g.members.map((m) => (
+                        <div key={m.id} className="flex items-center justify-between border rounded px-2 py-1">
+                          <div>
+                            <div className="font-medium text-sm">{m.name}</div>
+                            <div className="text-xs text-gray-500">{m.primaryEmail} • {m.primaryPhone || '-'} • {m.company || '-'}</div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="radio"
+                              name={`primary_${idx}`}
+                              title="Mark as primary"
+                              onChange={() => { setMergePrimaryId(m.id); setMergeSelected(prev => prev.includes(m.id) ? prev : [...prev, m.id]) }}
+                            />
+                            <input
+                              type="checkbox"
+                              checked={mergeSelected.includes(m.id)}
+                              onChange={(e) => {
+                                setMergeSelected((prev) => e.target.checked ? [...prev, m.id] : prev.filter(id => id !== m.id))
+                              }}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="mt-6 flex items-center gap-2">
+              <button
+                onClick={async () => {
+                  if (!mergePrimaryId) return
+                  const duplicateIds = mergeSelected.filter(id => id !== mergePrimaryId)
+                  if (duplicateIds.length === 0) return
+                  const res = await fetch('/api/crm/contacts/merge', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ primaryId: mergePrimaryId, duplicateIds, mergeOptions: { notes: 'concat', keepHistory: true } })
+                  })
+                  if (res.ok) {
+                    await fetchContacts()
+                    await fetchDuplicateGroups()
+                    setMergePrimaryId(null)
+                    setMergeSelected([])
+                  }
+                }}
+                className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700"
+              >
+                Merge Selected
+              </button>
+              <button onClick={() => { setMergePrimaryId(null); setMergeSelected([]) }} className="px-3 py-2 text-sm text-gray-600">Clear</button>
             </div>
           </div>
         </div>
