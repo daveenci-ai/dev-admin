@@ -12,28 +12,50 @@ export async function POST(req: NextRequest) {
     const b = Number(id2)
     if (!a || !b || a === b) return NextResponse.json({ error: 'Provide distinct id1 and id2' }, { status: 400 })
 
-    // Compute signals in SQL using pg_trgm/fuzzystrmatch
-    const row: any = await prisma.$queryRaw`WITH base AS (
+    // Compute signals in SQL with fallbacks (no reliance on prefilled normalized columns)
+    const row: any = await prisma.$queryRaw`WITH a AS (
         SELECT c.*,
-               array_remove(array_append(coalesce(c.other_emails, '{}'), c.email_norm), NULL) AS emails,
-               array_remove(array_append(coalesce(c.other_phones, '{}'), c.phone_e164), NULL) AS phones
+               lower(unaccent(regexp_replace(coalesce(c.name,''), '[^a-z0-9]+', ' ', 'gi'))) AS name_norm_fb,
+               lower(split_part(coalesce(c.primary_email,''),'@',1)) AS email_local_raw,
+               lower(split_part(coalesce(c.primary_email,''),'@',2)) AS email_domain_raw
         FROM contacts c WHERE c.id = ${a}
-      ), other AS (
-        SELECT o.*,
-               array_remove(array_append(coalesce(o.other_emails, '{}'), o.email_norm), NULL) AS emails,
-               array_remove(array_append(coalesce(o.other_phones, '{}'), o.phone_e164), NULL) AS phones
-        FROM contacts o WHERE o.id = ${b}
+      ), a2 AS (
+        SELECT *,
+          regexp_replace(
+            CASE WHEN email_domain_raw IN ('gmail.com','googlemail.com') THEN replace(email_local_raw,'.','') ELSE email_local_raw END,
+            '\\+.*$',
+            ''
+          ) AS email_local_norm,
+          email_domain_raw AS email_domain_norm
+        FROM a
+      ), b AS (
+        SELECT c.*,
+               lower(unaccent(regexp_replace(coalesce(c.name,''), '[^a-z0-9]+', ' ', 'gi'))) AS name_norm_fb,
+               lower(split_part(coalesce(c.primary_email,''),'@',1)) AS email_local_raw,
+               lower(split_part(coalesce(c.primary_email,''),'@',2)) AS email_domain_raw
+        FROM contacts c WHERE c.id = ${b}
+      ), b2 AS (
+        SELECT *,
+          regexp_replace(
+            CASE WHEN email_domain_raw IN ('gmail.com','googlemail.com') THEN replace(email_local_raw,'.','') ELSE email_local_raw END,
+            '\\+.*$',
+            ''
+          ) AS email_local_norm,
+          email_domain_raw AS email_domain_norm
+        FROM b
       )
       SELECT
-        (SELECT GREATEST(
-           COALESCE((SELECT max(similarity(e1, e2)) FROM base b, unnest(b.emails) e1 CROSS JOIN unnest(o.emails) e2), 0),
-           COALESCE((SELECT max(similarity(split_part(e1,'@',1), split_part(e2,'@',1))) FROM base b, unnest(b.emails) e1 CROSS JOIN unnest(o.emails) e2), 0)
-         ) FROM other o) AS email_sim,
-        (SELECT CASE WHEN EXISTS (SELECT 1 FROM base b, unnest(b.phones) p1 INNER JOIN other o ON true INNER JOIN unnest(o.phones) p2 ON p1 = p2) THEN 1.0 ELSE 0.0 END) AS phone_equal,
-        (SELECT similarity(coalesce(b.full_name_norm,''), coalesce(o.full_name_norm,'')) FROM base b, other o) AS name_sim,
-        (SELECT CASE WHEN coalesce(o.metaphone_last,'') <> '' AND coalesce(b.metaphone_last,'') <> '' AND o.metaphone_last = b.metaphone_last THEN 1 ELSE 0 END FROM base b, other o) AS metaphone_match,
-        (SELECT similarity(coalesce(b.company_norm,''), coalesce(o.company_norm,'')) FROM base b, other o) AS company_sim,
-        (SELECT similarity(coalesce(b.address_norm,''), coalesce(o.address_norm,'')) FROM base b, other o) AS address_sim` as any
+        GREATEST(
+          similarity(coalesce((SELECT email_norm FROM a2), (SELECT email_local_norm||'@'||email_domain_norm FROM a2)),
+                    coalesce((SELECT email_norm FROM b2), (SELECT email_local_norm||'@'||email_domain_norm FROM b2))),
+          similarity((SELECT email_local_norm FROM a2), (SELECT email_local_norm FROM b2))
+        ) AS email_sim,
+        CASE WHEN right(coalesce((SELECT phone_e164 FROM a2), (SELECT primary_phone FROM a2)),7) = right(coalesce((SELECT phone_e164 FROM b2),(SELECT primary_phone FROM b2)),7) AND right(coalesce((SELECT phone_e164 FROM a2), (SELECT primary_phone FROM a2)),7) <> '' THEN 1.0 ELSE 0.0 END AS phone_equal,
+        similarity(coalesce((SELECT full_name_norm FROM a2),(SELECT name_norm_fb FROM a2)), coalesce((SELECT full_name_norm FROM b2),(SELECT name_norm_fb FROM b2))) AS name_sim,
+        CASE WHEN metaphone(split_part(coalesce((SELECT name FROM a2),'')::text,' ',array_length(string_to_array(coalesce((SELECT name FROM a2),'')::text,' '),1))) = metaphone(split_part(coalesce((SELECT name FROM b2),'')::text,' ',array_length(string_to_array(coalesce((SELECT name FROM b2),'')::text,' '),1))) THEN 1 ELSE 0 END AS metaphone_match,
+        similarity(coalesce((SELECT company_norm FROM a2), lower(unaccent(coalesce((SELECT company FROM a2),''))) ), coalesce((SELECT company_norm FROM b2), lower(unaccent(coalesce((SELECT company FROM b2),''))))) AS company_sim,
+        similarity(coalesce((SELECT address_norm FROM a2), lower(unaccent(coalesce((SELECT address FROM a2),''))) ), coalesce((SELECT address_norm FROM b2), lower(unaccent(coalesce((SELECT address FROM b2),''))))) AS address_sim
+      ` as any
 
     const cfg = getDedupeConfig()
     const w = cfg.weights
