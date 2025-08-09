@@ -7,7 +7,8 @@ export const dynamic = 'force-dynamic'
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const status = (searchParams.get('status') || 'pending').toLowerCase()
+    const statusParam = searchParams.get('status')
+    const statuses = statusParam ? [statusParam.toLowerCase()] : ['pending', 'approved']
     const minScore = parseFloat(searchParams.get('minScore') || String(getReviewMinScore()))
 
     const raw = await prisma.dedupeCandidate.findMany({
@@ -26,7 +27,7 @@ export async function GET(request: NextRequest) {
         status: c.status?.toLowerCase?.() || c.status,
         createdAt: c.createdAt,
       }))
-      .filter((c) => c.status === status && c.score >= minScore)
+      .filter((c) => statuses.includes(c.status) && c.score >= minScore)
       .sort((a, b) => b.score - a.score)
 
     const ids = Array.from(new Set(candidates.flatMap((c) => [c.id1, c.id2])))
