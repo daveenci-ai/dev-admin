@@ -135,8 +135,9 @@ export default function CRMPageComponent() {
 
   const fetchDedupePairs = async () => {
     try {
-      // Kick a lightweight batch to build candidates for recent contacts
-      await fetch('/api/crm/dedupe/batch?days=365&limit=300', { method: 'POST' })
+      // Run a batch rebuild without limit; show blocking overlay while processing
+      setIsNormalizing(true)
+      await fetch('/api/crm/dedupe/batch?days=365', { method: 'POST' })
       const res = await fetch('/api/crm/dedupe/candidates/with-contacts')
       if (res.ok) {
         const data = await res.json()
@@ -144,6 +145,7 @@ export default function CRMPageComponent() {
       } else {
         console.error('Dedupe fetch failed', await res.text())
       }
+      setIsNormalizing(false)
     } catch (e) {
       console.error('Error fetching dedupe candidates:', e)
     }
@@ -693,8 +695,8 @@ export default function CRMPageComponent() {
       {/* Full Screen Contacts Table */}
       <div className="app-card overflow-hidden">
         {isNormalizing && (
-          <div className="p-4 bg-yellow-50 text-yellow-800 border-b border-yellow-200 text-sm">
-            Normalization in progress… You can keep working; duplicates will appear once processing completes.
+          <div className="p-4 bg-amber-50 text-amber-800 border-b border-amber-200 text-sm">
+            Working… building duplicate candidates. This may take a minute. Please don’t navigate away.
           </div>
         )}
         <table className="app-table">
