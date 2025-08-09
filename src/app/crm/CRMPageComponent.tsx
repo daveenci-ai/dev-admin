@@ -149,6 +149,18 @@ export default function CRMPageComponent() {
     }
   }
 
+  const refreshPairsOnly = async () => {
+    try {
+      const res = await fetch('/api/crm/dedupe/candidates/with-contacts?status=pending')
+      if (res.ok) {
+        const data = await res.json()
+        setDedupePairs(data.candidates || [])
+      }
+    } catch (e) {
+      console.error('Error refreshing candidates:', e)
+    }
+  }
+
   const fetchStats = async () => {
     try {
       const params = new URLSearchParams({
@@ -1315,9 +1327,14 @@ export default function CRMPageComponent() {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ id1: a, id2: b })
                   })
+                  if (!res.ok) {
+                    const text = await res.text()
+                    alert('Force pair failed: ' + text)
+                    return
+                  }
                   const data = await res.json()
-                  console.log('Force pair', data)
-                  await fetchDedupePairs()
+                  alert(`Pair scored ${data.score?.toFixed?.(3) ?? data.score} (status: ${data.status})`)
+                  await refreshPairsOnly()
                 }}
                 className="px-2 py-1 bg-gray-800 text-white rounded text-sm"
               >

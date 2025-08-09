@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ id1: a, id2: b, score, status })
   } catch (error) {
     console.error('Force pair error:', error)
-    return NextResponse.json({ error: 'Failed to score pair' }, { status: 500 })
+    return NextResponse.json({ error: 'Failed to score pair', details: (error as any)?.message || String(error) }, { status: 500 })
   }
 }
 
