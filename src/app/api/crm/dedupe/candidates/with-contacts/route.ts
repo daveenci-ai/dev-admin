@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { getReviewMinScore } from '@/lib/dedupe/config'
 
 export const dynamic = 'force-dynamic'
 
@@ -7,7 +8,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const status = (searchParams.get('status') || 'pending').toLowerCase()
-    const minScore = parseFloat(searchParams.get('minScore') || '0.55')
+    const minScore = parseFloat(searchParams.get('minScore') || String(getReviewMinScore()))
 
     const raw = await prisma.dedupeCandidate.findMany({
       // Fetch recent candidates broadly; we'll filter in JS to avoid Decimal quirks

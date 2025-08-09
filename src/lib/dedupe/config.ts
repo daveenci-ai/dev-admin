@@ -18,4 +18,8 @@ export function getDedupeConfig(): DedupeConfig {
   return json
 }
 
+export function getReviewMinScore(): number {
+  return getDedupeConfig().thresholds.review
+}
+
 
