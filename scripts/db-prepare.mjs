@@ -25,7 +25,16 @@ async function runSqlFile(file) {
     if (stmt.startsWith('--')) continue
     // Some CREATE EXTENSION may be repeated; run individually
     // eslint-disable-next-line no-await-in-loop
-    await prisma.$executeRawUnsafe(stmt)
+    try {
+      await prisma.$executeRawUnsafe(stmt)
+    } catch (e) {
+      const msg = String(e?.message || e)
+      // ignore "already exists" or duplicate constraint errors to make idempotent
+      if (/already exists/i.test(msg) || /duplicate/i.test(msg) || /exists/i.test(msg)) {
+        continue
+      }
+      throw e
+    }
   }
 }
 

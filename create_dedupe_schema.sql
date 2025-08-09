@@ -40,11 +40,9 @@ ALTER TABLE contacts ADD COLUMN IF NOT EXISTS other_emails TEXT[] DEFAULT '{}';
 ALTER TABLE contacts ADD COLUMN IF NOT EXISTS other_phones TEXT[] DEFAULT '{}';
 ALTER TABLE contacts ADD COLUMN IF NOT EXISTS company_id INTEGER;
 
--- FK to companies
-DO $$ BEGIN
-  ALTER TABLE contacts ADD CONSTRAINT contacts_company_id_fkey
-    FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE SET NULL;
-EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+-- FK to companies (if already exists, our script will ignore the error)
+ALTER TABLE contacts ADD CONSTRAINT contacts_company_id_fkey
+  FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE SET NULL;
 
 -- Helpful indexes
 CREATE INDEX IF NOT EXISTS idx_contacts_email_norm   ON contacts (email_norm);
