@@ -87,6 +87,7 @@ export default function CRMPageComponent() {
   const [showBulkImport, setShowBulkImport] = useState(false)
   const [newContactForm, setNewContactForm] = useState({ name: '', primaryEmail: '', primaryPhone: '', company: '' })
   const [bulkFiles, setBulkFiles] = useState<FileList | null>(null)
+  const [dedupePairs, setDedupePairs] = useState<Array<{ id: number; score: number; reason?: string; a: any; b: any }>>([])
 
   useEffect(() => {
     console.log('[CRM_COMPONENT] useEffect triggered - fetching data')
@@ -126,6 +127,18 @@ export default function CRMPageComponent() {
     if (res.ok) {
       const data = await res.json()
       setDupGroups(data.groups || [])
+    }
+  }
+
+  const fetchDedupePairs = async () => {
+    try {
+      const res = await fetch('/api/crm/dedupe/candidates/with-contacts?status=pending&minScore=0.8')
+      if (res.ok) {
+        const data = await res.json()
+        setDedupePairs(data.candidates || [])
+      }
+    } catch (e) {
+      console.error('Error fetching dedupe candidates:', e)
     }
   }
 
@@ -534,7 +547,7 @@ export default function CRMPageComponent() {
         <div className="hidden md:flex gap-2">
           <button onClick={() => setShowNewContact(true)} className="px-3 py-1.5 bg-emerald-600 text-white rounded text-sm">New Contact</button>
           <button onClick={() => setShowBulkImport(true)} className="px-3 py-1.5 bg-orange-600 text-white rounded text-sm">Bulk Import</button>
-          <button onClick={() => { fetchDuplicateGroups(); setShowMergeUI(true); }} className="px-3 py-1.5 bg-purple-600 text-white rounded text-sm">Find Duplicates</button>
+          <button onClick={() => { fetchDedupePairs(); setShowMergeUI(true); }} className="px-3 py-1.5 bg-purple-600 text-white rounded text-sm">Find Duplicates</button>
         </div>
       </PageHeader>
 
@@ -1230,44 +1243,57 @@ export default function CRMPageComponent() {
         </div>
       )}
 
-      {/* Simple Duplicate Merge Drawer */}
+      {/* Dedupe Candidates Drawer */}
       {showMergeUI && (
         <div className="fixed inset-0 z-40">
           <div className="absolute inset-0 bg-black/40" onClick={() => setShowMergeUI(false)} />
-          <div className="absolute right-0 top-0 h-full w-[560px] bg-white shadow-xl p-6 overflow-y-auto">
+          <div className="absolute right-0 top-0 h-full w-[680px] bg-white shadow-xl p-6 overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">Duplicate Candidates</h3>
               <button className="text-gray-500" onClick={() => setShowMergeUI(false)}>Close</button>
             </div>
-            {dupGroups.length === 0 ? (
+            {dedupePairs.length === 0 ? (
               <p className="text-gray-500">No candidates found.</p>
             ) : (
               <div className="space-y-4">
-                {dupGroups.map((g, idx) => (
-                  <div key={idx} className="border rounded-md p-3">
-                    <div className="text-sm text-gray-600 mb-2">Reason: {g.reason}</div>
-                    <div className="space-y-2">
-                      {g.members.map((m) => (
-                        <div key={m.id} className="flex items-center justify-between border rounded px-2 py-1">
-                          <div>
-                            <div className="font-medium text-sm">{m.name}</div>
-                            <div className="text-xs text-gray-500">{m.primaryEmail} • {m.primaryPhone || '-'} • {m.company || '-'}</div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="radio"
-                              name={`primary_${idx}`}
-                              title="Mark as primary"
-                              onChange={() => { setMergePrimaryId(m.id); setMergeSelected(prev => prev.includes(m.id) ? prev : [...prev, m.id]) }}
-                            />
-                            <input
-                              type="checkbox"
-                              checked={mergeSelected.includes(m.id)}
-                              onChange={(e) => {
-                                setMergeSelected((prev) => e.target.checked ? [...prev, m.id] : prev.filter(id => id !== m.id))
-                              }}
-                            />
-                          </div>
+                {dedupePairs.map((c) => (
+                  <div key={c.id} className="border rounded-md p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="text-sm text-gray-600">Score: <span className="font-semibold">{c.score.toFixed(3)}</span>{c.reason ? ` • ${c.reason}` : ''}</div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={async () => {
+                            const res = await fetch(`/api/crm/dedupe/${c.id}/merge`, { method: 'POST' })
+                            if (res.ok) {
+                              await fetchDedupePairs()
+                              await fetchContacts()
+                            }
+                          }}
+                          className="px-3 py-1.5 bg-purple-600 text-white rounded text-sm hover:bg-purple-700"
+                        >
+                          Merge
+                        </button>
+                        <button
+                          onClick={async () => {
+                            const res = await fetch(`/api/crm/dedupe/${c.id}/reject`, { method: 'POST' })
+                            if (res.ok) {
+                              await fetchDedupePairs()
+                            }
+                          }}
+                          className="px-3 py-1.5 bg-gray-200 text-gray-800 rounded text-sm hover:bg-gray-300"
+                        >
+                          Reject
+                        </button>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      {[c.a, c.b].map((m: any, idx: number) => (
+                        <div key={idx} className="border rounded p-2">
+                          <div className="font-medium text-sm">{m?.name || '-'}</div>
+                          <div className="text-xs text-gray-500 break-all">{m?.primaryEmail || '-'}</div>
+                          <div className="text-xs text-gray-500">{m?.primaryPhone || '-'}</div>
+                          <div className="text-xs text-gray-500">{m?.company || '-'}</div>
+                          <div className="text-xs text-gray-400">Added {m?.createdAt ? format(new Date(m.createdAt), 'MMM d, yyyy') : '-'}</div>
                         </div>
                       ))}
                     </div>
@@ -1275,31 +1301,6 @@ export default function CRMPageComponent() {
                 ))}
               </div>
             )}
-
-            <div className="mt-6 flex items-center gap-2">
-              <button
-                onClick={async () => {
-                  if (!mergePrimaryId) return
-                  const duplicateIds = mergeSelected.filter(id => id !== mergePrimaryId)
-                  if (duplicateIds.length === 0) return
-                  const res = await fetch('/api/crm/contacts/merge', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ primaryId: mergePrimaryId, duplicateIds, mergeOptions: { notes: 'concat', keepHistory: true } })
-                  })
-                  if (res.ok) {
-                    await fetchContacts()
-                    await fetchDuplicateGroups()
-                    setMergePrimaryId(null)
-                    setMergeSelected([])
-                  }
-                }}
-                className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700"
-              >
-                Merge Selected
-              </button>
-              <button onClick={() => { setMergePrimaryId(null); setMergeSelected([]) }} className="px-3 py-2 text-sm text-gray-600">Clear</button>
-            </div>
           </div>
         </div>
       )}
