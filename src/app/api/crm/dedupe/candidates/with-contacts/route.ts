@@ -28,7 +28,18 @@ export async function GET(request: NextRequest) {
     const ids = Array.from(new Set(candidates.flatMap((c) => [c.id1, c.id2])))
     const contacts = await prisma.contact.findMany({
       where: { id: { in: ids } },
-      select: { id: true, name: true, primaryEmail: true, primaryPhone: true, company: true, status: true, createdAt: true },
+      select: {
+        id: true,
+        name: true,
+        primaryEmail: true,
+        primaryPhone: true,
+        company: true,
+        status: true,
+        createdAt: true,
+        // Include normalized fields to improve display fidelity later if needed
+        emailNorm: true,
+        phoneE164: true,
+      },
     })
     const map = new Map(contacts.map((c) => [c.id, c]))
 

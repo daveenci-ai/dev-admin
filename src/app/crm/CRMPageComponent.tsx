@@ -135,7 +135,7 @@ export default function CRMPageComponent() {
     try {
       // Kick a lightweight batch to build candidates for recent contacts
       await fetch('/api/crm/dedupe/batch?days=365&limit=300', { method: 'POST' })
-      const res = await fetch('/api/crm/dedupe/candidates/with-contacts?status=pending&minScore=0.65')
+      const res = await fetch('/api/crm/dedupe/candidates/with-contacts?status=pending&minScore=0.55')
       if (res.ok) {
         const data = await res.json()
         setDedupePairs(data.candidates || [])

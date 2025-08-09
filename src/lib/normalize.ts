@@ -45,7 +45,11 @@ function normalizeEmail(email: string | null | undefined): { emailNorm: string |
 
 function normalizePhone(phone: string | null | undefined): string | null {
   if (!phone) return null
-  const parsed = parsePhoneNumberFromString(phone)
+  // Try with country code present first; otherwise assume US as default region
+  let parsed = parsePhoneNumberFromString(phone)
+  if (!parsed) {
+    parsed = parsePhoneNumberFromString(phone, 'US')
+  }
   if (!parsed || !parsed.isValid()) return null
   // Consider ignoring short VOIP-like numbers
   const nationalDigits = parsed.nationalNumber?.toString() ?? ''
