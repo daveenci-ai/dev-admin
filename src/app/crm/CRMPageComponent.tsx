@@ -550,6 +550,29 @@ export default function CRMPageComponent() {
           <button onClick={() => setShowNewContact(true)} className="px-3 py-1.5 bg-emerald-600 text-white rounded text-sm">New Contact</button>
           <button onClick={() => setShowBulkImport(true)} className="px-3 py-1.5 bg-orange-600 text-white rounded text-sm">Bulk Import</button>
           <button onClick={() => { fetchDedupePairs(); setShowMergeUI(true); }} className="px-3 py-1.5 bg-purple-600 text-white rounded text-sm">Find Duplicates</button>
+          <button
+            onClick={async () => {
+              try {
+                let afterId = 0
+                let total = 0
+                for (let i = 0; i < 20; i++) { // up to 10k rows in 500-size chunks
+                  const res = await fetch(`/api/crm/dedupe/normalize-all?limit=500&afterId=${afterId}`, { method: 'POST' })
+                  const data = await res.json()
+                  total += data.processed || 0
+                  if (data.afterId) afterId = data.afterId
+                  if (data.done) break
+                }
+                // After normalizing, build candidates for the most recent slice
+                await fetch('/api/crm/dedupe/batch?days=365&limit=300', { method: 'POST' })
+                alert(`Normalized ${total} contacts and rebuilt candidates`)
+              } catch (e) {
+                alert('Normalize failed, check logs')
+              }
+            }}
+            className="px-3 py-1.5 bg-gray-700 text-white rounded text-sm"
+          >
+            Normalize All
+          </button>
         </div>
       </PageHeader>
 
