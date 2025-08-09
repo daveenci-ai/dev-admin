@@ -27,7 +27,8 @@ export async function POST(req: NextRequest) {
             '\\+.*$',
             ''
           ) AS email_local_norm,
-          email_domain_raw AS email_domain_norm
+          email_domain_raw AS email_domain_norm,
+          last_name_norm
         FROM a
       ), b AS (
         SELECT c.*,
@@ -43,7 +44,8 @@ export async function POST(req: NextRequest) {
             '\\+.*$',
             ''
           ) AS email_local_norm,
-          email_domain_raw AS email_domain_norm
+          email_domain_raw AS email_domain_norm,
+          last_name_norm
         FROM b
       )
       SELECT
