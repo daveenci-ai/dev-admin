@@ -88,6 +88,7 @@ export default function CRMPageComponent() {
   const [newContactForm, setNewContactForm] = useState({ name: '', primaryEmail: '', primaryPhone: '', company: '' })
   const [bulkFiles, setBulkFiles] = useState<FileList | null>(null)
   const [dedupePairs, setDedupePairs] = useState<Array<{ id: number; score: number; reason?: string; a: any; b: any }>>([])
+  const [isNormalizing, setIsNormalizing] = useState(false)
 
   useEffect(() => {
     console.log('[CRM_COMPONENT] useEffect triggered - fetching data')
@@ -553,9 +554,10 @@ export default function CRMPageComponent() {
           <button
             onClick={async () => {
               try {
+                setIsNormalizing(true)
                 let afterId = 0
                 let total = 0
-                for (let i = 0; i < 20; i++) { // up to 10k rows in 500-size chunks
+                for (let i = 0; i < 20; i++) { // up to ~10k rows in 500-size chunks
                   const res = await fetch(`/api/crm/dedupe/normalize-all?limit=500&afterId=${afterId}`, { method: 'POST' })
                   const data = await res.json()
                   total += data.processed || 0
@@ -563,10 +565,12 @@ export default function CRMPageComponent() {
                   if (data.done) break
                 }
                 // After normalizing, build candidates for the most recent slice
-                await fetch('/api/crm/dedupe/batch?days=365&limit=300', { method: 'POST' })
+                await fetch('/api/crm/dedupe/batch?days=365&limit=500', { method: 'POST' })
                 alert(`Normalized ${total} contacts and rebuilt candidates`)
               } catch (e) {
                 alert('Normalize failed, check logs')
+              } finally {
+                setIsNormalizing(false)
               }
             }}
             className="px-3 py-1.5 bg-gray-700 text-white rounded text-sm"
@@ -672,6 +676,11 @@ export default function CRMPageComponent() {
 
       {/* Full Screen Contacts Table */}
       <div className="app-card overflow-hidden">
+        {isNormalizing && (
+          <div className="p-4 bg-yellow-50 text-yellow-800 border-b border-yellow-200 text-sm">
+            Normalization in progress… You can keep working; duplicates will appear once processing completes.
+          </div>
+        )}
         <table className="app-table">
           <thead className="app-thead">
             <tr>

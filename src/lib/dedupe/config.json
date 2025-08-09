@@ -1,6 +1,6 @@
 {
-  "weights": { "email": 0.4, "phone": 0.25, "name": 0.2, "company": 0.1, "address": 0.05 },
-  "thresholds": { "auto": 0.95, "review": 0.65 },
+  "weights": { "email": 0.5, "phone": 0.2, "name": 0.2, "company": 0.07, "address": 0.03 },
+  "thresholds": { "auto": 0.92, "review": 0.55 },
   "blocks": {
     "email_domain_first": true,
     "zip_soundex": true,

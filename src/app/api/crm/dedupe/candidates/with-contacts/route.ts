@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const status = (searchParams.get('status') || 'pending').toLowerCase()
-    const minScore = parseFloat(searchParams.get('minScore') || '0.8')
+    const minScore = parseFloat(searchParams.get('minScore') || '0.55')
 
     const raw = await prisma.dedupeCandidate.findMany({
       where: { status, score: { gte: minScore as any } },
