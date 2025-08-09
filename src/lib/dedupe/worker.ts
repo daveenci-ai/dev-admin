@@ -92,7 +92,12 @@ export async function generateCandidatesForContact(contactId: number) {
     )
     SELECT
       o.id as candidate_id,
-      (SELECT max(similarity(e1, e2)) FROM base b, unnest(b.emails) e1 CROSS JOIN unnest(o.o_emails) e2) AS email_sim,
+      (SELECT GREATEST(
+         -- full email similarity across any addresses
+         COALESCE((SELECT max(similarity(e1, e2)) FROM base b, unnest(b.emails) e1 CROSS JOIN unnest(o.o_emails) e2), 0),
+         -- local-part similarity bonus for different domains
+         COALESCE((SELECT max(similarity(split_part(e1,'@',1), split_part(e2,'@',1))) FROM base b, unnest(b.emails) e1 CROSS JOIN unnest(o.o_emails) e2), 0)
+       )) AS email_sim,
       (CASE WHEN EXISTS (SELECT 1 FROM base b, unnest(b.phones) p1 INNER JOIN unnest(o.o_phones) p2 ON p1 = p2) THEN 1.0 ELSE 0.0 END) AS phone_equal,
       (SELECT similarity(coalesce(b.full_name_norm,''), coalesce(o.full_name_norm,'')) FROM base b) AS name_sim,
       (SELECT CASE WHEN coalesce(o.metaphone_last,'') <> '' AND coalesce(b.metaphone_last,'') <> '' AND o.metaphone_last = b.metaphone_last THEN 1 ELSE 0 END FROM base b) AS metaphone_match,
