@@ -83,11 +83,20 @@ export async function generateCandidatesForContact(contactId: number) {
              array_remove(array_append(coalesce(o.other_phones, '{}'), o.phone_e164), NULL) AS o_phones
       FROM contacts o, base b
       WHERE o.id <> b.id AND o.deleted_at IS NULL AND (
+        -- same domain + first local char
         (b.email_domain IS NOT NULL AND o.email_domain = b.email_domain AND left(coalesce(o.email_local,''),1) = left(coalesce(b.email_local,''),1))
+        -- cross-domain: exact email local part
+        OR (b.email_local IS NOT NULL AND o.email_local = b.email_local)
+        -- zip + soundex last name
         OR (b.zip_norm IS NOT NULL AND o.zip_norm = b.zip_norm AND b.soundex_last IS NOT NULL AND o.soundex_last = b.soundex_last)
+        -- same website root
         OR (b.website_root IS NOT NULL AND o.website_root = b.website_root)
+        -- phone last7
         OR (b.phone_e164 IS NOT NULL AND right(o.phone_e164, 7) = right(b.phone_e164, 7))
+        -- company prefix6
         OR (b.company_norm IS NOT NULL AND left(o.company_norm, 6) = left(b.company_norm, 6))
+        -- name prefix + metaphone match
+        OR (b.full_name_norm IS NOT NULL AND o.full_name_norm IS NOT NULL AND left(b.full_name_norm,3) = left(o.full_name_norm,3) AND b.metaphone_last IS NOT NULL AND o.metaphone_last = b.metaphone_last)
       )
     )
     SELECT

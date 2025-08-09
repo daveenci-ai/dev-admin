@@ -50,13 +50,7 @@ export async function POST(request: NextRequest) {
         },
       })
 
-      if (normalized.lastNameNorm) {
-        await prisma.$executeRawUnsafe(
-          `UPDATE contacts SET soundex_last = soundex($1), metaphone_last = metaphone($1, 4) WHERE id = $2`,
-          normalized.lastNameNorm,
-          c.id
-        )
-      }
+      await prisma.$executeRaw`UPDATE contacts SET soundex_last = soundex(${normalized.lastNameNorm || ''}), metaphone_last = metaphone(${normalized.lastNameNorm || ''}, 4) WHERE id = ${c.id}`
     }
 
     return NextResponse.json({ success: true, processed: contacts.length })

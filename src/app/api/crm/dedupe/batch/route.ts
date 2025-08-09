@@ -22,10 +22,12 @@ export async function POST(request: NextRequest) {
     const cfg = getDedupeConfig()
     const autoEnabled = cfg.features.autoMergeFuzzy
 
-    for (const { id } of contacts) {
-      await createDeterministicCandidates(id)
-      await generateCandidatesForContact(id)
-    }
+    await Promise.all(
+      contacts.map(async ({ id }) => {
+        await createDeterministicCandidates(id)
+        await generateCandidatesForContact(id)
+      })
+    )
 
     if (autoEnabled) {
       // Process approved
