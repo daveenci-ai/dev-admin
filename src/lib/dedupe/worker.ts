@@ -9,6 +9,7 @@ type CandidateRow = {
   metaphone_match: number
   company_sim: number | null
   address_sim: number | null
+  name_exact?: number
 }
 
 function orderPair(a: number, b: number): [bigint, bigint] {
@@ -111,7 +112,8 @@ export async function generateCandidatesForContact(contactId: number) {
       (SELECT similarity(coalesce(b.full_name_norm,''), coalesce(o.full_name_norm,'')) FROM base b) AS name_sim,
       (SELECT CASE WHEN coalesce(o.metaphone_last,'') <> '' AND coalesce(b.metaphone_last,'') <> '' AND o.metaphone_last = b.metaphone_last THEN 1 ELSE 0 END FROM base b) AS metaphone_match,
       (SELECT similarity(coalesce(b.company_norm,''), coalesce(o.company_norm,'')) FROM base b) AS company_sim,
-      (SELECT similarity(coalesce(b.address_norm,''), coalesce(o.address_norm,'')) FROM base b) AS address_sim
+      (SELECT similarity(coalesce(b.address_norm,''), coalesce(o.address_norm,'')) FROM base b) AS address_sim,
+      (SELECT CASE WHEN coalesce(b.full_name_norm,'') <> '' AND coalesce(o.full_name_norm,'') <> '' AND b.full_name_norm = o.full_name_norm THEN 1 ELSE 0 END FROM base b) AS name_exact
     FROM cand o
     `,
     contactId
@@ -125,6 +127,13 @@ export async function generateCandidatesForContact(contactId: number) {
     const companySim = r.company_sim ?? 0
     const addressSim = r.address_sim ?? 0
     let score = w.email * emailSim + w.phone * phoneEq + w.name * nameSim + w.company * companySim + w.address * addressSim
+    // Conservative baseline boost for exact same full name
+    if (r.name_exact) {
+      score += 0.25
+    }
+    if (r.metaphone_match) {
+      score += 0.05
+    }
     if (score < 0) score = 0
     if (score > 1) score = 1
     const status = score >= thresholds.auto ? 'approved' : score >= thresholds.review ? 'pending' : null

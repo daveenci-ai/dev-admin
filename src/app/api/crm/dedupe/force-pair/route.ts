@@ -50,11 +50,9 @@ export async function POST(req: NextRequest) {
     if (score < 0) score = 0
     if (score > 1) score = 1
 
-    const status = score >= thresholds.auto ? 'approved' : score >= thresholds.review ? 'pending' : 'rejected'
+    const status = score >= thresholds.auto ? 'approved' : score >= thresholds.review ? 'pending' : 'pending'
 
-    if (status !== 'rejected') {
-      await upsertCandidate({ id1: a, id2: b, score, reason: 'force-pair', status: status as any })
-    }
+    await upsertCandidate({ id1: a, id2: b, score, reason: 'force-pair', status: status as any })
 
     return NextResponse.json({ id1: a, id2: b, score, status })
   } catch (error) {

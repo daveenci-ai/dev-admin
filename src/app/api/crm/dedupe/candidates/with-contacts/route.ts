@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
       take: 1000,
     })
 
-    const candidates = raw
+    let candidates = raw
       .map((c: any) => ({
         id: Number(c.id),
         id1: Number(c.id1),
@@ -27,6 +27,7 @@ export async function GET(request: NextRequest) {
         createdAt: c.createdAt,
       }))
       .filter((c) => c.status === status && c.score >= minScore)
+      .sort((a, b) => b.score - a.score)
 
     const ids = Array.from(new Set(candidates.flatMap((c) => [c.id1, c.id2])))
     const contacts = await prisma.contact.findMany({
