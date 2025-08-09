@@ -567,7 +567,7 @@ export default function CRMPageComponent() {
                   if (data.done) break
                 }
                 // After normalizing, build candidates for the most recent slice
-                await fetch('/api/crm/dedupe/batch?days=365&limit=500', { method: 'POST' })
+                await fetch('/api/crm/dedupe/batch?days=365&limit=500&recentOnly=false', { method: 'POST' })
                 alert(`Normalized ${total} contacts and rebuilt candidates`)
               } catch (e) {
                 alert('Normalize failed, check logs')

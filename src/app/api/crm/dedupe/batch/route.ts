@@ -11,11 +11,16 @@ export async function POST(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const days = parseInt(searchParams.get('days') || '90')
     const limit = parseInt(searchParams.get('limit') || '300')
+    const recentOnly = (searchParams.get('recentOnly') ?? 'true') !== 'false'
     const since = new Date()
     since.setDate(since.getDate() - days)
 
+    const whereClause = recentOnly
+      ? { updatedAt: { gte: since }, deletedAt: null }
+      : { deletedAt: null }
+
     const contacts = await prisma.contact.findMany({
-      where: { updatedAt: { gte: since }, deletedAt: null },
+      where: whereClause,
       select: {
         id: true,
         name: true,
@@ -30,7 +35,7 @@ export async function POST(request: NextRequest) {
         otherPhones: true,
         lastNameNorm: true,
       },
-      orderBy: { id: 'asc' },
+      orderBy: recentOnly ? { id: 'asc' } : { updatedAt: 'desc' },
       take: limit,
     })
 
