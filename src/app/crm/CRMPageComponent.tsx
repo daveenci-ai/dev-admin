@@ -89,6 +89,8 @@ export default function CRMPageComponent() {
   const [bulkFiles, setBulkFiles] = useState<FileList | null>(null)
   const [dedupePairs, setDedupePairs] = useState<Array<{ id: number; score: number; reason?: string; a: any; b: any }>>([])
   const [isNormalizing, setIsNormalizing] = useState(false)
+  const [forceA, setForceA] = useState('')
+  const [forceB, setForceB] = useState('')
 
   useEffect(() => {
     console.log('[CRM_COMPONENT] useEffect triggered - fetching data')
@@ -1287,6 +1289,40 @@ export default function CRMPageComponent() {
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">Duplicate Candidates</h3>
               <button className="text-gray-500" onClick={() => setShowMergeUI(false)}>Close</button>
+            </div>
+            {/* Force pair tester */}
+            <div className="flex items-center gap-2 mb-3">
+              <input
+                value={forceA}
+                onChange={(e) => setForceA(e.target.value)}
+                placeholder="id1"
+                className="w-24 border rounded px-2 py-1 text-sm"
+              />
+              <span className="text-gray-400">+</span>
+              <input
+                value={forceB}
+                onChange={(e) => setForceB(e.target.value)}
+                placeholder="id2"
+                className="w-24 border rounded px-2 py-1 text-sm"
+              />
+              <button
+                onClick={async () => {
+                  const a = parseInt(forceA)
+                  const b = parseInt(forceB)
+                  if (!a || !b || a === b) return
+                  const res = await fetch('/api/crm/dedupe/force-pair', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id1: a, id2: b })
+                  })
+                  const data = await res.json()
+                  console.log('Force pair', data)
+                  await fetchDedupePairs()
+                }}
+                className="px-2 py-1 bg-gray-800 text-white rounded text-sm"
+              >
+                Test Pair
+              </button>
             </div>
             {dedupePairs.length === 0 ? (
               <p className="text-gray-500">No candidates found.</p>
