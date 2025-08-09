@@ -139,6 +139,8 @@ export default function CRMPageComponent() {
       if (res.ok) {
         const data = await res.json()
         setDedupePairs(data.candidates || [])
+      } else {
+        console.error('Dedupe fetch failed', await res.text())
       }
     } catch (e) {
       console.error('Error fetching dedupe candidates:', e)

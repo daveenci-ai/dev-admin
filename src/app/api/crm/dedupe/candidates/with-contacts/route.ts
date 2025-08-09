@@ -10,20 +10,22 @@ export async function GET(request: NextRequest) {
     const minScore = parseFloat(searchParams.get('minScore') || '0.55')
 
     const raw = await prisma.dedupeCandidate.findMany({
-      where: { status, score: { gte: minScore as any } },
+      // Fetch recent candidates broadly; we'll filter in JS to avoid Decimal quirks
       orderBy: { createdAt: 'desc' },
-      take: 200,
+      take: 1000,
     })
 
-    const candidates = raw.map((c: any) => ({
-      id: Number(c.id),
-      id1: Number(c.id1),
-      id2: Number(c.id2),
-      score: typeof c.score === 'object' && c.score !== null && 'toNumber' in c.score ? (c.score as any).toNumber() : Number(c.score),
-      reason: c.reason,
-      status: c.status,
-      createdAt: c.createdAt,
-    }))
+    const candidates = raw
+      .map((c: any) => ({
+        id: Number(c.id),
+        id1: Number(c.id1),
+        id2: Number(c.id2),
+        score: typeof c.score === 'object' && c.score !== null && 'toNumber' in c.score ? (c.score as any).toNumber() : Number(c.score),
+        reason: c.reason,
+        status: c.status?.toLowerCase?.() || c.status,
+        createdAt: c.createdAt,
+      }))
+      .filter((c) => c.status === status && c.score >= minScore)
 
     const ids = Array.from(new Set(candidates.flatMap((c) => [c.id1, c.id2])))
     const contacts = await prisma.contact.findMany({
