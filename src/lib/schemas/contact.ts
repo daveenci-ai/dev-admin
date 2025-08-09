@@ -6,6 +6,8 @@ export const contactCreateSchema = z.object({
   secondaryEmail: z.string().email().optional().or(z.literal('')),
   primaryPhone: z.string().optional().or(z.literal('')).transform((v) => (v ? v : undefined)),
   secondaryPhone: z.string().optional().or(z.literal('')),
+  otherEmails: z.array(z.string().email()).optional(),
+  otherPhones: z.array(z.string()).optional(),
   company: z.string().optional().or(z.literal('')),
   industry: z.string().optional().or(z.literal('')),
   website: z.string().optional().or(z.literal('')),

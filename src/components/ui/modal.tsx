@@ -259,8 +259,8 @@ export function GenerationWorkflowModal({
         {stage === 'optimizing' && (
           <div className="flex items-center justify-center py-12">
             <div className="text-center">
-              <Loader2 className="h-12 w-12 text-blue-600 animate-spin mx-auto mb-4" />
-              <p className="text-gray-700 font-medium">Analyzing prompt with Gemini AI...</p>
+                <Loader2 className="h-12 w-12 text-blue-600 animate-spin mx-auto mb-4" />
+                <p className="text-gray-700 font-medium">Analyzing prompt with ChatGPT...</p>
               <p className="text-gray-500 text-sm mt-2">Adding trigger words, lighting, and professional settings</p>
             </div>
           </div>

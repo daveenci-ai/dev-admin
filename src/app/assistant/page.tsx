@@ -7,7 +7,7 @@ export default function AssistantPage() {
         <div className="bg-white rounded-lg shadow p-6">
           <h1 className="text-3xl font-bold text-gray-900 mb-4">Smart Assistant</h1>
           <p className="text-gray-600 mb-6">
-            Query your database using natural language powered by Gemini AI
+            Query your database using natural language powered by ChatGPT
           </p>
           
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">

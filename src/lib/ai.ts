@@ -1,9 +1,8 @@
 import logger from '@/lib/logger'
 import { getOpenAIClient, OpenAIModels } from '@/lib/openai'
 
-// We keep the same export names but switch implementation to OpenAI
-// Use CASE key by default for business-card extraction/research
-const openaiCase = () => getOpenAIClient('CASE')
+// Use default OpenAI key for general AI tasks
+const openaiDefault = () => getOpenAIClient('DEFAULT')
 
 interface ImageData {
   data: Buffer;
@@ -39,8 +38,8 @@ async function retryWithBackoff<T>(
       // Calculate delay with exponential backoff and jitter
       const delay = baseDelay * Math.pow(2, attempt) + Math.random() * 1000;
       
-      logger.warn('[Gemini Retry] Attempt failed:', attempt + 1, error.message)
-      logger.debug('[Gemini Retry] Retrying in (ms):', Math.round(delay))
+      logger.warn('[ChatGPT Retry] Attempt failed:', attempt + 1, error.message)
+      logger.debug('[ChatGPT Retry] Retrying in (ms):', Math.round(delay))
       
       await new Promise(resolve => setTimeout(resolve, delay));
     }
@@ -115,7 +114,7 @@ json
       const base64 = imageData.data.toString('base64')
       const dataUrl = `data:${imageData.contentType};base64,${base64}`
       logger.debug('[OpenAI] Sending request (vision) ...');
-      const client = openaiCase()
+      const client = openaiDefault()
       const completion = await client.chat.completions.create({
         model: OpenAIModels.visionPreferred,
         messages: [
@@ -134,7 +133,7 @@ json
       logger.debug('[OpenAI] Received response, parsing JSON...');
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
-        throw new Error('No JSON found in Gemini response');
+        throw new Error('No JSON found in model response');
       }
 
       const extracted = JSON.parse(jsonMatch[0]);
@@ -189,7 +188,7 @@ json
 }
 
 export function validateExtractedData(data: any) {
-  const errors = [];
+  const errors = [] as string[];
   const emailRegex = /^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$/;
 
   if (!data.name || data.name === "Unknown Person") errors.push('Name is required.');
@@ -203,4 +202,6 @@ export function validateExtractedData(data: any) {
     valid: errors.length === 0,
     errors,
   };
-} 
+}
+
+

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { z } from 'zod'
 import { contactCreateSchema } from '@/lib/schemas/contact'
+import { normalizeContact } from '@/lib/normalize'
+import { createDeterministicCandidates, generateCandidatesForContact } from '@/lib/dedupe/worker'
 
 const contactSchema = contactCreateSchema.extend({
   userId: z.number(),
@@ -104,13 +106,52 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const validatedData = contactSchema.parse(body)
 
+    const normalized = normalizeContact({
+      name: validatedData.name,
+      primaryEmail: validatedData.primaryEmail,
+      secondaryEmail: validatedData.secondaryEmail ?? undefined,
+      primaryPhone: validatedData.primaryPhone ?? undefined,
+      secondaryPhone: validatedData.secondaryPhone ?? undefined,
+      company: validatedData.company ?? undefined,
+      website: validatedData.website ?? undefined,
+      address: validatedData.address ?? undefined,
+      otherEmails: Array.isArray((body as any)?.otherEmails) ? (body as any).otherEmails : undefined,
+      otherPhones: Array.isArray((body as any)?.otherPhones) ? (body as any).otherPhones : undefined,
+    })
+
     const contact = await prisma.contact.create({
       data: {
         ...validatedData,
         primaryEmail: validatedData.primaryEmail.toLowerCase(),
         ...(validatedData.secondaryEmail ? { secondaryEmail: validatedData.secondaryEmail.toLowerCase() } : {}),
+        firstNameNorm: normalized.firstNameNorm,
+        lastNameNorm: normalized.lastNameNorm,
+        fullNameNorm: normalized.fullNameNorm,
+        emailNorm: normalized.emailNorm,
+        emailLocal: normalized.emailLocal,
+        emailDomain: normalized.emailDomain,
+        phoneE164: normalized.phoneE164,
+        companyNorm: normalized.companyNorm,
+        websiteRoot: normalized.websiteRoot,
+        addressNorm: normalized.addressNorm,
+        zipNorm: normalized.zipNorm,
+        otherEmails: normalized.otherEmails,
+        otherPhones: normalized.otherPhones,
       }
     })
+
+    // Compute phonetics in DB (requires fuzzystrmatch)
+    if (contact.lastNameNorm) {
+      await prisma.$executeRaw`UPDATE contacts SET soundex_last = soundex(${contact.lastNameNorm}), metaphone_last = metaphone(${contact.lastNameNorm}, 4) WHERE id = ${contact.id}`
+    }
+
+    // Real-time deterministic + fuzzy candidate generation (non-blocking best-effort)
+    try {
+      await createDeterministicCandidates(contact.id)
+      await generateCandidatesForContact(contact.id)
+    } catch (e) {
+      console.error('Dedupe enqueue error:', e)
+    }
 
     return NextResponse.json(contact, { status: 201 })
   } catch (error) {

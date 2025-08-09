@@ -1,0 +1,13 @@
+{
+  "weights": { "email": 0.4, "phone": 0.25, "name": 0.2, "company": 0.1, "address": 0.05 },
+  "thresholds": { "auto": 0.95, "review": 0.8 },
+  "blocks": {
+    "email_domain_first": true,
+    "zip_soundex": true,
+    "website_root": true,
+    "phone_last7": true,
+    "company_prefix6": true
+  },
+  "features": { "autoMergeFuzzy": false, "notADupeSuppression": true }
+}
+

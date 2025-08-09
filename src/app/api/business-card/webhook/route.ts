@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import axios from 'axios';
 import { prisma } from '@/lib/db';
-import { extractBusinessCardData, validateExtractedData } from '@/lib/gemini';
+import { extractBusinessCardData, validateExtractedData } from '@/lib/ai';
 import { sendTelegramNotification, sendTelegramError } from '@/lib/telegram';
 import logger from '@/lib/logger';
 

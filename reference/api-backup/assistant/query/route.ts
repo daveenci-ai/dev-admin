@@ -1,17 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { z } from 'zod'
+import OpenAI from 'openai'
 
 const querySchema = z.object({
   query: z.string().min(1, 'Query is required'),
   context: z.string().optional()
 })
 
-// Helper to convert natural language to SQL using Gemini
+// Helper to convert natural language to SQL using ChatGPT
 async function convertToSQL(naturalQuery: string, context?: string): Promise<{ sql: string; explanation: string }> {
-  const geminiApiKey = process.env.GEMINI_API_KEY
-  if (!geminiApiKey) {
-    throw new Error('Gemini API key not configured')
+  const apiKey = process.env.OPENAI_API_KEY
+  if (!apiKey) {
+    throw new Error('OpenAI API key not configured')
   }
 
   const databaseSchema = `
@@ -52,25 +53,17 @@ async function convertToSQL(naturalQuery: string, context?: string): Promise<{ s
   `
 
   try {
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${geminiApiKey}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        contents: [{
-          parts: [{ text: prompt }]
-        }]
-      })
+    const client = new OpenAI({ apiKey })
+    const completion = await client.chat.completions.create({
+      model: 'chatgpt-5-nano',
+      messages: [
+        { role: 'user', content: prompt }
+      ],
+      temperature: 0
     })
 
-    if (!response.ok) {
-      throw new Error(`Gemini API error: ${response.status}`)
-    }
+    const generatedText = completion.choices?.[0]?.message?.content || ''
 
-    const data = await response.json()
-    const generatedText = data.candidates[0]?.content?.parts[0]?.text || ''
-    
     // Parse the response to extract SQL and explanation
     const sqlMatch = generatedText.match(/SQL:\s*(.+?)(?:\n|EXPLANATION|$)/s)
     const explanationMatch = generatedText.match(/EXPLANATION:\s*(.+?)$/s)
@@ -84,7 +77,7 @@ async function convertToSQL(naturalQuery: string, context?: string): Promise<{ s
 
     return { sql, explanation }
   } catch (error) {
-    console.error('Gemini API error:', error)
+    console.error('OpenAI API error:', error)
     throw new Error('Failed to process natural language query')
   }
 }
@@ -134,7 +127,7 @@ export async function POST(request: NextRequest) {
 
     console.log('Processing natural language query:', query)
 
-    // Convert natural language to SQL using Gemini
+    // Convert natural language to SQL using ChatGPT
     const { sql, explanation } = await convertToSQL(query, context)
     
     console.log('Generated SQL:', sql)

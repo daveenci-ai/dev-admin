@@ -19,16 +19,16 @@ export function getOpenAIClient(useCase: UseCase = 'DEFAULT') {
 }
 
 export const OpenAIModels = {
-  // GPT‑5 family per requirement
-  visionPreferred: 'gpt-5',
-  visionFallback: 'gpt-5-mini',
-  textPreferred: 'gpt-5',
-  textFallback: 'gpt-5-mini',
-  // Per-use-case explicit
-  BLOG_TEXT: 'gpt-5',
-  USE_CASE_TEXT: 'gpt-5',
-  AVATAR_TEXT: 'gpt-5-nano',
-  CHATBOT_TEXT: 'gpt-5-mini',
+  // Standardize on ChatGPT only (no Gemini). Use nano tier by default.
+  visionPreferred: 'chatgpt-5-nano',
+  visionFallback: 'chatgpt-5-nano',
+  textPreferred: 'chatgpt-5-nano',
+  textFallback: 'chatgpt-5-nano',
+  // Per-use-case explicit (all use nano unless overridden explicitly elsewhere)
+  BLOG_TEXT: 'chatgpt-5-nano',
+  USE_CASE_TEXT: 'chatgpt-5-nano',
+  AVATAR_TEXT: 'chatgpt-5-nano',
+  CHATBOT_TEXT: 'chatgpt-5-nano',
 } as const
 
 export function getModelFor(

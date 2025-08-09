@@ -10,6 +10,9 @@
     "postinstall": "prisma generate"
   },
   "dependencies": {
+    "libphonenumber-js": "^1.11.16",
+    "tldts": "^6.1.42",
+    "remove-accents": "^0.4.2",
     "openai": "^4.56.0",
     "@octokit/rest": "^22.0.0",
     "@prisma/client": "^5.22.0",

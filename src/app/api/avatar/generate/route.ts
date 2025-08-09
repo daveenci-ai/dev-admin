@@ -108,7 +108,7 @@ Return ONLY the three prompts in the exact format above, nothing else.
 `
 
   try {
-    logger.debug('Requesting 3 prompt options from OpenAI (gpt-5) ...')
+    logger.debug('Requesting 3 prompt options from OpenAI (chatgpt-5-nano) ...')
     const client = getOpenAIClient('AVATAR')
     const completion = await client.chat.completions.create({
       model: OpenAIModels.AVATAR_TEXT,
@@ -170,8 +170,8 @@ export async function POST(request: NextRequest) {
     const loraVersionId = extractVersionId(avatar.replicateModelUrl)
     logger.debug('Extracted LoRA version ID:', loraVersionId)
 
-    // Step 1: Optimize prompt with OpenAI (gpt-5)
-    logger.info('Optimizing prompt with OpenAI (gpt-5)...')
+    // Step 1: Optimize prompt with OpenAI (chatgpt-5-nano)
+    logger.info('Optimizing prompt with OpenAI (chatgpt-5-nano)...')
     const optimizedPrompts = await optimizePromptWithOpenAI(
       validatedData.prompt,
       avatar.triggerWord,

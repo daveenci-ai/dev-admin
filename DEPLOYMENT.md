@@ -11,7 +11,7 @@ NEXTAUTH_SECRET="your-32-character-secret-key-here"
 
 ### **AI Features (needed for full functionality):**
 ```bash
-GEMINI_API_KEY="your-gemini-api-key"
+OPENAI_API_KEY="your-openai-api-key"
 REPLICATE_API_TOKEN="your-replicate-token"
 ```
 

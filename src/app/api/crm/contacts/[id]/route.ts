@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { normalizeContact } from '@/lib/normalize'
+import { createDeterministicCandidates, generateCandidatesForContact } from '@/lib/dedupe/worker'
 
 export const dynamic = 'force-dynamic'
 
@@ -43,11 +45,37 @@ export async function PUT(
     // Remove fields that shouldn't be updated directly
     const { id, createdAt, updatedAt, touchpoints, ...updateData } = data
 
+    const normalized = normalizeContact({
+      name: data.name,
+      primaryEmail: data.primaryEmail,
+      secondaryEmail: data.secondaryEmail,
+      primaryPhone: data.primaryPhone,
+      secondaryPhone: data.secondaryPhone,
+      company: data.company,
+      website: data.website,
+      address: data.address,
+      otherEmails: data.otherEmails,
+      otherPhones: data.otherPhones,
+    })
+
     const updatedContact = await prisma.contact.update({
       where: { id: contactId },
       data: {
         ...updateData,
-        updatedAt: new Date()
+        updatedAt: new Date(),
+        firstNameNorm: normalized.firstNameNorm,
+        lastNameNorm: normalized.lastNameNorm,
+        fullNameNorm: normalized.fullNameNorm,
+        emailNorm: normalized.emailNorm,
+        emailLocal: normalized.emailLocal,
+        emailDomain: normalized.emailDomain,
+        phoneE164: normalized.phoneE164,
+        companyNorm: normalized.companyNorm,
+        websiteRoot: normalized.websiteRoot,
+        addressNorm: normalized.addressNorm,
+        zipNorm: normalized.zipNorm,
+        otherEmails: normalized.otherEmails,
+        otherPhones: normalized.otherPhones,
       },
       include: {
         touchpoints: {
@@ -55,6 +83,17 @@ export async function PUT(
         }
       }
     })
+
+    if (updatedContact.lastNameNorm) {
+      await prisma.$executeRaw`UPDATE contacts SET soundex_last = soundex(${updatedContact.lastNameNorm}), metaphone_last = metaphone(${updatedContact.lastNameNorm}, 4) WHERE id = ${updatedContact.id}`
+    }
+
+    try {
+      await createDeterministicCandidates(updatedContact.id)
+      await generateCandidatesForContact(updatedContact.id)
+    } catch (e) {
+      console.error('Dedupe enqueue error:', e)
+    }
 
     return NextResponse.json(updatedContact)
   } catch (error) {

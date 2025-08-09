@@ -9,7 +9,7 @@ The primary goal is to create a seamless, backend-only business card scanning pi
 ## 2. Architecture Overview
 
 The final workflow will be:
-`iPhone Shortcut -> GitHub Repo -> dev-admin API Webhook -> Gemini AI -> PostgreSQL Database -> Telegram`
+`iPhone Shortcut -> GitHub Repo -> dev-admin API Webhook -> ChatGPT -> PostgreSQL Database -> Telegram`
 
 ## 3. Implementation Phases
 
@@ -30,20 +30,20 @@ The final workflow will be:
     *   The core processing logic from `serverless-function.js` in the original repository will be ported to the new webhook endpoint.
     *   This includes webhook signature validation for security.
 3.  **Create Helper Services:**
-    *   `src/lib/gemini.ts`: This new file will contain all logic for interacting with the Google Gemini API for both vision-based data extraction and text-based business research.
-    *   `src/lib/telegram.ts`: This new file will handle formatting and sending notifications to the specified Telegram channel.
+    *   `src/lib/ai.ts`: OpenAI (ChatGPT) based service for image-to-text extraction and research.
+    *   `src/lib/telegram.ts`: Handles formatting and sending notifications to the specified Telegram channel.
 4.  **Integrate Prisma Client:**
     *   The database operations (checking for existing contacts, creating new contacts, adding touchpoints) will be updated to use the existing Prisma client instance from `src/lib/db.ts`.
 
 ### Phase 3: Dependencies & Configuration
 
 1.  **Add NPM Packages:**
-    *   I will identify and add any necessary npm packages, such as `@google/generative-ai`, to your `package.json`.
+    *   No Google Gemini packages required. Using existing `openai` client.
 2.  **Update Environment Variables:**
-    *   Your `.env.example` file will be updated to include the new required variables:
+    *   Your `.env.example` file will be updated to include the required variables:
         ```
         # For Business Card Scanner
-        GEMINI_API_KEY=
+        OPENAI_API_KEY=
         GITHUB_WEBHOOK_SECRET=
         TELEGRAM_BOT_TOKEN=
         TELEGRAM_CHAT_ID=

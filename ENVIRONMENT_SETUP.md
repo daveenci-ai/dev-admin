@@ -23,7 +23,7 @@ REPLICATE_API_TOKEN="r_your_replicate_api_token_here"
 REPLICATE_MODEL_VERSION="black-forest-labs/flux-dev-lora"
 ```
 
-### OpenAI Configuration (replaces Gemini)
+### OpenAI Configuration (ChatGPT only)
 ```bash
 # Default key (fallback)
 OPENAI_API_KEY=
@@ -35,8 +35,7 @@ OPENAI_API_KEY_CHATBOT=
 OPENAI_API_KEY_RESEARCH=
 ```
 Models used:
-- Vision: `gpt-4o-mini` (fallback `gpt-4o`)
-- Text optimization: `gpt-4o-mini` (fallback `gpt-4o`)
+- All tasks: `chatgpt-5-nano`
 
 ### GitHub Storage Configuration
 ```bash
@@ -60,11 +59,8 @@ GITHUB_REPO_BUSINESS_CARDS="username/another-repo"
 - Get your API token from account settings
 - Ensure you have access to FLUX-dev-lora model
 
-### 3. Gemini AI Setup ⭐ UPDATED
-- Go to [Google AI Studio](https://makersuite.google.com/app/apikey)
-- Create a new API key
-- **Important**: Enable billing for better quota limits
-- Test your API key before deployment
+### 3. ChatGPT Setup
+- No additional setup beyond setting `OPENAI_API_KEY`
 
 ### 4. GitHub Storage Setup
 - Create a GitHub repository for image storage
@@ -76,7 +72,7 @@ GITHUB_REPO_BUSINESS_CARDS="username/another-repo"
 The new system includes a friendly user choice flow:
 
 1. **User Input** → Avatar selected + 10+ character prompt
-2. **Preview Mode** → Get Gemini optimization without generating images
+2. **Preview Mode** → Get ChatGPT optimization without generating images
 3. **User Choice Modal** → Compare original vs optimized prompt
 4. **Image Generation** → 1-4 images generated with chosen prompt
 5. **PENDING_REVIEW** → Images await user approval
@@ -85,11 +81,11 @@ The new system includes a friendly user choice flow:
 
 ## Recent Fixes (Latest Update)
 
-### ✅ Fixed Issues:
-- **Gemini Model**: Implemented tiered approach - `gemini-2.0-flash-exp` → `gemini-1.5-flash` fallback
+### ✅ Fixed/Updated:
+- **AI Provider**: Gemini removed. Standardized on ChatGPT (`chatgpt-5-nano`).
 - **Number of Images**: Limited to 1-4 instead of 1-8 for better performance  
-- **User Experience**: Replaced system alerts with friendly modal for prompt comparison
-- **Error Handling**: Better fallback when Gemini API is overloaded
+- **User Experience**: Friendly modal for prompt comparison
+- **Error Handling**: Improved fallback when AI API is overloaded
 - **Replicate Parameters**: Fixed parameter formatting issues
 
 ### ✅ New Features:
@@ -102,10 +98,10 @@ The new system includes a friendly user choice flow:
 
 ### Common Issues:
 
-#### Gemini API Issues:
-- **503 Service Unavailable**: Model overloaded, fallback system activated
-- **Quota Exceeded**: Upgrade to paid plan or wait for quota reset
-- **Invalid API Key**: Regenerate key from Google AI Studio
+#### OpenAI API Issues:
+- **429 Too Many Requests**: Rate limit exceeded, implement retry with backoff
+- **401 Unauthorized**: Check `OPENAI_API_KEY`
+- **5xx Errors**: Temporary service issues, retry with backoff
 
 #### Replicate API Issues:
 - **Unprocessable Entity (422)**: Check model version and input parameters
@@ -131,6 +127,6 @@ The new system includes a friendly user choice flow:
 - Consider CDN for GitHub image delivery
 
 ### API Quotas to Monitor:
-- **Gemini**: Daily request limits (upgrade for production)
+- **OpenAI**: Rate limits per tier
 - **Replicate**: Concurrent prediction limits
-- **GitHub**: API rate limits for file uploads 
+- **GitHub**: API rate limits for file uploads

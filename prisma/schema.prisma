@@ -60,11 +60,57 @@ model Contact {
   createdAt          DateTime @default(now()) @map("created_at") @db.Timestamp(3)
   updatedAt          DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(3)
 
+  // Normalized/Derived fields for deduplication
+  firstNameNorm   String?   @map("first_name_norm")
+  lastNameNorm    String?   @map("last_name_norm")
+  fullNameNorm    String?   @map("full_name_norm")
+  emailNorm       String?   @map("email_norm")
+  emailLocal      String?   @map("email_local")
+  emailDomain     String?   @map("email_domain")
+  phoneE164       String?   @map("phone_e164")
+  companyNorm     String?   @map("company_norm")
+  websiteRoot     String?   @map("website_root")
+  addressNorm     String?   @map("address_norm")
+  zipNorm         String?   @map("zip_norm")
+  soundexLast     String?   @map("soundex_last")
+  metaphoneLast   String?   @map("metaphone_last")
+  deletedAt       DateTime? @map("deleted_at") @db.Timestamptz()
+
+  // Multi-channel identity
+  otherEmails     String[]  @default([]) @map("other_emails")
+  otherPhones     String[]  @default([]) @map("other_phones")
+
+  // Company relation (optional)
+  companyId       Int?      @map("company_id")
+
   user        User         @relation(fields: [userId], references: [id])
+  companyRecord Company?    @relation(fields: [companyId], references: [id])
   touchpoints Touchpoint[]
   avatars     Avatar[]
 
   @@map("contacts")
+  @@index([emailNorm], map: "idx_contacts_email_norm")
+  @@index([phoneE164], map: "idx_contacts_phone_e164")
+  @@index([websiteRoot], map: "idx_contacts_website_root")
+  @@index([emailDomain], map: "idx_contacts_email_domain")
+  @@index([zipNorm], map: "idx_contacts_zip_norm")
+}
+
+model Company {
+  id           Int       @id @default(autoincrement())
+  name         String
+  nameNorm     String?   @map("name_norm")
+  website      String?
+  websiteRoot  String?   @map("website_root")
+  domainVerified Boolean? @default(false) @map("domain_verified")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz()
+
+  contacts     Contact[]
+
+  @@map("companies")
+  @@index([websiteRoot], map: "idx_companies_website_root")
+  @@index([nameNorm], map: "idx_companies_name_norm")
 }
 
 model Avatar {
@@ -279,3 +325,44 @@ model UseCase {
 
   @@map("use_cases")
 } 
+
+// Dedupe system tables
+model DedupeCandidate {
+  id          BigInt   @id @default(autoincrement())
+  entityType  String   @default("contact") @map("entity_type")
+  id1         BigInt
+  id2         BigInt
+  score       Decimal  @db.Decimal(5, 3)
+  reason      String?
+  status      String   @default("pending")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz()
+
+  @@unique([entityType, id1, id2], map: "ux_dedupe_candidates_entity_ids")
+  @@map("dedupe_candidates")
+}
+
+model DedupeMerge {
+  id          BigInt   @id @default(autoincrement())
+  entityType  String   @map("entity_type")
+  survivorId  BigInt   @map("survivor_id")
+  mergedId    BigInt   @map("merged_id")
+  score       Decimal? @db.Decimal(5, 3)
+  mode        String
+  performedBy String?  @map("performed_by")
+  details     Json?
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz()
+
+  @@map("dedupe_merges")
+}
+
+model JobQueue {
+  id        BigInt   @id @default(autoincrement())
+  type      String
+  payload   Json
+  status    String   @default("queued")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt DateTime? @map("updated_at") @db.Timestamptz()
+
+  @@index([type, status], map: "idx_job_queue_type_status")
+  @@map("job_queue")
+}
