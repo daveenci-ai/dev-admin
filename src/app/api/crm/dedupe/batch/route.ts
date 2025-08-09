@@ -9,6 +9,7 @@ export async function POST(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const days = parseInt(searchParams.get('days') || '90')
+    const limit = parseInt(searchParams.get('limit') || '300')
     const since = new Date()
     since.setDate(since.getDate() - days)
 
@@ -16,18 +17,17 @@ export async function POST(request: NextRequest) {
       where: { updatedAt: { gte: since }, deletedAt: null },
       select: { id: true },
       orderBy: { id: 'asc' },
-      take: 2000,
+      take: limit,
     })
 
     const cfg = getDedupeConfig()
     const autoEnabled = cfg.features.autoMergeFuzzy
 
-    await Promise.all(
-      contacts.map(async ({ id }) => {
-        await createDeterministicCandidates(id)
-        await generateCandidatesForContact(id)
-      })
-    )
+    // Process sequentially to avoid exhausting DB connection pool on Render
+    for (const { id } of contacts) {
+      await createDeterministicCandidates(id)
+      await generateCandidatesForContact(id)
+    }
 
     if (autoEnabled) {
       // Process approved
