@@ -28,7 +28,9 @@ export function Navigation() {
   const { data: session } = useSession()
 
   const handleLogout = () => {
-    signOut({ callbackUrl: '/auth/login' })
+    const origin = typeof window !== 'undefined' ? window.location.origin : ''
+    const callbackUrl = origin ? `${origin}/auth/login` : '/auth/login'
+    signOut({ callbackUrl })
   }
 
   return (
