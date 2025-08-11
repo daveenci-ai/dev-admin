@@ -38,6 +38,19 @@ async function runSqlFile(file) {
   }
 }
 
+async function runSqlFileWhole(file) {
+  const sql = readSql(file)
+  try {
+    await prisma.$executeRawUnsafe(sql)
+  } catch (e) {
+    const msg = String(e?.message || e)
+    if (/already exists/i.test(msg) || /duplicate/i.test(msg) || /exists/i.test(msg)) {
+      return
+    }
+    throw e
+  }
+}
+
 async function main() {
   if (!process.env.DATABASE_URL) {
     console.error('DATABASE_URL is required')
@@ -46,8 +59,8 @@ async function main() {
   console.log('Applying dedupe schema (extensions/tables/indexes)...')
   await runSqlFile('create_dedupe_schema.sql')
   await runSqlFile('create_dedupe_extensions_and_indexes.sql')
-  // Create or replace SQL functions (scorer)
-  await runSqlFile('src/lib/sql/score_pair.sql')
+  // Create or replace SQL functions (scorer) – execute whole to preserve dollar-quoting
+  await runSqlFileWhole('src/lib/sql/score_pair.sql')
   console.log('Dedupe schema ensured')
 }
 
