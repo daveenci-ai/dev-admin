@@ -89,6 +89,7 @@ export default function CRMPageComponent() {
   const [bulkFiles, setBulkFiles] = useState<FileList | null>(null)
   const [dedupePairs, setDedupePairs] = useState<Array<{ id: number; score: number; reason?: string; a: any; b: any }>>([])
   const [isNormalizing, setIsNormalizing] = useState(false)
+  const [isProcessingDedupe, setIsProcessingDedupe] = useState(false)
   const [forceA, setForceA] = useState('')
   const [forceB, setForceB] = useState('')
 
@@ -135,19 +136,30 @@ export default function CRMPageComponent() {
 
   const fetchDedupePairs = async () => {
     try {
-      // Run a batch rebuild without limit; show blocking overlay while processing
-      setIsNormalizing(true)
-      await fetch('/api/crm/dedupe/batch?days=365', { method: 'POST' })
       const res = await fetch('/api/crm/dedupe/candidates/with-contacts')
       if (res.ok) {
         const data = await res.json()
-        setDedupePairs(data.candidates || [])
+        const list = (data.candidates || []).sort((a: any, b: any) => Number(b.score) - Number(a.score))
+        setDedupePairs(list)
       } else {
         console.error('Dedupe fetch failed', await res.text())
       }
-      setIsNormalizing(false)
     } catch (e) {
       console.error('Error fetching dedupe candidates:', e)
+    }
+  }
+
+  const runFindDuplicates = async () => {
+    try {
+      setShowMergeUI(true)
+      setIsProcessingDedupe(true)
+      // Full rebuild across all records (server will chunk internally)
+      await fetch('/api/crm/dedupe/batch?days=365', { method: 'POST' })
+      await fetchDedupePairs()
+    } catch (e) {
+      console.error('Find Duplicates failed:', e)
+    } finally {
+      setIsProcessingDedupe(false)
     }
   }
 
@@ -568,33 +580,7 @@ export default function CRMPageComponent() {
         <div className="hidden md:flex gap-2">
           <button onClick={() => setShowNewContact(true)} className="px-3 py-1.5 bg-emerald-600 text-white rounded text-sm">New Contact</button>
           <button onClick={() => setShowBulkImport(true)} className="px-3 py-1.5 bg-orange-600 text-white rounded text-sm">Bulk Import</button>
-          <button onClick={() => { fetchDedupePairs(); setShowMergeUI(true); }} className="px-3 py-1.5 bg-purple-600 text-white rounded text-sm">Find Duplicates</button>
-          <button
-            onClick={async () => {
-              try {
-                setIsNormalizing(true)
-                let afterId = 0
-                let total = 0
-                for (let i = 0; i < 20; i++) { // up to ~10k rows in 500-size chunks
-                  const res = await fetch(`/api/crm/dedupe/normalize-all?limit=500&afterId=${afterId}`, { method: 'POST' })
-                  const data = await res.json()
-                  total += data.processed || 0
-                  if (data.afterId) afterId = data.afterId
-                  if (data.done) break
-                }
-                // After normalizing, build candidates for the most recent slice
-                await fetch('/api/crm/dedupe/batch?days=365&limit=500&recentOnly=false', { method: 'POST' })
-                alert(`Normalized ${total} contacts and rebuilt candidates`)
-              } catch (e) {
-                alert('Normalize failed, check logs')
-              } finally {
-                setIsNormalizing(false)
-              }
-            }}
-            className="px-3 py-1.5 bg-gray-700 text-white rounded text-sm"
-          >
-            Normalize All
-          </button>
+          <button onClick={runFindDuplicates} className="px-3 py-1.5 bg-purple-600 text-white rounded text-sm">Find Duplicates</button>
         </div>
       </PageHeader>
 
@@ -1299,59 +1285,37 @@ export default function CRMPageComponent() {
       {showMergeUI && (
         <div className="fixed inset-0 z-40">
           <div className="absolute inset-0 bg-black/40" onClick={() => setShowMergeUI(false)} />
-          <div className="absolute right-0 top-0 h-full w-[680px] bg-white shadow-xl p-6 overflow-y-auto">
+          <div className="absolute right-0 top-0 h-full w-full bg-white shadow-xl p-6 overflow-y-auto transform transition-transform duration-300 ease-in-out">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">Duplicate Candidates</h3>
               <button className="text-gray-500" onClick={() => setShowMergeUI(false)}>Close</button>
             </div>
-            {/* Force pair tester */}
-            <div className="flex items-center gap-2 mb-3">
-              <input
-                value={forceA}
-                onChange={(e) => setForceA(e.target.value)}
-                placeholder="id1"
-                className="w-24 border rounded px-2 py-1 text-sm"
-              />
-              <span className="text-gray-400">+</span>
-              <input
-                value={forceB}
-                onChange={(e) => setForceB(e.target.value)}
-                placeholder="id2"
-                className="w-24 border rounded px-2 py-1 text-sm"
-              />
-              <button
-                onClick={async () => {
-                  const a = parseInt(forceA)
-                  const b = parseInt(forceB)
-                  if (!a || !b || a === b) return
-                  const res = await fetch('/api/crm/dedupe/force-pair', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id1: a, id2: b })
-                  })
-                  if (!res.ok) {
-                    const text = await res.text()
-                    alert('Force pair failed: ' + text)
-                    return
-                  }
-                  const data = await res.json()
-                  alert(`Pair scored ${data.score?.toFixed?.(3) ?? data.score} (status: ${data.status})`)
-                  await refreshPairsOnly()
-                }}
-                className="px-2 py-1 bg-gray-800 text-white rounded text-sm"
-              >
-                Test Pair
-              </button>
-            </div>
-            {dedupePairs.length === 0 ? (
+
+            {isProcessingDedupe ? (
+              <div className="h-[70vh] flex flex-col items-center justify-center">
+                <div className="text-gray-700 mb-4">Building duplicate candidates across all records. Please wait…</div>
+                <div className="w-2/3 h-2 bg-gray-200 rounded overflow-hidden">
+                  <div className="h-full w-1/3 bg-purple-600 animate-pulse"></div>
+                </div>
+              </div>
+            ) : dedupePairs.length === 0 ? (
               <p className="text-gray-500">No candidates found.</p>
             ) : (
               <div className="space-y-4">
                 {dedupePairs.map((c) => (
-                  <div key={c.id} className="border rounded-md p-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="text-sm text-gray-600">Score: <span className="font-semibold">{c.score.toFixed(3)}</span>{c.reason ? ` • ${c.reason}` : ''}</div>
-                      <div className="flex gap-2">
+                  <div key={c.id} className="border rounded-md p-4">
+                    <div className="text-sm text-gray-600 mb-3">Score: <span className="font-semibold">{c.score.toFixed(3)}</span>{c.reason ? ` • ${c.reason}` : ''}</div>
+                    <div className="grid grid-cols-3 gap-4 items-stretch">
+                      {/* Left */}
+                      <div className="border rounded p-3">
+                        <div className="font-medium">{c.a?.name || '-'}</div>
+                        <div className="text-sm text-gray-600 break-all">{c.a?.primaryEmail || '-'}</div>
+                        <div className="text-sm text-gray-600">{c.a?.primaryPhone || '-'}</div>
+                        <div className="text-sm text-gray-600">{c.a?.company || '-'}</div>
+                      </div>
+
+                      {/* Middle actions */}
+                      <div className="flex flex-col items-center justify-center gap-3">
                         <button
                           onClick={async () => {
                             const res = await fetch(`/api/crm/dedupe/${c.id}/merge`, { method: 'POST' })
@@ -1360,7 +1324,7 @@ export default function CRMPageComponent() {
                               await fetchContacts()
                             }
                           }}
-                          className="px-3 py-1.5 bg-purple-600 text-white rounded text-sm hover:bg-purple-700"
+                          className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700"
                         >
                           Merge
                         </button>
@@ -1371,22 +1335,19 @@ export default function CRMPageComponent() {
                               await fetchDedupePairs()
                             }
                           }}
-                          className="px-3 py-1.5 bg-gray-200 text-gray-800 rounded text-sm hover:bg-gray-300"
+                          className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
                         >
-                          Reject
+                          Cancel
                         </button>
                       </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      {[c.a, c.b].map((m: any, idx: number) => (
-                        <div key={idx} className="border rounded p-2">
-                          <div className="font-medium text-sm">{m?.name || '-'}</div>
-                          <div className="text-xs text-gray-500 break-all">{m?.primaryEmail || '-'}</div>
-                          <div className="text-xs text-gray-500">{m?.primaryPhone || '-'}</div>
-                          <div className="text-xs text-gray-500">{m?.company || '-'}</div>
-                          <div className="text-xs text-gray-400">Added {m?.createdAt ? format(new Date(m.createdAt), 'MMM d, yyyy') : '-'}</div>
-                        </div>
-                      ))}
+
+                      {/* Right */}
+                      <div className="border rounded p-3">
+                        <div className="font-medium">{c.b?.name || '-'}</div>
+                        <div className="text-sm text-gray-600 break-all">{c.b?.primaryEmail || '-'}</div>
+                        <div className="text-sm text-gray-600">{c.b?.primaryPhone || '-'}</div>
+                        <div className="text-sm text-gray-600">{c.b?.company || '-'}</div>
+                      </div>
                     </div>
                   </div>
                 ))}
