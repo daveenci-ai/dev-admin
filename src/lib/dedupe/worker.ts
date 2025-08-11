@@ -129,8 +129,9 @@ export async function generateCandidatesForContact(contactId: number) {
     const companySim = r.company_sim ?? 0
     const addressSim = r.address_sim ?? 0
     let score = w.email * emailSim + w.phone * phoneEq + w.name * nameSim + w.company * companySim + w.address * addressSim
+    const isNameExact = !!r.name_exact
     // Conservative baseline boost for exact same full name
-    if (r.name_exact) {
+    if (isNameExact) {
       score += 0.35
     }
     if (r.metaphone_match) {
@@ -138,9 +139,14 @@ export async function generateCandidatesForContact(contactId: number) {
     }
     if (score < 0) score = 0
     if (score > 1) score = 1
-    const status = score >= thresholds.auto ? 'approved' : score >= thresholds.review ? 'pending' : (r.name_exact ? 'pending' : null)
+    // Ensure exact-name pairs at least meet review threshold to be visible in UI
+    if (isNameExact && score < thresholds.review) {
+      score = thresholds.review
+    }
+    const status = score >= thresholds.auto ? 'approved' : score >= thresholds.review ? 'pending' : null
     if (!status) continue
-    await upsertCandidate({ id1: contactId, id2: r.candidate_id, score, reason: 'block+score', status })
+    const reason = isNameExact ? 'name_exact' : 'block+score'
+    await upsertCandidate({ id1: contactId, id2: r.candidate_id, score, reason, status })
   }
 }
 
