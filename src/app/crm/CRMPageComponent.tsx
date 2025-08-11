@@ -1301,56 +1301,72 @@ export default function CRMPageComponent() {
             ) : dedupePairs.length === 0 ? (
               <p className="text-gray-500">No candidates found.</p>
             ) : (
-              <div className="space-y-4">
-                {dedupePairs.map((c) => (
-                  <div key={c.id} className="border rounded-md p-4">
-                    <div className="text-sm text-gray-600 mb-3">Score: <span className="font-semibold">{c.score.toFixed(3)}</span>{c.reason ? ` • ${c.reason}` : ''}</div>
-                    <div className="grid grid-cols-3 gap-4 items-stretch">
-                      {/* Left */}
-                      <div className="border rounded p-3">
-                        <div className="font-medium">{c.a?.name || '-'}</div>
-                        <div className="text-sm text-gray-600 break-all">{c.a?.primaryEmail || '-'}</div>
-                        <div className="text-sm text-gray-600">{c.a?.primaryPhone || '-'}</div>
-                        <div className="text-sm text-gray-600">{c.a?.company || '-'}</div>
-                      </div>
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm border border-gray-200">
+                  <thead>
+                    <tr className="bg-gray-50 text-gray-700">
+                      <th className="px-3 py-2 text-left w-1/3">Left</th>
+                      <th className="px-3 py-2 text-center w-1/3">Actions</th>
+                      <th className="px-3 py-2 text-left w-1/3">Right</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {dedupePairs.map((c) => (
+                      <tr key={c.id} className="align-top">
+                        {/* Left summary */}
+                        <td className="px-3 py-3">
+                          <div className="font-medium text-gray-900">{c.a?.name || '-'}</div>
+                          <div className="text-gray-600 break-all">{c.a?.primaryEmail || '-'}</div>
+                          <div className="text-gray-600">{c.a?.primaryPhone || '-'}</div>
+                          <div className="text-gray-600">{c.a?.company || '-'}</div>
+                          <div className="text-xs text-gray-400 mt-1">{c.a?.createdAt ? `Added ${format(new Date(c.a.createdAt), 'MMM d, yyyy')}` : ''}</div>
+                        </td>
 
-                      {/* Middle actions */}
-                      <div className="flex flex-col items-center justify-center gap-3">
-                        <button
-                          onClick={async () => {
-                            const res = await fetch(`/api/crm/dedupe/${c.id}/merge`, { method: 'POST' })
-                            if (res.ok) {
-                              await fetchDedupePairs()
-                              await fetchContacts()
-                            }
-                          }}
-                          className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700"
-                        >
-                          Merge
-                        </button>
-                        <button
-                          onClick={async () => {
-                            const res = await fetch(`/api/crm/dedupe/${c.id}/reject`, { method: 'POST' })
-                            if (res.ok) {
-                              await fetchDedupePairs()
-                            }
-                          }}
-                          className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
-                        >
-                          Cancel
-                        </button>
-                      </div>
+                        {/* Actions with score centered */}
+                        <td className="px-3 py-3 text-center">
+                          <div className="inline-flex items-center gap-3">
+                            <button
+                              onClick={async () => {
+                                const res = await fetch(`/api/crm/dedupe/${c.id}/merge`, { method: 'POST' })
+                                if (res.ok) {
+                                  await fetchDedupePairs()
+                                  await fetchContacts()
+                                }
+                              }}
+                              className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700"
+                            >
+                              Merge
+                            </button>
+                            <span className="text-gray-700 font-semibold">{c.score.toFixed(3)}</span>
+                            <button
+                              onClick={async () => {
+                                const res = await fetch(`/api/crm/dedupe/${c.id}/reject`, { method: 'POST' })
+                                if (res.ok) {
+                                  await fetchDedupePairs()
+                                }
+                              }}
+                              className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                          {c.reason && (
+                            <div className="text-xs text-gray-500 mt-2">{c.reason}</div>
+                          )}
+                        </td>
 
-                      {/* Right */}
-                      <div className="border rounded p-3">
-                        <div className="font-medium">{c.b?.name || '-'}</div>
-                        <div className="text-sm text-gray-600 break-all">{c.b?.primaryEmail || '-'}</div>
-                        <div className="text-sm text-gray-600">{c.b?.primaryPhone || '-'}</div>
-                        <div className="text-sm text-gray-600">{c.b?.company || '-'}</div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                        {/* Right summary */}
+                        <td className="px-3 py-3">
+                          <div className="font-medium text-gray-900">{c.b?.name || '-'}</div>
+                          <div className="text-gray-600 break-all">{c.b?.primaryEmail || '-'}</div>
+                          <div className="text-gray-600">{c.b?.primaryPhone || '-'}</div>
+                          <div className="text-gray-600">{c.b?.company || '-'}</div>
+                          <div className="text-xs text-gray-400 mt-1">{c.b?.createdAt ? `Added ${format(new Date(c.b.createdAt), 'MMM d, yyyy')}` : ''}</div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>
