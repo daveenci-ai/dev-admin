@@ -55,7 +55,8 @@ SELECT
   similarity(coalesce(a2.full_name_norm, a2.name_norm_fb), coalesce(b2.full_name_norm, b2.name_norm_fb)) AS name_sim,
   (CASE WHEN dmetaphone(coalesce(a2.last_name_norm, a2.last_name_norm_calc, '')) = dmetaphone(coalesce(b2.last_name_norm, b2.last_name_norm_calc, '')) THEN 1 ELSE 0 END) AS metaphone_match,
   similarity(coalesce(a2.company_norm, lower(unaccent(coalesce(a2.company,'')))), coalesce(b2.company_norm, lower(unaccent(coalesce(b2.company,''))))) AS company_sim,
-  similarity(coalesce(a2.address_norm, lower(unaccent(coalesce(a2.address,'')))), coalesce(b2.address_norm, lower(unaccent(coalesce(b2.address,''))))) AS address_sim;
+  similarity(coalesce(a2.address_norm, lower(unaccent(coalesce(a2.address,'')))), coalesce(b2.address_norm, lower(unaccent(coalesce(b2.address,''))))) AS address_sim
+FROM a2, b2;
 $$;
 
 
