@@ -25,8 +25,7 @@ WITH a AS (
       CASE WHEN email_domain_raw IN ('gmail.com','googlemail.com') THEN replace(email_local_raw,'.','') ELSE email_local_raw END,
       '\\+.*$',''
     ) AS email_local_norm,
-    email_domain_raw AS email_domain_norm,
-    last_name_norm_calc
+    email_domain_raw AS email_domain_norm
   FROM a
 ), b AS (
   SELECT c.*,
@@ -41,23 +40,22 @@ WITH a AS (
       CASE WHEN email_domain_raw IN ('gmail.com','googlemail.com') THEN replace(email_local_raw,'.','') ELSE email_local_raw END,
       '\\+.*$',''
     ) AS email_local_norm,
-    email_domain_raw AS email_domain_norm,
-    last_name_norm_calc
+    email_domain_raw AS email_domain_norm
   FROM b
 )
 SELECT
   -- final weighted score assembled by caller; here we only compute primitives
   NULL::NUMERIC AS score,
   GREATEST(
-    similarity(coalesce((SELECT email_norm FROM a2), (SELECT email_local_norm||'@'||email_domain_norm FROM a2)),
-              coalesce((SELECT email_norm FROM b2), (SELECT email_local_norm||'@'||email_domain_norm FROM b2))),
-    similarity((SELECT email_local_norm FROM a2), (SELECT email_local_norm FROM b2))
+    similarity(coalesce(a2.email_norm, a2.email_local_norm||'@'||a2.email_domain_norm),
+               coalesce(b2.email_norm, b2.email_local_norm||'@'||b2.email_domain_norm)),
+    similarity(a2.email_local_norm, b2.email_local_norm)
   ) AS email_sim,
-  (CASE WHEN right(coalesce((SELECT phone_e164 FROM a2), (SELECT primary_phone FROM a2)),7) = right(coalesce((SELECT phone_e164 FROM b2),(SELECT primary_phone FROM b2)),7) AND right(coalesce((SELECT phone_e164 FROM a2), (SELECT primary_phone FROM a2)),7) <> '' THEN 1.0 ELSE 0.0 END) AS phone_equal,
-  similarity(coalesce((SELECT full_name_norm FROM a2),(SELECT name_norm_fb FROM a2)), coalesce((SELECT full_name_norm FROM b2),(SELECT name_norm_fb FROM b2))) AS name_sim,
-  (CASE WHEN dmetaphone(coalesce((SELECT last_name_norm FROM a2), (SELECT last_name_norm_calc FROM a2), '')) = dmetaphone(coalesce((SELECT last_name_norm FROM b2), (SELECT last_name_norm_calc FROM b2), '')) THEN 1 ELSE 0 END) AS metaphone_match,
-  similarity(coalesce((SELECT company_norm FROM a2), lower(unaccent(coalesce((SELECT company FROM a2),''))) ), coalesce((SELECT company_norm FROM b2), lower(unaccent(coalesce((SELECT company FROM b2),''))))) AS company_sim,
-  similarity(coalesce((SELECT address_norm FROM a2), lower(unaccent(coalesce((SELECT address FROM a2),''))) ), coalesce((SELECT address_norm FROM b2), lower(unaccent(coalesce((SELECT address FROM b2),''))))) AS address_sim;
+  (CASE WHEN right(coalesce(a2.phone_e164, a2.primary_phone, ''),7) = right(coalesce(b2.phone_e164, b2.primary_phone, ''),7) AND right(coalesce(a2.phone_e164, a2.primary_phone, ''),7) <> '' THEN 1.0 ELSE 0.0 END) AS phone_equal,
+  similarity(coalesce(a2.full_name_norm, a2.name_norm_fb), coalesce(b2.full_name_norm, b2.name_norm_fb)) AS name_sim,
+  (CASE WHEN dmetaphone(coalesce(a2.last_name_norm, a2.last_name_norm_calc, '')) = dmetaphone(coalesce(b2.last_name_norm, b2.last_name_norm_calc, '')) THEN 1 ELSE 0 END) AS metaphone_match,
+  similarity(coalesce(a2.company_norm, lower(unaccent(coalesce(a2.company,'')))), coalesce(b2.company_norm, lower(unaccent(coalesce(b2.company,''))))) AS company_sim,
+  similarity(coalesce(a2.address_norm, lower(unaccent(coalesce(a2.address,'')))), coalesce(b2.address_norm, lower(unaccent(coalesce(b2.address,''))))) AS address_sim;
 $$;
 
 
