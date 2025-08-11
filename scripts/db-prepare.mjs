@@ -46,6 +46,8 @@ async function main() {
   console.log('Applying dedupe schema (extensions/tables/indexes)...')
   await runSqlFile('create_dedupe_schema.sql')
   await runSqlFile('create_dedupe_extensions_and_indexes.sql')
+  // Create or replace SQL functions (scorer)
+  await runSqlFile('src/lib/sql/score_pair.sql')
   console.log('Dedupe schema ensured')
 }
 
