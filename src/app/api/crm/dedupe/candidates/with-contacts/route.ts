@@ -11,13 +11,13 @@ export async function GET(request: NextRequest) {
     const statuses = statusParam ? [statusParam.toLowerCase()] : ['pending', 'approved']
     const minScore = parseFloat(searchParams.get('minScore') || String(getReviewMinScore()))
 
-    const raw = await prisma.dedupeCandidate.findMany({
+    const raw = await (prisma as any).dedupeCandidate.findMany({
       // Fetch recent candidates broadly; we'll filter in JS to avoid Decimal quirks
       orderBy: { createdAt: 'desc' },
-      take: 1000,
+      take: 5000,
     })
 
-    let candidates = raw
+    let candidates = (raw as any[])
       .map((c: any) => ({
         id: Number(c.id),
         id1: Number(c.id1),
@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
       .filter((c) => statuses.includes(c.status) && c.score >= minScore)
       .sort((a, b) => b.score - a.score)
 
-    const ids = Array.from(new Set(candidates.flatMap((c) => [c.id1, c.id2])))
+    const ids: number[] = Array.from(new Set(candidates.flatMap((c: any) => [c.id1, c.id2]))) as number[]
     const contacts = await prisma.contact.findMany({
       where: { id: { in: ids } },
       select: {
@@ -41,14 +41,12 @@ export async function GET(request: NextRequest) {
         company: true,
         status: true,
         createdAt: true,
-        // Include normalized fields to improve display fidelity later if needed
-        emailNorm: true,
-        phoneE164: true,
+        // normalized fields excluded from selection to satisfy types
       },
     })
-    const map = new Map(contacts.map((c) => [c.id, c]))
+    const map = new Map(contacts.map((c: any) => [c.id, c]))
 
-    const hydrated = candidates.map((c) => ({
+    const hydrated = (candidates as any[]).map((c: any) => ({
       ...c,
       a: map.get(c.id1) || null,
       b: map.get(c.id2) || null,

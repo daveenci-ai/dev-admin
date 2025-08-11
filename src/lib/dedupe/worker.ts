@@ -96,6 +96,8 @@ export async function generateCandidatesForContact(contactId: number) {
         OR (b.phone_e164 IS NOT NULL AND right(o.phone_e164, 7) = right(b.phone_e164, 7))
         -- company prefix6
         OR (b.company_norm IS NOT NULL AND left(o.company_norm, 6) = left(b.company_norm, 6))
+        -- exact same normalized full name (catch simple matches)
+        OR (b.full_name_norm IS NOT NULL AND o.full_name_norm = b.full_name_norm)
         -- name prefix + metaphone match
         OR (b.full_name_norm IS NOT NULL AND o.full_name_norm IS NOT NULL AND left(b.full_name_norm,3) = left(o.full_name_norm,3) AND b.metaphone_last IS NOT NULL AND o.metaphone_last = b.metaphone_last)
       )
@@ -129,14 +131,14 @@ export async function generateCandidatesForContact(contactId: number) {
     let score = w.email * emailSim + w.phone * phoneEq + w.name * nameSim + w.company * companySim + w.address * addressSim
     // Conservative baseline boost for exact same full name
     if (r.name_exact) {
-      score += 0.25
+      score += 0.35
     }
     if (r.metaphone_match) {
       score += 0.05
     }
     if (score < 0) score = 0
     if (score > 1) score = 1
-    const status = score >= thresholds.auto ? 'approved' : score >= thresholds.review ? 'pending' : null
+    const status = score >= thresholds.auto ? 'approved' : score >= thresholds.review ? 'pending' : (r.name_exact ? 'pending' : null)
     if (!status) continue
     await upsertCandidate({ id1: contactId, id2: r.candidate_id, score, reason: 'block+score', status })
   }

@@ -1287,7 +1287,28 @@ export default function CRMPageComponent() {
           <div className="absolute inset-0 bg-black/40" onClick={() => setShowMergeUI(false)} />
           <div className="absolute right-0 top-0 h-full w-full bg-white shadow-xl p-6 overflow-y-auto transform transition-transform duration-300 ease-in-out">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Duplicate Candidates</h3>
+              <div className="flex items-center gap-3">
+                <h3 className="text-lg font-semibold">Duplicate Candidates</h3>
+                <input
+                  type="text"
+                  placeholder="Search name/email/phone/company"
+                  className="border rounded px-3 py-1.5 text-sm w-80"
+                  onChange={(e) => {
+                    const q = e.target.value.toLowerCase()
+                    if (!q) {
+                      fetchDedupePairs()
+                      return
+                    }
+                    setDedupePairs((prev) => prev.filter((c: any) => {
+                      const hay = [c.a?.name, c.a?.primaryEmail, c.a?.primaryPhone, c.a?.company, c.b?.name, c.b?.primaryEmail, c.b?.primaryPhone, c.b?.company]
+                        .filter(Boolean)
+                        .join(' ') 
+                        .toLowerCase()
+                      return hay.includes(q)
+                    }))
+                  }}
+                />
+              </div>
               <button className="text-gray-500" onClick={() => setShowMergeUI(false)}>Close</button>
             </div>
 
