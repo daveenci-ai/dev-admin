@@ -154,7 +154,7 @@ export default function CRMPageComponent() {
       setShowMergeUI(true)
       setIsProcessingDedupe(true)
       // Full rebuild across all records (server will chunk internally)
-      await fetch('/api/crm/dedupe/batch?days=365', { method: 'POST' })
+      await fetch('/api/crm/dedupe/batch?days=365&recentOnly=false', { method: 'POST' })
       await fetchDedupePairs()
     } catch (e) {
       console.error('Find Duplicates failed:', e)

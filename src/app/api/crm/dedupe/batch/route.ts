@@ -14,7 +14,11 @@ export async function POST(request: NextRequest) {
     const unlimited = !limitParam
     const limit = unlimited ? 0 : parseInt(limitParam as string)
     const chunkSize = parseInt(searchParams.get('chunk') || '500')
-    const recentOnly = (searchParams.get('recentOnly') ?? 'true') !== 'false'
+    // When running an unlimited rebuild (no limit param), default to scanning all records unless explicitly overridden
+    const recentOnlyParam = searchParams.get('recentOnly')
+    const recentOnly = recentOnlyParam != null
+      ? recentOnlyParam !== 'false'
+      : (unlimited ? false : true)
     const since = new Date()
     since.setDate(since.getDate() - days)
 
