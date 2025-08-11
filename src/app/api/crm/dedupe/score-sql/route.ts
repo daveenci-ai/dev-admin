@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
     const b = Number(id2)
     if (!a || !b || a === b) return NextResponse.json({ error: 'Provide distinct id1 and id2' }, { status: 400 })
 
-    const row: any = await prisma.$queryRaw`SELECT * FROM score_pair(${a}, ${b})`
+    const row: any = await prisma.$queryRaw`SELECT * FROM score_pair(${a}::int, ${b}::int)`
     const cfg = getDedupeConfig()
     const w = cfg.weights
     const nameSimBase = Number(row?.name_sim ?? 0)

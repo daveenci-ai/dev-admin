@@ -78,15 +78,21 @@ export const authOptions: NextAuthOptions = {
       return session
     },
     async redirect({ url, baseUrl }) {
-      // Always prefer current host origin for redirects
+      // Enforce admin domain for auth routes
       try {
         const target = new URL(url, baseUrl)
+        const pathname = target.pathname || ''
+        if (pathname.startsWith('/auth/')) {
+          const adminBase = 'https://admin.daveenci.ai'
+          return adminBase + pathname + target.search + target.hash
+        }
+        // Otherwise keep same-origin redirects
         if (target.origin !== baseUrl) {
-          return baseUrl + target.pathname + target.search + target.hash
+          return baseUrl + pathname + target.search + target.hash
         }
         return target.toString()
       } catch {
-        return baseUrl
+        return 'https://admin.daveenci.ai/auth/login'
       }
     }
   },

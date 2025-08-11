@@ -28,9 +28,7 @@ export function Navigation() {
   const { data: session } = useSession()
 
   const handleLogout = () => {
-    const origin = typeof window !== 'undefined' ? window.location.origin : ''
-    const callbackUrl = origin ? `${origin}/auth/login` : '/auth/login'
-    signOut({ callbackUrl })
+    signOut({ callbackUrl: 'https://admin.daveenci.ai/auth/login' })
   }
 
   return (
