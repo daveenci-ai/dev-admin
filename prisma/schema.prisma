@@ -371,6 +371,7 @@ model ContentSetting {
   id           Int       @id @default(autoincrement())
   kind         String    @db.VarChar(20) // 'BLOG' | 'USE_CASE'
   instructions String?
+  config       Json?     @default("{}")
   frequency    String?   @default("weekly") @db.VarChar(20) // 'off' | 'weekly' | 'biweekly'
   dayOfWeek    Int?      @default(1) // 0=Sunday ... 6=Saturday
   timeLocal    String?   @default("10:00") @map("time_local") @db.VarChar(10)

@@ -4,6 +4,17 @@ import { prisma } from '@/lib/db'
 
 const bodySchema = z.object({
   instructions: z.string().optional(),
+  // structured config inspired by website repo automation
+  config: z
+    .object({
+      category: z.string().optional(),
+      tone: z.string().optional(),
+      audience: z.string().optional(),
+      keywords: z.array(z.string()).optional(),
+      outline: z.array(z.string()).optional(),
+      guidelines: z.string().optional(),
+    })
+    .optional(),
   // optional scheduling controls
   enabled: z.boolean().optional(),
   frequency: z.enum(['off', 'weekly', 'biweekly']).optional(),
@@ -27,6 +38,7 @@ export async function POST(req: NextRequest) {
       create: {
         kind: 'BLOG',
         instructions: data.instructions ?? existing?.instructions ?? null,
+        config: (data.config as any) ?? existing?.config ?? {},
         enabled: data.enabled ?? existing?.enabled ?? true,
         frequency: (data.frequency ?? existing?.frequency ?? 'weekly') as any,
         dayOfWeek: data.dayOfWeek ?? existing?.dayOfWeek ?? 1,
@@ -35,13 +47,14 @@ export async function POST(req: NextRequest) {
       },
       update: {
         instructions: data.instructions ?? undefined,
+        config: (data.config as any) ?? undefined,
         enabled: data.enabled ?? undefined,
         frequency: (data.frequency as any) ?? undefined,
         dayOfWeek: data.dayOfWeek ?? undefined,
         timeLocal: data.timeLocal ?? undefined,
         timezone: data.timezone ?? undefined,
       },
-      select: { kind: true, instructions: true, enabled: true, frequency: true, dayOfWeek: true, timeLocal: true, timezone: true },
+      select: { kind: true, instructions: true, config: true, enabled: true, frequency: true, dayOfWeek: true, timeLocal: true, timezone: true },
     })
     return NextResponse.json({ ok: true, setting })
   } catch (e: any) {
