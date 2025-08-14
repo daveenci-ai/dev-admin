@@ -121,6 +121,14 @@ export default function BlogPage() {
 	const [keywords, setKeywords] = useState('')
 	const [outline, setOutline] = useState('')
 	const [slot, setSlot] = useState<keyof typeof CONTENT_GUIDELINES>('morning')
+  // Category plans (up to 5)
+  const [categoryConfigs, setCategoryConfigs] = useState<Array<{
+    category: string
+    topics: string[]
+    schedule: { frequency: 'daily' | 'weekly' | 'monthly'; dayOfWeek?: number; dayOfMonth?: number; timeLocal: string; timezone?: string }
+  }>>([
+    { category: '', topics: [], schedule: { frequency: 'weekly', dayOfWeek: 1, timeLocal: '10:00', timezone: 'America/Chicago' } },
+  ])
 
 	// Scheduling
 	const [enabled, setEnabled] = useState(true)
@@ -145,6 +153,7 @@ export default function BlogPage() {
 					setKeywords(Array.isArray(cfg.keywords) ? cfg.keywords.join(', ') : (cfg.keywords || ''))
 					setOutline(Array.isArray(cfg.outline) ? cfg.outline.join('\n') : (cfg.outline || ''))
 					if (cfg.slot && CONTENT_GUIDELINES[cfg.slot]) setSlot(cfg.slot)
+          if (Array.isArray(cfg.categoryConfigs)) setCategoryConfigs(cfg.categoryConfigs)
 					if (typeof setting.enabled === 'boolean') setEnabled(setting.enabled)
 					if (setting.frequency) setFrequency(setting.frequency)
 					if (typeof setting.dayOfWeek === 'number') setDayOfWeek(setting.dayOfWeek)
@@ -175,6 +184,7 @@ export default function BlogPage() {
 						outline: outline.split('\n').map((l) => l.trim()).filter(Boolean),
 						guidelines: instructions || undefined,
 						slot,
+            categoryConfigs,
 					},
 					enabled,
 					frequency,
@@ -310,6 +320,118 @@ export default function BlogPage() {
 							<input type="text" value={timezone} onChange={(e) => setTimezone(e.target.value)} placeholder="Timezone" className="border rounded px-2 py-1" />
 						</div>
 					</div>
+
+          <div className="bg-white border border-gray-200 rounded-lg p-4 mt-6">
+            <h3 className="text-base font-semibold text-gray-900 mb-2">Category Plans (up to 5)</h3>
+            {categoryConfigs.map((cfg, idx) => (
+              <div key={idx} className="border rounded p-3 mb-3">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <select
+                    value={cfg.category}
+                    onChange={(e) => {
+                      const next = [...categoryConfigs]
+                      next[idx] = { ...cfg, category: e.target.value }
+                      setCategoryConfigs(next)
+                    }}
+                    className="border rounded px-2 py-2"
+                  >
+                    <option value="">Select category</option>
+                    {Object.keys(TOPIC_CATEGORIES).map((k) => (
+                      <option key={k} value={k}>{k}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={cfg.schedule.frequency}
+                    onChange={(e) => {
+                      const next = [...categoryConfigs]
+                      next[idx] = { ...cfg, schedule: { ...cfg.schedule, frequency: e.target.value as any } }
+                      setCategoryConfigs(next)
+                    }}
+                    className="border rounded px-2 py-2"
+                  >
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="monthly">Monthly</option>
+                  </select>
+                  <input
+                    type="text"
+                    value={cfg.schedule.timeLocal}
+                    onChange={(e) => {
+                      const next = [...categoryConfigs]
+                      next[idx] = { ...cfg, schedule: { ...cfg.schedule, timeLocal: e.target.value } }
+                      setCategoryConfigs(next)
+                    }}
+                    placeholder="Time (HH:MM)"
+                    className="border rounded px-2 py-2"
+                  />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-2">
+                  {cfg.schedule.frequency === 'weekly' && (
+                    <select
+                      value={cfg.schedule.dayOfWeek ?? 1}
+                      onChange={(e) => {
+                        const next = [...categoryConfigs]
+                        next[idx] = { ...cfg, schedule: { ...cfg.schedule, dayOfWeek: Number(e.target.value) } }
+                        setCategoryConfigs(next)
+                      }}
+                      className="border rounded px-2 py-2"
+                    >
+                      <option value={0}>Sunday</option>
+                      <option value={1}>Monday</option>
+                      <option value={2}>Tuesday</option>
+                      <option value={3}>Wednesday</option>
+                      <option value={4}>Thursday</option>
+                      <option value={5}>Friday</option>
+                      <option value={6}>Saturday</option>
+                    </select>
+                  )}
+                  {cfg.schedule.frequency === 'monthly' && (
+                    <input
+                      type="number"
+                      min={1}
+                      max={28}
+                      value={cfg.schedule.dayOfMonth ?? 1}
+                      onChange={(e) => {
+                        const next = [...categoryConfigs]
+                        next[idx] = { ...cfg, schedule: { ...cfg.schedule, dayOfMonth: Number(e.target.value) } }
+                        setCategoryConfigs(next)
+                      }}
+                      placeholder="Day of month (1-28)"
+                      className="border rounded px-2 py-2"
+                    />
+                  )}
+                  <input
+                    type="text"
+                    value={cfg.schedule.timezone || 'America/Chicago'}
+                    onChange={(e) => {
+                      const next = [...categoryConfigs]
+                      next[idx] = { ...cfg, schedule: { ...cfg.schedule, timezone: e.target.value } }
+                      setCategoryConfigs(next)
+                    }}
+                    placeholder="Timezone"
+                    className="border rounded px-2 py-2"
+                  />
+                </div>
+                <textarea
+                  value={cfg.topics.join('\n')}
+                  onChange={(e) => {
+                    const next = [...categoryConfigs]
+                    next[idx] = { ...cfg, topics: e.target.value.split('\n').map((t) => t.trim()).filter(Boolean).slice(0, 5) }
+                    setCategoryConfigs(next)
+                  }}
+                  placeholder={'Up to 5 topic examples (one per line)'}
+                  className="w-full border rounded px-3 py-2 min-h-[100px] mt-3"
+                />
+              </div>
+            ))}
+            {categoryConfigs.length < 5 && (
+              <button
+                type="button"
+                className="px-3 py-2 rounded bg-gray-100 border"
+                onClick={() => setCategoryConfigs((prev) => ([...prev, { category: '', topics: [], schedule: { frequency: 'weekly', dayOfWeek: 1, timeLocal: '10:00', timezone: 'America/Chicago' } }]))}
+              >Add Category Plan</button>
+            )}
+          </div>
 				</div>
 			</div>
 

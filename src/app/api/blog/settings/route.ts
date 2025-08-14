@@ -13,6 +13,24 @@ const bodySchema = z.object({
       keywords: z.array(z.string()).optional(),
       outline: z.array(z.string()).optional(),
       guidelines: z.string().optional(),
+      slot: z.string().optional(),
+      // up to 5 category plans with topics and schedules
+      categoryConfigs: z
+        .array(
+          z.object({
+            category: z.string().min(1),
+            topics: z.array(z.string()).max(5),
+            schedule: z.object({
+              frequency: z.enum(['daily', 'weekly', 'monthly']),
+              dayOfWeek: z.number().min(0).max(6).optional(),
+              dayOfMonth: z.number().min(1).max(28).optional(),
+              timeLocal: z.string().regex(/^\d{1,2}:\d{2}$/),
+              timezone: z.string().default('America/Chicago').optional(),
+            }),
+          })
+        )
+        .max(5)
+        .optional(),
     })
     .optional(),
   // optional scheduling controls
