@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from 'react'
+import { PageHeader } from '@/components/layout/PageHeader'
 
 // Prefill categories for quick topic selection
 const TOPIC_CATEGORIES: Record<string, string[]> = {
@@ -262,44 +263,12 @@ export default function BlogPage() {
 	}
 
   return (
-		<div className="h-screen bg-gray-50">
-			<div className="h-full overflow-y-auto p-6 max-w-6xl mx-auto">
-				<h1 className="text-2xl font-bold text-gray-900 mb-2">Blog Management</h1>
-				<p className="text-gray-600 mb-4">Configure generation and publish</p>
+		<div className="min-h-screen bg-gray-50">
+			<div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+				<PageHeader title="Blog" />
 
-				<div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-					<h2 className="text-base font-semibold text-blue-900 mb-2">General configuration</h2>
-					<p className="text-blue-800 text-xs mb-3">Saved settings will be used by default.</p>
-
-					<form onSubmit={handleGenerate} className="flex flex-col gap-3">
-						<div className="grid grid-cols-2 gap-2">
-							<select value={slot} onChange={(e) => setSlot(e.target.value as any)} className="border rounded px-2 py-2">
-								{Object.keys(CONTENT_GUIDELINES).map((k) => (
-									<option key={k} value={k}>{k}</option>
-								))}
-							</select>
-							<input type="text" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Default category" className="border rounded px-2 py-2" />
-						</div>
-						<p className="text-xs text-gray-600">{CONTENT_GUIDELINES[slot]?.type}: {CONTENT_GUIDELINES[slot]?.description}</p>
-
-						<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-							<input type="text" value={tone} onChange={(e) => setTone(e.target.value)} placeholder="Tone (e.g., practical)" className="w-full border rounded px-3 py-2" />
-							<input type="text" value={audience} onChange={(e) => setAudience(e.target.value)} placeholder="Audience (e.g., founders)" className="w-full border rounded px-3 py-2" />
-							<input type="text" value={keywords} onChange={(e) => setKeywords(e.target.value)} placeholder="Keywords (comma-separated)" className="w-full border rounded px-3 py-2" />
-						</div>
-
-						<textarea value={instructions} onChange={(e) => setInstructions(e.target.value)} placeholder="Generic instructions (style, CTA, must-have)" className="w-full border rounded px-3 py-2 min-h-[100px]" />
-						<textarea value={negativeInstructions} onChange={(e) => setNegativeInstructions(e.target.value)} placeholder="Negative instructions (avoid, exclude)" className="w-full border rounded px-3 py-2 min-h-[80px]" />
-						<textarea value={outline} onChange={(e) => setOutline(e.target.value)} placeholder={'Outline (one item per line)'} className="w-full border rounded px-3 py-2 min-h-[100px]" />
-
-						<div className="flex gap-3 flex-wrap">
-							<button type="button" onClick={saveInstructions} disabled={saving} className="px-4 py-2 rounded bg-gray-700 text-white disabled:opacity-60">{saving ? 'Saving…' : 'Save'}</button>
-							<button type="submit" disabled={loading} className="px-4 py-2 rounded bg-blue-600 text-white disabled:opacity-60">{loading ? 'Generating…' : 'Publish Now'}</button>
-						</div>
-					</form>
-				</div>
-
-				<div className="bg-white border border-gray-200 rounded-lg p-4">
+				{/* 1) Rows at the top */}
+				<div className="bg-white border border-gray-200 rounded-lg p-4 mb-6">
 					<h3 className="text-base font-semibold text-gray-900 mb-3">Category Plans (5 rows)</h3>
 					<div className="grid grid-cols-1 gap-3">
 						{categoryConfigs.map((cfg, idx) => {
@@ -341,7 +310,41 @@ export default function BlogPage() {
 						})}
           </div>
         </div>
-      </div>
-    </div>
+
+				{/* 2) Additional instructions below rows */}
+				<div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+					<h2 className="text-base font-semibold text-blue-900 mb-2">General configuration</h2>
+					<p className="text-blue-800 text-xs mb-3">Saved settings will be used by default.</p>
+
+					<form onSubmit={handleGenerate} className="flex flex-col gap-3">
+						<div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+							<select value={slot} onChange={(e) => setSlot(e.target.value as any)} className="border rounded px-2 py-2">
+								{Object.keys(CONTENT_GUIDELINES).map((k) => (
+									<option key={k} value={k}>{k}</option>
+								))}
+							</select>
+							<input type="text" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Default category" className="border rounded px-2 py-2" />
+						</div>
+						<p className="text-xs text-gray-600">{CONTENT_GUIDELINES[slot]?.type}: {CONTENT_GUIDELINES[slot]?.description}</p>
+
+						<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+							<input type="text" value={tone} onChange={(e) => setTone(e.target.value)} placeholder="Tone (e.g., practical)" className="w-full border rounded px-3 py-2" />
+							<input type="text" value={audience} onChange={(e) => setAudience(e.target.value)} placeholder="Audience (e.g., founders)" className="w-full border rounded px-3 py-2" />
+							<input type="text" value={keywords} onChange={(e) => setKeywords(e.target.value)} placeholder="Keywords (comma-separated)" className="w-full border rounded px-3 py-2" />
+						</div>
+
+						<textarea value={instructions} onChange={(e) => setInstructions(e.target.value)} placeholder="Generic instructions (style, CTA, must-have)" className="w-full border rounded px-3 py-2 min-h-[100px]" />
+						<textarea value={negativeInstructions} onChange={(e) => setNegativeInstructions(e.target.value)} placeholder="Negative instructions (avoid, exclude)" className="w-full border rounded px-3 py-2 min-h-[80px]" />
+						<textarea value={outline} onChange={(e) => setOutline(e.target.value)} placeholder={'Outline (one item per line)'} className="w-full border rounded px-3 py-2 min-h-[100px]" />
+
+						<div className="flex gap-3 flex-wrap">
+							<button type="button" onClick={saveInstructions} disabled={saving} className="px-4 py-2 rounded bg-gray-700 text-white disabled:opacity-60">{saving ? 'Saving…' : 'Save'}</button>
+							<button type="submit" disabled={loading} className="px-4 py-2 rounded bg-blue-600 text-white disabled:opacity-60">{loading ? 'Generating…' : 'Publish Now'}</button>
+						</div>
+					</form>
+				</div>
+
+			</div>
+		</div>
   )
 } 
