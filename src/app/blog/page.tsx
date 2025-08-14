@@ -108,6 +108,7 @@ const CONTENT_GUIDELINES: Record<string, {
 export default function BlogPage() {
 	const [topic, setTopic] = useState('')
 	const [instructions, setInstructions] = useState('')
+	const [negativeInstructions, setNegativeInstructions] = useState('')
 	const [loading, setLoading] = useState(false)
 	const [saving, setSaving] = useState(false)
 	const [result, setResult] = useState<{ id: number; title: string; slug: string } | null>(null)
@@ -155,6 +156,7 @@ export default function BlogPage() {
 					setAudience(cfg.audience || '')
 					setKeywords(Array.isArray(cfg.keywords) ? cfg.keywords.join(', ') : (cfg.keywords || ''))
 					setOutline(Array.isArray(cfg.outline) ? cfg.outline.join('\n') : (cfg.outline || ''))
+					if (typeof cfg.negativeInstructions === 'string') setNegativeInstructions(cfg.negativeInstructions)
 					if (cfg.slot && CONTENT_GUIDELINES[cfg.slot]) setSlot(cfg.slot)
           if (Array.isArray(cfg.categoryConfigs)) {
             const existingConfigs = cfg.categoryConfigs
@@ -184,7 +186,7 @@ export default function BlogPage() {
 			const res = await fetch('/api/blog/settings', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
+					body: JSON.stringify({
 					instructions,
 					config: {
 						category,
@@ -193,6 +195,7 @@ export default function BlogPage() {
 						keywords: keywords.split(',').map((k) => k.trim()).filter(Boolean),
 						outline: outline.split('\n').map((l) => l.trim()).filter(Boolean),
 						guidelines: instructions || undefined,
+							negativeInstructions: negativeInstructions || undefined,
 						slot,
             categoryConfigs,
 					},
@@ -283,7 +286,8 @@ export default function BlogPage() {
 								<input type="text" value={keywords} onChange={(e) => setKeywords(e.target.value)} placeholder="Keywords (comma-separated)" className="w-full border rounded px-3 py-2" />
 							</div>
 
-							<textarea value={instructions} onChange={(e) => setInstructions(e.target.value)} placeholder="Optional instructions (style, CTA...)" className="w-full border rounded px-3 py-2 min-h-[100px]" />
+						<textarea value={instructions} onChange={(e) => setInstructions(e.target.value)} placeholder="Generic instructions (style, CTA, must-have)" className="w-full border rounded px-3 py-2 min-h-[100px]" />
+						<textarea value={negativeInstructions} onChange={(e) => setNegativeInstructions(e.target.value)} placeholder="Negative instructions (avoid, exclude)" className="w-full border rounded px-3 py-2 min-h-[80px]" />
 							<textarea value={outline} onChange={(e) => setOutline(e.target.value)} placeholder={'Outline (one item per line)'} className="w-full border rounded px-3 py-2 min-h-[100px]" />
 
 							<div className="flex gap-2 flex-wrap">
@@ -336,8 +340,8 @@ export default function BlogPage() {
 						const topic0 = cfg.topics[0] || ''
 						const topic1 = cfg.topics[1] || ''
 						return (
-							<div key={idx} className="grid grid-cols-1 md:grid-cols-6 gap-2 items-start border rounded p-3">
-								<select
+                <div key={idx} className="grid grid-cols-1 md:grid-cols-8 gap-2 items-start border rounded p-3">
+                  <select
 									value={cfg.category}
 									onChange={(e) => {
 										const next = [...categoryConfigs]
@@ -351,7 +355,7 @@ export default function BlogPage() {
 										<option key={k} value={k}>{k}</option>
 									))}
 								</select>
-								<input
+                  <input
 									type="text"
 									value={topic0}
 									onChange={(e) => {
@@ -364,7 +368,7 @@ export default function BlogPage() {
 									placeholder="Topic"
 									className="border rounded px-2 py-2"
 								/>
-								<input
+                  <input
 									type="text"
 									value={topic1}
 									onChange={(e) => {
@@ -377,7 +381,7 @@ export default function BlogPage() {
 									placeholder="Example"
 									className="border rounded px-2 py-2"
 								/>
-								<select
+                  <select
 									value={cfg.schedule.frequency}
 									onChange={(e) => {
 										const next = [...categoryConfigs]
@@ -390,7 +394,7 @@ export default function BlogPage() {
 									<option value="weekly">Weekly</option>
 									<option value="monthly">Monthly</option>
 								</select>
-								{cfg.schedule.frequency === 'weekly' ? (
+                  {cfg.schedule.frequency === 'weekly' ? (
 									<select
 										value={cfg.schedule.dayOfWeek ?? 1}
 										onChange={(e) => {
@@ -408,7 +412,7 @@ export default function BlogPage() {
 										<option value={5}>Fri</option>
 										<option value={6}>Sat</option>
 									</select>
-								) : cfg.schedule.frequency === 'monthly' ? (
+                  ) : cfg.schedule.frequency === 'monthly' ? (
 									<input
 										type="number"
 										min={1}
@@ -422,10 +426,8 @@ export default function BlogPage() {
 										placeholder="Day"
 										className="border rounded px-2 py-2"
 									/>
-								) : (
-									<div className="h-10" />
-								)}
-								<div className="grid grid-cols-2 gap-2 md:col-span-2 md:grid-cols-2">
+                  ) : null}
+                  <div className="grid grid-cols-2 gap-2 md:col-span-2">
 									<input
 										type="text"
 										value={cfg.schedule.timeLocal}

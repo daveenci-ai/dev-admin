@@ -13,6 +13,7 @@ const bodySchema = z.object({
       keywords: z.array(z.string()).optional(),
       outline: z.array(z.string()).optional(),
       guidelines: z.string().optional(),
+      negativeInstructions: z.string().optional(),
       slot: z.string().optional(),
       // up to 5 category plans with topics and schedules
       categoryConfigs: z
