@@ -366,3 +366,20 @@ model JobQueue {
   @@index([type, status], map: "idx_job_queue_type_status")
   @@map("job_queue")
 }
+
+model ContentSetting {
+  id           Int       @id @default(autoincrement())
+  kind         String    @db.VarChar(20) // 'BLOG' | 'USE_CASE'
+  instructions String?
+  frequency    String?   @default("weekly") @db.VarChar(20) // 'off' | 'weekly' | 'biweekly'
+  dayOfWeek    Int?      @default(1) // 0=Sunday ... 6=Saturday
+  timeLocal    String?   @default("10:00") @map("time_local") @db.VarChar(10)
+  timezone     String?   @default("America/Chicago") @db.VarChar(64)
+  enabled      Boolean?  @default(true)
+  lastRunAt    DateTime? @map("last_run_at") @db.Timestamptz()
+  createdAt    DateTime? @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime? @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([kind], name: "ux_content_setting_kind")
+  @@map("content_settings")
+}

@@ -8,11 +8,16 @@ function parseJsonFromText(text: string): any {
   return JSON.parse(match[0])
 }
 
-export async function generateBlogPostDraft(topicHint?: string) {
+export async function generateBlogPostDraft(options?: { topicHint?: string; instructions?: string }) {
+  const topicHint = options?.topicHint
+  const instructions = options?.instructions
   const client = getOpenAIClient('BLOG')
   const model = getModelFor('BLOG', 'TEXT')
   const sys = `You are an expert technical marketer. Produce a concise JSON object with keys: title, slug, excerpt, tags (array of strings), content (markdown). Keep to 800-1200 words.`
-  const user = `Create a weekly blog post for DaVeenci.ai${topicHint ? ` about: ${topicHint}` : ''}. Audience: founders & operators. Tone: practical, data-driven.`
+  const user =
+    `Create a weekly blog post for DaVeenci.ai${topicHint ? ` about: ${topicHint}` : ''}. ` +
+    `Audience: founders & operators. Tone: practical, data-driven.` +
+    (instructions ? `\nAdditional instructions:\n${instructions}` : '')
   const res = await client.chat.completions.create({
     model,
     messages: [
