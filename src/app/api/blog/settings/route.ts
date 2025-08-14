@@ -42,7 +42,7 @@ const bodySchema = z.object({
 })
 
 export async function GET() {
-  const setting = await prisma.contentSetting.findUnique({ where: { kind: 'BLOG' } })
+  const setting = await (prisma as any).contentSetting.findUnique({ where: { kind: 'BLOG' } })
   return NextResponse.json({ setting })
 }
 
@@ -50,8 +50,8 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}))
     const data = bodySchema.parse(body)
-    const existing = await prisma.contentSetting.findUnique({ where: { kind: 'BLOG' } })
-    const setting = await prisma.contentSetting.upsert({
+    const existing = await (prisma as any).contentSetting.findUnique({ where: { kind: 'BLOG' } })
+    const setting = await (prisma as any).contentSetting.upsert({
       where: { kind: 'BLOG' },
       create: {
         kind: 'BLOG',
