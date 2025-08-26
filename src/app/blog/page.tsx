@@ -249,39 +249,68 @@ export default function BlogPage() {
     }
   }
 
-  const publishNow = async (index: number, topicIndex: number = 0) => {
+    const publishNow = async (index: number, topicIndex: number = 0) => {
     const config = blogConfigs[index]
     
-    if (!config.id) {
-      setError('Please save the schedule first')
+    // Check if we have the minimum requirements
+    if (!config.categoryId || !config.topics.some(t => t.trim())) {
+      setError('Please select a category and enter at least one topic')
       return
     }
 
-		setLoading(true)
-		setError(null)
+    setLoading(true)
+    setError(null)
     setSuccess(null)
 
-		try {
-      const response = await fetch(`/api/blog/schedules/${config.id}/publish`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topicIndex })
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to publish')
+    try {
+      // Get the topic to publish
+      const topic = config.topics.find(t => t.trim()) || config.topics[topicIndex]
+      if (!topic || !topic.trim()) {
+        throw new Error('No valid topic found')
       }
 
-      const result = await response.json()
-      setSuccess(`Published "${result.topic}" successfully!`)
+      // If we have a saved schedule, use the schedule publish endpoint
+      if (config.id) {
+        const response = await fetch(`/api/blog/schedules/${config.id}/publish`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ topicIndex })
+        })
+
+        if (!response.ok) {
+          const error = await response.json()
+          throw new Error(error.error || 'Failed to publish')
+        }
+
+        const result = await response.json()
+        setSuccess(`Published "${result.topic}" successfully!`)
+      } else {
+        // Direct blog generation without saving schedule
+        const response = await fetch('/api/blog/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            topicHint: topic.trim(),
+            categoryId: config.categoryId
+          })
+        })
+
+        if (!response.ok) {
+          const error = await response.json()
+          throw new Error(error.error || 'Failed to generate blog post')
+        }
+
+        const result = await response.json()
+        setSuccess(`Published "${topic}" successfully! Blog post created.`)
+      }
+      
       setTimeout(() => setSuccess(null), 5000)
     } catch (err: any) {
       setError(err.message || 'Failed to publish')
-		} finally {
-			setLoading(false)
-		}
-	}
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const pauseSchedule = async (index: number) => {
     const config = blogConfigs[index]
@@ -487,7 +516,7 @@ export default function BlogPage() {
                 {selectedConfig.frequency === 'one-time' ? (
                   <button
                     onClick={() => publishNow(selectedBlogIndex)}
-                    disabled={loading || !selectedConfig.id || !shouldBeActive}
+                    disabled={loading || !shouldBeActive}
                     className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {loading ? 'Publishing...' : 'Publish Now'}
