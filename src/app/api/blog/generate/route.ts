@@ -7,6 +7,8 @@ import { generateBlogPostDraft, toSlug } from '@/lib/content'
 const bodySchema = z.object({
   topicHint: z.string().min(1).optional(),
   instructions: z.string().min(1).optional(),
+  categoryId: z.number().int().positive().optional(),
+  scheduleId: z.number().int().positive().optional(),
 })
 
 function calcReadTime(content: string): number {
@@ -17,7 +19,7 @@ function calcReadTime(content: string): number {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}))
-    const { topicHint, instructions } = bodySchema.parse(body)
+    const { topicHint, instructions, categoryId, scheduleId } = bodySchema.parse(body)
 
     logger.info('[Blog] Generating blog draft via ChatGPT', { topicHint: !!topicHint, instructions: !!instructions })
     const draft = await generateBlogPostDraft({ topicHint, instructions })
@@ -49,9 +51,10 @@ export async function POST(req: NextRequest) {
         publishedAt: new Date(),
         readTimeMinutes: calcReadTime(content),
         createdByLlm: true,
-        llmPrompt: [topicHint && `topic:${topicHint}`, instructions && `instr:${instructions}`].filter(Boolean).join(' | '),
+        llmPrompt: [topicHint && `topic:${topicHint}`, instructions && `instr:${instructions}`, scheduleId && `schedule:${scheduleId}`].filter(Boolean).join(' | '),
+        categoryId: categoryId || null,
       },
-      select: { id: true, title: true, slug: true, publishedAt: true },
+      select: { id: true, title: true, slug: true, publishedAt: true, categoryId: true },
     })
 
     logger.info('[Blog] Blog post created', { id: post.id, slug: post.slug })
