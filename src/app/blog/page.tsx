@@ -330,6 +330,76 @@ export default function BlogPage() {
     }
   }
 
+  const savePrompts = async (index: number) => {
+    const config = blogConfigs[index]
+    
+    setLoading(true)
+    setError(null)
+    setSuccess(null)
+
+    try {
+      // If schedule doesn't exist, create it first with minimal required fields
+      if (!config.id) {
+        // Check if we have minimum requirements for creating a schedule
+        if (!config.categoryId || !config.topics.some(t => t.trim())) {
+          setError('Please select a category and enter at least one topic before saving prompts')
+          return
+        }
+
+        const createResponse = await fetch('/api/blog/schedules', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: config.name,
+            categoryId: config.categoryId,
+            topics: config.topics.filter(t => t.trim()),
+            frequency: config.frequency,
+            weeklyDays: config.weeklyDays,
+            monthlyDay: config.monthlyDay,
+            timeLocal: config.timeLocal,
+            timezone: config.timezone,
+            isActive: config.isActive,
+            isPaused: config.isPaused,
+            generalPrompt: config.generalPrompt,
+            negativePrompt: config.negativePrompt
+          })
+        })
+
+        if (!createResponse.ok) {
+          const error = await createResponse.json()
+          throw new Error(error.error || 'Failed to create schedule')
+        }
+
+        const createResult = await createResponse.json()
+        updateConfig(index, { id: createResult.schedule.id })
+        setSuccess('Prompts saved successfully!')
+      } else {
+        // Update existing schedule with new prompts
+        const response = await fetch(`/api/blog/schedules/${config.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            generalPrompt: config.generalPrompt,
+            negativePrompt: config.negativePrompt
+          })
+        })
+
+        if (!response.ok) {
+          const error = await response.json()
+          throw new Error(error.error || 'Failed to save prompts')
+        }
+
+        setSuccess('Prompts saved successfully!')
+      }
+      
+      setTimeout(() => setSuccess(null), 3000)
+    } catch (err: any) {
+      setError(err.message || 'Failed to save prompts')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const pauseSchedule = async (index: number) => {
     const config = blogConfigs[index]
     
@@ -733,6 +803,29 @@ export default function BlogPage() {
                   This prompt will tell the AI what to avoid in the content
                 </p>
               </div>
+            </div>
+            
+            {/* Save Prompts Button */}
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={() => savePrompts(selectedBlogIndex)}
+                disabled={loading}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {loading ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                    </svg>
+                    Save Prompts
+                  </>
+                )}
+              </button>
             </div>
           </div>
         </div>
