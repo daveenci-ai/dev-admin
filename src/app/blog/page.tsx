@@ -15,7 +15,7 @@ interface BlogSchedule {
   name: string
   categoryId: number
   topics: string[]
-  frequency: 'daily' | 'weekly' | 'monthly'
+  frequency: 'daily' | 'weekly' | 'monthly' | 'one-time'
   weeklyDays?: number[]
   monthlyDay?: number
   timeLocal: string
@@ -49,8 +49,8 @@ const TIMEZONES = [
 export default function BlogPage() {
   const [categories, setCategories] = useState<BlogCategory[]>([])
   const [schedules, setSchedules] = useState<BlogSchedule[]>([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+	const [loading, setLoading] = useState(false)
+	const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [selectedBlogIndex, setSelectedBlogIndex] = useState<number>(0)
 
@@ -82,7 +82,7 @@ export default function BlogPage() {
       name: 'Blog 3',
       categoryId: 0,
       topics: ['', '', '', '', ''],
-      frequency: 'weekly',
+      frequency: 'one-time',
       weeklyDays: [3], // Wednesday
       timeLocal: '09:00',
       timezone: 'America/Chicago',
@@ -114,7 +114,7 @@ export default function BlogPage() {
   ])
 
   // Load categories and existing schedules
-  useEffect(() => {
+	useEffect(() => {
     loadData()
   }, [])
 
@@ -206,7 +206,7 @@ export default function BlogPage() {
   const saveSchedule = async (index: number) => {
     const config = blogConfigs[index]
     setLoading(true)
-    setError(null)
+		setError(null)
     setSuccess(null)
 
     try {
@@ -215,8 +215,8 @@ export default function BlogPage() {
       
       const response = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
           name: config.name,
           categoryId: config.categoryId,
           topics: config.topics.filter(t => t.trim()),
@@ -244,7 +244,7 @@ export default function BlogPage() {
       setTimeout(() => setSuccess(null), 3000)
     } catch (err: any) {
       setError(err.message || 'Failed to save schedule')
-    } finally {
+		} finally {
       setLoading(false)
     }
   }
@@ -257,14 +257,14 @@ export default function BlogPage() {
       return
     }
 
-    setLoading(true)
-    setError(null)
+		setLoading(true)
+		setError(null)
     setSuccess(null)
 
-    try {
+		try {
       const response = await fetch(`/api/blog/schedules/${config.id}/publish`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ topicIndex })
       })
 
@@ -278,10 +278,10 @@ export default function BlogPage() {
       setTimeout(() => setSuccess(null), 5000)
     } catch (err: any) {
       setError(err.message || 'Failed to publish')
-    } finally {
-      setLoading(false)
-    }
-  }
+		} finally {
+			setLoading(false)
+		}
+	}
 
   const pauseSchedule = async (index: number) => {
     const config = blogConfigs[index]
@@ -347,7 +347,7 @@ export default function BlogPage() {
   const hasValidTopic = selectedConfig.topics.some(topic => topic.trim().length > 0)
   const shouldBeActive = hasValidCategory && hasValidTopic
 
-  const getScheduleDisplay = (config: BlogSchedule) => {
+    const getScheduleDisplay = (config: BlogSchedule) => {
     if (config.frequency === 'daily') {
       return `Daily at ${config.timeLocal}`
     } else if (config.frequency === 'weekly') {
@@ -355,12 +355,14 @@ export default function BlogPage() {
       return `Weekly (${days || 'Mon'}) at ${config.timeLocal}`
     } else if (config.frequency === 'monthly') {
       return `Monthly (${config.monthlyDay || 1}) at ${config.timeLocal}`
+    } else if (config.frequency === 'one-time') {
+      return `One-time at ${config.timeLocal}`
     }
     return 'Not scheduled'
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+		<div className="min-h-screen bg-gray-50">
       <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
         <PageHeader title="AEO Blog Management" />
         
@@ -395,7 +397,7 @@ export default function BlogPage() {
             ]
             const colorScheme = colors[index] || colors[0]
 
-            return (
+							return (
               <div
                 key={index}
                 onClick={() => setSelectedBlogIndex(index)}
@@ -437,98 +439,112 @@ export default function BlogPage() {
                   {!shouldBeActive && (
                     <span className="text-xs text-red-600">⚠️ Setup required</span>
                   )}
-                </div>
-              </div>
-            )
-          })}
-        </div>
+									</div>
+								</div>
+							)
+						})}
+          </div>
 
-        {/* Selected Blog Control Panel */}
+                {/* Selected Blog Control Panel */}
         <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
           <div className="p-6 border-b border-gray-200">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-gray-900">
-                Blog {selectedBlogIndex + 1} Configuration
-              </h2>
-              <span className={`px-3 py-1 text-sm rounded-full ${
-                !shouldBeActive || selectedConfig.isPaused
-                  ? 'bg-yellow-100 text-yellow-800' 
-                  : selectedConfig.isActive 
-                    ? 'bg-green-100 text-green-800' 
-                    : 'bg-gray-100 text-gray-800'
-              }`}>
-                {!shouldBeActive || selectedConfig.isPaused ? 'Paused' : selectedConfig.isActive ? 'Active' : 'Inactive'}
-              </span>
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900">
+                  Blog {selectedBlogIndex + 1} Configuration
+                </h2>
+                {!shouldBeActive && (
+                  <p className="text-sm text-red-600 mt-1">
+                    ⚠️ Requires category selection and at least one topic to be active
+                  </p>
+                )}
+              </div>
+              
+              {/* Action Buttons in Header */}
+              <div className="flex items-center gap-3">
+                <span className={`px-3 py-1 text-sm rounded-full ${
+                  !shouldBeActive || selectedConfig.isPaused
+                    ? 'bg-yellow-100 text-yellow-800' 
+                    : selectedConfig.isActive 
+                      ? 'bg-green-100 text-green-800' 
+                      : 'bg-gray-100 text-gray-800'
+                }`}>
+                  {!shouldBeActive || selectedConfig.isPaused ? 'Paused' : selectedConfig.isActive ? 'Active' : 'Inactive'}
+                </span>
+                
+                <button
+                  onClick={() => pauseSchedule(selectedBlogIndex)}
+                  disabled={loading || !selectedConfig.id}
+                  className={`px-4 py-2 rounded-md disabled:opacity-50 disabled:cursor-not-allowed ${
+                    selectedConfig.isPaused
+                      ? 'bg-green-600 text-white hover:bg-green-700'
+                      : 'bg-yellow-600 text-white hover:bg-yellow-700'
+                  }`}
+                >
+                  {selectedConfig.isPaused ? 'Resume' : 'Pause'}
+                </button>
+
+                {selectedConfig.frequency === 'one-time' ? (
+                  <button
+                    onClick={() => publishNow(selectedBlogIndex)}
+                    disabled={loading || !selectedConfig.id || !shouldBeActive}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {loading ? 'Publishing...' : 'Publish Now'}
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => saveSchedule(selectedBlogIndex)}
+                    disabled={loading || !shouldBeActive}
+                    className="px-4 py-2 bg-gray-700 text-white rounded-md hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {loading ? 'Saving...' : 'Schedule'}
+                  </button>
+                )}
+              </div>
             </div>
-            {!shouldBeActive && (
-              <p className="text-sm text-red-600 mt-2">
-                ⚠️ Requires category selection and at least one topic to be active
-              </p>
-            )}
           </div>
 
           <div className="p-6">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-              {/* Column 1: Configuration (65% width - 8 columns) */}
-              <div className="lg:col-span-8 space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Category */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Category *
-                    </label>
-                    <select
-                      value={selectedConfig.categoryId}
-                      onChange={(e) => updateConfig(selectedBlogIndex, { categoryId: parseInt(e.target.value) })}
-                      className={`w-full border rounded-md px-3 py-2 ${
-                        !hasValidCategory ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                      }`}
-                    >
-                      <option value={0}>Select Category</option>
-                      {categories.map(cat => (
-                        <option key={cat.id} value={cat.id}>
-                          {cat.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Frequency */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Frequency
-                    </label>
-                    <select
-                      value={selectedConfig.frequency}
-                      onChange={(e) => updateConfig(selectedBlogIndex, { 
-                        frequency: e.target.value as 'daily' | 'weekly' | 'monthly',
-                        weeklyDays: e.target.value === 'weekly' ? [1] : [],
-                        monthlyDay: e.target.value === 'monthly' ? 1 : undefined
-                      })}
-                      className="w-full border border-gray-300 rounded-md px-3 py-2"
-                    >
-                      <option value="daily">Daily</option>
-                      <option value="weekly">Weekly</option>
-                      <option value="monthly">Monthly</option>
-                    </select>
-                  </div>
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+              {/* Left 60%: Content (3 columns) */}
+              <div className="lg:col-span-3 space-y-6">
+                {/* Category */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Category *
+                  </label>
+                  <select
+                    value={selectedConfig.categoryId}
+                    onChange={(e) => updateConfig(selectedBlogIndex, { categoryId: parseInt(e.target.value) })}
+                    className={`w-full border rounded-md px-3 py-2 ${
+                      !hasValidCategory ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                    }`}
+                  >
+                    <option value={0}>Select Category</option>
+                    {categories.map(cat => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
-                {/* Topics */}
+                {/* Topics - Exactly 5 inputs */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Topics * (URLs accepted)
                   </label>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {selectedConfig.topics.map((topic, topicIndex) => (
+                  <div className="space-y-3">
+                    {[0, 1, 2, 3, 4].map((topicIndex) => (
                       <input
                         key={topicIndex}
                         type="text"
-                        value={topic}
+                        value={selectedConfig.topics[topicIndex] || ''}
                         onChange={(e) => updateTopic(selectedBlogIndex, topicIndex, e.target.value)}
-                        placeholder={`Topic or URL ${topicIndex + 1}`}
+                        placeholder={`Topic ${topicIndex + 1}`}
                         className={`w-full border rounded-md px-3 py-2 ${
-                          topicIndex === 0 && !topic.trim() && !hasValidTopic 
+                          topicIndex === 0 && !selectedConfig.topics[topicIndex]?.trim() && !hasValidTopic 
                             ? 'border-red-300 bg-red-50' 
                             : 'border-gray-300'
                         }`}
@@ -538,6 +554,30 @@ export default function BlogPage() {
                   {!hasValidTopic && (
                     <p className="text-xs text-red-600 mt-1">At least one topic required</p>
                   )}
+                </div>
+              </div>
+
+              {/* Right 40%: Scheduling (2 columns) */}
+              <div className="lg:col-span-2 space-y-6">
+                {/* Frequency */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Frequency
+                  </label>
+                  <select
+                    value={selectedConfig.frequency}
+                    onChange={(e) => updateConfig(selectedBlogIndex, { 
+                      frequency: e.target.value as 'daily' | 'weekly' | 'monthly' | 'one-time',
+                      weeklyDays: e.target.value === 'weekly' ? [1] : [],
+                      monthlyDay: e.target.value === 'monthly' ? 1 : undefined
+                    })}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2"
+                  >
+                    <option value="one-time">One Time</option>
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="monthly">Monthly</option>
+                  </select>
                 </div>
 
                 {/* Frequency-specific controls */}
@@ -568,7 +608,7 @@ export default function BlogPage() {
                 {selectedConfig.frequency === 'monthly' && renderMonthlyCalendar(selectedConfig, selectedBlogIndex)}
 
                 {/* Time & Timezone */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Time
@@ -596,43 +636,10 @@ export default function BlogPage() {
                   </div>
                 </div>
               </div>
-
-              {/* Column 2: Actions (35% width - 4 columns) */}
-              <div className="lg:col-span-4 flex flex-col justify-end">
-                <div className="flex flex-col lg:flex-row gap-3">
-                  <button
-                    onClick={() => saveSchedule(selectedBlogIndex)}
-                    disabled={loading || !shouldBeActive}
-                    className="flex-1 px-4 py-2 bg-gray-700 text-white rounded-md hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {loading ? 'Saving...' : 'Save'}
-                  </button>
-
-                  <button
-                    onClick={() => publishNow(selectedBlogIndex)}
-                    disabled={loading || !selectedConfig.id || !shouldBeActive}
-                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {loading ? 'Publishing...' : 'Publish Now'}
-                  </button>
-
-                  <button
-                    onClick={() => pauseSchedule(selectedBlogIndex)}
-                    disabled={loading || !selectedConfig.id}
-                    className={`flex-1 px-4 py-2 rounded-md disabled:opacity-50 disabled:cursor-not-allowed ${
-                      selectedConfig.isPaused
-                        ? 'bg-green-600 text-white hover:bg-green-700'
-                        : 'bg-yellow-600 text-white hover:bg-yellow-700'
-                    }`}
-                  >
-                    {selectedConfig.isPaused ? 'Resume' : 'Pause'}
-                  </button>
-                </div>
-              </div>
             </div>
           </div>
         </div>
-      </div>
-    </div>
+			</div>
+		</div>
   )
-}
+} 
