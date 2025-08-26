@@ -418,6 +418,10 @@ model BlogSchedule {
   timeLocal    String       @map("time_local") @db.VarChar(10) // HH:MM format
   timezone     String       @default("America/Chicago") @db.VarChar(64)
   
+  // Prompt configuration
+  generalPrompt  String     @default("") @map("general_prompt")
+  negativePrompt String     @default("") @map("negative_prompt")
+  
   // Status and control
   isActive     Boolean      @default(true) @map("is_active")
   isPaused     Boolean      @default(false) @map("is_paused")

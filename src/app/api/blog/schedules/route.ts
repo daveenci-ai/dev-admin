@@ -13,7 +13,9 @@ const scheduleSchema = z.object({
   timeLocal: z.string().regex(/^\d{1,2}:\d{2}$/),
   timezone: z.string().default('America/Chicago'),
   isActive: z.boolean().default(true),
-  isPaused: z.boolean().default(false)
+  isPaused: z.boolean().default(false),
+  generalPrompt: z.string().default(''),
+  negativePrompt: z.string().default('')
 })
 
 export async function GET() {

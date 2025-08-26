@@ -9,9 +9,11 @@ function parseJsonFromText(text: string): any {
   return JSON.parse(match[0])
 }
 
-export async function generateBlogPostDraft(options?: { topicHint?: string; instructions?: string }) {
+export async function generateBlogPostDraft(options?: { topicHint?: string; instructions?: string; generalPrompt?: string; negativePrompt?: string }) {
   const topicHint = options?.topicHint
   const instructions = options?.instructions
+  const generalPrompt = options?.generalPrompt
+  const negativePrompt = options?.negativePrompt
   const client = getOpenAIClient('BLOG')
   const model = getModelFor('BLOG', 'TEXT')
   // Load BLOG settings to enrich prompt (category, tone, audience, keywords, outline, guidelines)
@@ -19,7 +21,18 @@ export async function generateBlogPostDraft(options?: { topicHint?: string; inst
   const setting = await (prisma as any).contentSetting.findUnique({ where: { kind: 'BLOG' } })
   const cfg: any = (setting?.config as any) || {}
 
-  const sys = `You are an expert technical marketer. Produce a concise JSON object with keys: title, slug, excerpt, tags (array of strings), content (markdown). Keep to 800-1200 words.`
+  let sys = `You are an expert technical marketer. Produce a concise JSON object with keys: title, slug, excerpt, tags (array of strings), content (markdown). Keep to 800-1200 words.`
+  
+  // Add general prompt to system message if provided
+  if (generalPrompt && generalPrompt.trim()) {
+    sys += `\n\nGeneral Instructions: ${generalPrompt.trim()}`
+  }
+  
+  // Add negative prompt to system message if provided
+  if (negativePrompt && negativePrompt.trim()) {
+    sys += `\n\nAvoid: ${negativePrompt.trim()}`
+  }
+  
   const lines: string[] = []
   lines.push(`Create a blog post for DaVeenci.ai${topicHint ? ` about: ${topicHint}` : ''}.`)
   if (cfg.category) lines.push(`Category: ${cfg.category}`)

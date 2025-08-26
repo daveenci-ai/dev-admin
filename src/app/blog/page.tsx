@@ -22,6 +22,8 @@ interface BlogSchedule {
   timezone: string
   isActive: boolean
   isPaused: boolean
+  generalPrompt: string
+  negativePrompt: string
   category?: BlogCategory
 }
 
@@ -65,7 +67,9 @@ export default function BlogPage() {
       timeLocal: '10:00',
       timezone: 'America/Chicago',
       isActive: true,
-      isPaused: false
+      isPaused: false,
+      generalPrompt: '',
+      negativePrompt: ''
     },
     {
       name: 'Blog 2',
@@ -76,7 +80,9 @@ export default function BlogPage() {
       timeLocal: '14:00',
       timezone: 'America/Chicago',
       isActive: true,
-      isPaused: false
+      isPaused: false,
+      generalPrompt: '',
+      negativePrompt: ''
     },
     {
       name: 'Blog 3',
@@ -87,7 +93,9 @@ export default function BlogPage() {
       timeLocal: '09:00',
       timezone: 'America/Chicago',
       isActive: true,
-      isPaused: false
+      isPaused: false,
+      generalPrompt: '',
+      negativePrompt: ''
     },
     {
       name: 'Blog 4',
@@ -98,7 +106,9 @@ export default function BlogPage() {
       timeLocal: '16:00',
       timezone: 'America/Chicago',
       isActive: true,
-      isPaused: false
+      isPaused: false,
+      generalPrompt: '',
+      negativePrompt: ''
     },
     {
       name: 'Blog 5',
@@ -109,7 +119,9 @@ export default function BlogPage() {
       timeLocal: '11:00',
       timezone: 'America/Chicago',
       isActive: true,
-      isPaused: false
+      isPaused: false,
+      generalPrompt: '',
+      negativePrompt: ''
     }
   ])
 
@@ -147,6 +159,8 @@ export default function BlogPage() {
             timezone: schedule.timezone,
             isActive: schedule.isActive,
             isPaused: schedule.isPaused,
+            generalPrompt: schedule.generalPrompt || '',
+            negativePrompt: schedule.negativePrompt || '',
             category: schedule.category
           }))
           
@@ -226,7 +240,9 @@ export default function BlogPage() {
           timeLocal: config.timeLocal,
           timezone: config.timezone,
           isActive: config.isActive,
-          isPaused: config.isPaused
+          isPaused: config.isPaused,
+          generalPrompt: config.generalPrompt,
+          negativePrompt: config.negativePrompt
         })
       })
 
@@ -291,7 +307,9 @@ export default function BlogPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             topicHint: topic.trim(),
-            categoryId: config.categoryId
+            categoryId: config.categoryId,
+            generalPrompt: config.generalPrompt,
+            negativePrompt: config.negativePrompt
           })
         })
 
@@ -664,6 +682,56 @@ export default function BlogPage() {
                     </select>
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Prompt Configuration Card */}
+        <div className="bg-white border border-gray-200 rounded-lg shadow-sm mt-6">
+          <div className="p-6 border-b border-gray-200">
+            <h2 className="text-xl font-semibold text-gray-900">
+              Blog {selectedBlogIndex + 1} Prompt Configuration
+            </h2>
+            <p className="text-sm text-gray-600 mt-1">
+              Customize AI prompts for this blog's content generation
+            </p>
+          </div>
+
+          <div className="p-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* General Prompt */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  General Prompt
+                </label>
+                <textarea
+                  value={selectedConfig.generalPrompt}
+                  onChange={(e) => updateConfig(selectedBlogIndex, { generalPrompt: e.target.value })}
+                  placeholder="Enter general instructions for the AI (e.g., writing style, tone, target audience, key points to include...)"
+                  rows={6}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  This prompt will guide the overall content generation approach
+                </p>
+              </div>
+
+              {/* Negative Prompt */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Negative Prompt
+                </label>
+                <textarea
+                  value={selectedConfig.negativePrompt}
+                  onChange={(e) => updateConfig(selectedBlogIndex, { negativePrompt: e.target.value })}
+                  placeholder="Enter what to avoid (e.g., don't include technical jargon, avoid controversial topics, don't use first person...)"
+                  rows={6}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 resize-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  This prompt will tell the AI what to avoid in the content
+                </p>
               </div>
             </div>
           </div>

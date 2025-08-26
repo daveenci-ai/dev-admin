@@ -13,7 +13,9 @@ const updateScheduleSchema = z.object({
   timeLocal: z.string().regex(/^\d{1,2}:\d{2}$/).optional(),
   timezone: z.string().optional(),
   isActive: z.boolean().optional(),
-  isPaused: z.boolean().optional()
+  isPaused: z.boolean().optional(),
+  generalPrompt: z.string().optional(),
+  negativePrompt: z.string().optional()
 })
 
 export async function GET(

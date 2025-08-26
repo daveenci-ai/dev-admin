@@ -9,6 +9,8 @@ const bodySchema = z.object({
   instructions: z.string().min(1).optional(),
   categoryId: z.number().int().positive().optional(),
   scheduleId: z.number().int().positive().optional(),
+  generalPrompt: z.string().optional(),
+  negativePrompt: z.string().optional(),
 })
 
 function calcReadTime(content: string): number {
@@ -19,10 +21,10 @@ function calcReadTime(content: string): number {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}))
-    const { topicHint, instructions, categoryId, scheduleId } = bodySchema.parse(body)
+    const { topicHint, instructions, categoryId, scheduleId, generalPrompt, negativePrompt } = bodySchema.parse(body)
 
-    logger.info('[Blog] Generating blog draft via ChatGPT', { topicHint: !!topicHint, instructions: !!instructions })
-    const draft = await generateBlogPostDraft({ topicHint, instructions })
+    logger.info('[Blog] Generating blog draft via ChatGPT', { topicHint: !!topicHint, instructions: !!instructions, generalPrompt: !!generalPrompt, negativePrompt: !!negativePrompt })
+    const draft = await generateBlogPostDraft({ topicHint, instructions, generalPrompt, negativePrompt })
 
     const title: string = draft?.title || 'Untitled'
     const content: string = draft?.content || ''

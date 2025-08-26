@@ -50,7 +50,9 @@ export async function POST(
       body: JSON.stringify({
         topicHint: topic,
         categoryId: schedule.categoryId,
-        scheduleId: schedule.id
+        scheduleId: schedule.id,
+        generalPrompt: schedule.generalPrompt,
+        negativePrompt: schedule.negativePrompt
       })
     })
     
