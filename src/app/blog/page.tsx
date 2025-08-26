@@ -341,7 +341,9 @@ export default function BlogPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <PageHeader title="Blog Management" />
+      <div className="px-6 py-4 bg-white border-b border-gray-200">
+        <h1 className="text-2xl font-bold text-gray-900">Blog Management</h1>
+      </div>
       
       <div className="flex-1 p-6">
         {/* Status Messages */}
@@ -356,196 +358,226 @@ export default function BlogPage() {
           </div>
         )}
 
-        {/* Blog Configurations Grid */}
-        <div className="grid grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3 gap-6">
-          {blogConfigs.map((config, index) => (
-            <div key={index} className="bg-white border border-gray-200 rounded-lg shadow-sm relative">
-              {/* Header */}
-              <div className="p-4 border-b border-gray-200">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    Blog {index + 1}
-                  </h3>
-                  <span className={`px-2 py-1 text-xs rounded-full ${
-                    config.isPaused 
-                      ? 'bg-yellow-100 text-yellow-800' 
-                      : config.isActive 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-gray-100 text-gray-800'
-                  }`}>
-                    {config.isPaused ? 'Paused' : config.isActive ? 'Active' : 'Inactive'}
-                  </span>
-                </div>
-                {config.category && (
-                  <p className="text-sm text-gray-500 mt-1">
-                    {config.category.name}
-                  </p>
-                )}
-              </div>
-
-              {/* Content */}
-              <div className="p-4 space-y-4">
-                {/* Schedule Name */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Schedule Name
-                  </label>
-                  <input
-                    type="text"
-                    value={config.name}
-                    onChange={(e) => updateConfig(index, { name: e.target.value })}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
-                    placeholder={`Blog ${index + 1}`}
-                  />
-                </div>
-
-                {/* Category */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Category
-                  </label>
-                  <select
-                    value={config.categoryId}
-                    onChange={(e) => updateConfig(index, { categoryId: parseInt(e.target.value) })}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
-                  >
-                    <option value={0}>Select Category</option>
-                    {categories.map(cat => (
-                      <option key={cat.id} value={cat.id}>
-                        {cat.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Topics */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Topics
-                  </label>
-                  <div className="space-y-2">
-                    {config.topics.map((topic, topicIndex) => (
-                      <input
-                        key={topicIndex}
-                        type="text"
-                        value={topic}
-                        onChange={(e) => updateTopic(index, topicIndex, e.target.value)}
-                        placeholder={`Topic ${topicIndex + 1}`}
-                        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
-                      />
-                    ))}
+        {/* Blog Configurations - One per row */}
+        <div className="space-y-6">
+          {blogConfigs.map((config, index) => {
+            // Check if blog should be active (has category and at least one topic)
+            const hasValidCategory = config.categoryId > 0
+            const hasValidTopic = config.topics.some(topic => topic.trim().length > 0)
+            const shouldBeActive = hasValidCategory && hasValidTopic
+            
+            // Auto-pause if requirements not met
+            const effectiveIsPaused = !shouldBeActive || config.isPaused
+            
+            return (
+              <div key={index} className="bg-white border border-gray-200 rounded-lg shadow-sm">
+                {/* Header */}
+                <div className="p-6 border-b border-gray-200">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xl font-semibold text-gray-900">
+                      Blog {index + 1}
+                    </h3>
+                    <span className={`px-3 py-1 text-sm rounded-full ${
+                      effectiveIsPaused 
+                        ? 'bg-yellow-100 text-yellow-800' 
+                        : config.isActive 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-gray-100 text-gray-800'
+                    }`}>
+                      {effectiveIsPaused ? 'Paused' : config.isActive ? 'Active' : 'Inactive'}
+                    </span>
                   </div>
+                  {config.category && (
+                    <p className="text-sm text-gray-500 mt-2">
+                      {config.category.name}
+                    </p>
+                  )}
+                  {!shouldBeActive && (
+                    <p className="text-sm text-red-600 mt-2">
+                      ⚠️ Requires category selection and at least one topic to be active
+                    </p>
+                  )}
                 </div>
 
-                {/* Frequency */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Frequency
-                  </label>
-                  <select
-                    value={config.frequency}
-                    onChange={(e) => updateConfig(index, { 
-                      frequency: e.target.value as 'daily' | 'weekly' | 'monthly',
-                      weeklyDays: e.target.value === 'weekly' ? [1] : [],
-                      monthlyDay: e.target.value === 'monthly' ? 1 : undefined
-                    })}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
-                  >
-                    <option value="daily">Daily</option>
-                    <option value="weekly">Weekly</option>
-                    <option value="monthly">Monthly</option>
-                  </select>
-                </div>
+                {/* Content - Horizontal Layout */}
+                <div className="p-6">
+                  <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                    {/* Column 1: Basic Settings */}
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Schedule Name
+                        </label>
+                        <input
+                          type="text"
+                          value={config.name}
+                          onChange={(e) => updateConfig(index, { name: e.target.value })}
+                          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                          placeholder={`Blog ${index + 1}`}
+                        />
+                      </div>
 
-                {/* Frequency-specific controls */}
-                {config.frequency === 'weekly' && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Days of Week
-                    </label>
-                    <div className="flex flex-wrap gap-1">
-                      {DAYS_OF_WEEK.map(day => (
-                        <button
-                          key={day.value}
-                          type="button"
-                          onClick={() => toggleWeeklyDay(index, day.value)}
-                          className={`px-2 py-1 text-xs rounded border ${
-                            (config.weeklyDays || []).includes(day.value)
-                              ? 'bg-blue-500 text-white border-blue-500'
-                              : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Category *
+                        </label>
+                        <select
+                          value={config.categoryId}
+                          onChange={(e) => updateConfig(index, { categoryId: parseInt(e.target.value) })}
+                          className={`w-full border rounded-md px-3 py-2 text-sm ${
+                            !hasValidCategory ? 'border-red-300 bg-red-50' : 'border-gray-300'
                           }`}
                         >
-                          {day.label}
-                        </button>
-                      ))}
+                          <option value={0}>Select Category</option>
+                          {categories.map(cat => (
+                            <option key={cat.id} value={cat.id}>
+                              {cat.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Frequency
+                        </label>
+                        <select
+                          value={config.frequency}
+                          onChange={(e) => updateConfig(index, { 
+                            frequency: e.target.value as 'daily' | 'weekly' | 'monthly',
+                            weeklyDays: e.target.value === 'weekly' ? [1] : [],
+                            monthlyDay: e.target.value === 'monthly' ? 1 : undefined
+                          })}
+                          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                        >
+                          <option value="daily">Daily</option>
+                          <option value="weekly">Weekly</option>
+                          <option value="monthly">Monthly</option>
+                        </select>
+                      </div>
                     </div>
-                  </div>
-                )}
 
-                {config.frequency === 'monthly' && renderMonthlyCalendar(config, index)}
+                    {/* Column 2: Topics */}
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Topics * (URLs accepted)
+                        </label>
+                        <div className="space-y-2">
+                          {config.topics.map((topic, topicIndex) => (
+                            <input
+                              key={topicIndex}
+                              type="text"
+                              value={topic}
+                              onChange={(e) => updateTopic(index, topicIndex, e.target.value)}
+                              placeholder={`Topic or URL ${topicIndex + 1}`}
+                              className={`w-full border rounded-md px-3 py-2 text-sm ${
+                                topicIndex === 0 && !topic.trim() && !hasValidTopic 
+                                  ? 'border-red-300 bg-red-50' 
+                                  : 'border-gray-300'
+                              }`}
+                            />
+                          ))}
+                        </div>
+                        {!hasValidTopic && (
+                          <p className="text-xs text-red-600 mt-1">At least one topic required</p>
+                        )}
+                      </div>
+                    </div>
 
-                {/* Time & Timezone */}
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Time
-                    </label>
-                    <input
-                      type="time"
-                      value={config.timeLocal}
-                      onChange={(e) => updateConfig(index, { timeLocal: e.target.value })}
-                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Timezone
-                    </label>
-                    <select
-                      value={config.timezone}
-                      onChange={(e) => updateConfig(index, { timezone: e.target.value })}
-                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
-                    >
-                      {TIMEZONES.map(tz => (
-                        <option key={tz} value={tz}>{tz.split('/')[1]}</option>
-                      ))}
-                    </select>
+                    {/* Column 3: Scheduling */}
+                    <div className="space-y-4">
+                      {/* Frequency-specific controls */}
+                      {config.frequency === 'weekly' && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Days of Week
+                          </label>
+                          <div className="flex flex-wrap gap-1">
+                            {DAYS_OF_WEEK.map(day => (
+                              <button
+                                key={day.value}
+                                type="button"
+                                onClick={() => toggleWeeklyDay(index, day.value)}
+                                className={`px-2 py-1 text-xs rounded border ${
+                                  (config.weeklyDays || []).includes(day.value)
+                                    ? 'bg-blue-500 text-white border-blue-500'
+                                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                                }`}
+                              >
+                                {day.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {config.frequency === 'monthly' && renderMonthlyCalendar(config, index)}
+
+                      <div className="grid grid-cols-1 gap-2">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Time
+                          </label>
+                          <input
+                            type="time"
+                            value={config.timeLocal}
+                            onChange={(e) => updateConfig(index, { timeLocal: e.target.value })}
+                            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Timezone
+                          </label>
+                          <select
+                            value={config.timezone}
+                            onChange={(e) => updateConfig(index, { timezone: e.target.value })}
+                            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                          >
+                            {TIMEZONES.map(tz => (
+                              <option key={tz} value={tz}>{tz.split('/')[1]}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Column 4: Actions */}
+                    <div className="flex flex-col justify-end space-y-2">
+                      <button
+                        onClick={() => saveSchedule(index)}
+                        disabled={loading || !shouldBeActive}
+                        className="w-full px-4 py-2 text-sm bg-gray-700 text-white rounded hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {loading ? 'Saving...' : 'Save'}
+                      </button>
+
+                      <button
+                        onClick={() => publishNow(index)}
+                        disabled={loading || !config.id || !shouldBeActive}
+                        className="w-full px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {loading ? 'Publishing...' : 'Publish Now'}
+                      </button>
+
+                      <button
+                        onClick={() => pauseSchedule(index)}
+                        disabled={loading || !config.id}
+                        className={`w-full px-4 py-2 text-sm rounded disabled:opacity-50 disabled:cursor-not-allowed ${
+                          config.isPaused
+                            ? 'bg-green-600 text-white hover:bg-green-700'
+                            : 'bg-yellow-600 text-white hover:bg-yellow-700'
+                        }`}
+                      >
+                        {config.isPaused ? 'Resume' : 'Pause'}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
-
-              {/* Actions - Bottom Right Corner */}
-              <div className="absolute bottom-4 right-4 flex flex-col space-y-1">
-                <button
-                  onClick={() => saveSchedule(index)}
-                  disabled={loading || !config.categoryId}
-                  className="px-3 py-1 text-xs bg-gray-700 text-white rounded hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loading ? 'Saving...' : 'Save'}
-                </button>
-
-                <button
-                  onClick={() => publishNow(index)}
-                  disabled={loading || !config.id || !config.topics[0]?.trim()}
-                  className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loading ? 'Publishing...' : 'Publish'}
-                </button>
-
-                <button
-                  onClick={() => pauseSchedule(index)}
-                  disabled={loading || !config.id}
-                  className={`px-3 py-1 text-xs rounded disabled:opacity-50 disabled:cursor-not-allowed ${
-                    config.isPaused
-                      ? 'bg-green-600 text-white hover:bg-green-700'
-                      : 'bg-yellow-600 text-white hover:bg-yellow-700'
-                  }`}
-                >
-                  {config.isPaused ? 'Resume' : 'Pause'}
-                </button>
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </div>
     </div>
