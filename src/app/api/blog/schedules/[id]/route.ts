@@ -94,7 +94,7 @@ export async function PUT(
       nextRunAt = calculateNextRun({
         frequency: data.frequency || existingSchedule.frequency,
         weeklyDays: data.weeklyDays || (existingSchedule.weeklyDays as number[]) || [],
-        monthlyDay: data.monthlyDay || existingSchedule.monthlyDay,
+        monthlyDay: data.monthlyDay || existingSchedule.monthlyDay || undefined,
         timeLocal: data.timeLocal || existingSchedule.timeLocal,
         timezone: data.timezone || existingSchedule.timezone
       })
