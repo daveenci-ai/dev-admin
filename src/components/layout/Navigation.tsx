@@ -16,11 +16,11 @@ import {
 
 const navigation = [
   { name: 'CRM', href: '/crm', icon: Users },
-  { name: 'Zoho', href: '/email', icon: Mail },
-  { name: 'Blog', href: '/blog', icon: FileText },
-  { name: 'Avatar', href: '/avatar', icon: ImageIcon },
+  { name: 'Gmail', href: '/email', icon: Mail },
+  { name: 'Smart Blog', href: '/blog', icon: FileText },
+  { name: 'Social Posts', href: '/avatar', icon: ImageIcon },
   { name: 'Chatbot', href: '/chatbot', icon: MessageSquare },
-  { name: 'Assistant', href: '/assistant', icon: Brain },
+  { name: 'AI Brain', href: '/assistant', icon: Brain },
 ]
 
 export function Navigation() {
