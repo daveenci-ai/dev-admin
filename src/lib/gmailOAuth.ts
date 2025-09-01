@@ -71,7 +71,7 @@ export async function exchangeCodeForTokens(code: string, email?: string): Promi
   
   try {
     // Exchange authorization code for tokens
-    const { tokens } = await oauth2Client.getTokens(code);
+    const { tokens } = await oauth2Client.getToken(code);
     
     if (!tokens.access_token || !tokens.refresh_token) {
       throw new Error('Failed to obtain access token or refresh token');
