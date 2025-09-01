@@ -249,7 +249,12 @@ export async function getAuthorizedGmailAccounts(): Promise<Array<{
       },
     });
 
-    return accounts;
+    return accounts.map(account => ({
+      email: account.email,
+      displayName: account.displayName || undefined,
+      isActive: account.isActive,
+      lastSyncAt: account.lastSyncAt || undefined,
+    }));
   } catch (error) {
     logger.error('[Gmail OAuth] Error fetching authorized accounts:', error);
     return [];
