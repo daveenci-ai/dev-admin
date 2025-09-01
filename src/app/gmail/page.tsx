@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
+import { useSearchParams } from 'next/navigation';
 import DOMPurify from 'dompurify';
 import { 
   Mail, 
@@ -12,7 +13,11 @@ import {
   X,
   Reply,
   Shield,
-  Send
+  Send,
+  Plus,
+  CheckCircle,
+  ExternalLink,
+  Settings
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -52,6 +57,8 @@ interface GmailAccount {
   totalEmails: number;
   unreadEmails: number;
   isDefault: boolean;
+  lastSyncAt?: Date;
+  error?: string;
 }
 
 // Helper function to safely render HTML content
@@ -86,6 +93,7 @@ const isHTMLContent = (content: string): boolean => {
 
 export default function GmailPage() {
   const { data: session } = useSession();
+  const searchParams = useSearchParams();
   const [emails, setEmails] = useState<EmailMessage[]>([]);
   const [stats, setStats] = useState<EmailStats | null>(null);
   const [accounts, setAccounts] = useState<GmailAccount[]>([]);
@@ -93,9 +101,11 @@ export default function GmailPage() {
   const [isComposeOpen, setIsComposeOpen] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [selectedMailbox, setSelectedMailbox] = useState<string>('');
   const [isReplyOpen, setIsReplyOpen] = useState(false);
   const [replyingToEmail, setReplyingToEmail] = useState<EmailMessage | null>(null);
+  const [isConnecting, setIsConnecting] = useState(false);
 
   // Compose form state
   const [composeForm, setComposeForm] = useState({
@@ -147,27 +157,105 @@ export default function GmailPage() {
     }
   };
 
-  // Fetch emails
+  // Handle OAuth callback parameters
+  useEffect(() => {
+    const error = searchParams.get('error');
+    const success = searchParams.get('success');
+    const email = searchParams.get('email');
+
+    if (error) {
+      switch (error) {
+        case 'oauth_denied':
+          setError('Gmail access was denied. Please try again and grant the necessary permissions.');
+          break;
+        case 'no_code':
+          setError('No authorization code received from Gmail. Please try again.');
+          break;
+        case 'callback_failed':
+          setError('Failed to complete Gmail authorization. Please try again.');
+          break;
+        default:
+          setError('Gmail authorization failed. Please try again.');
+      }
+    } else if (success === 'connected' && email) {
+      setSuccessMessage(`Successfully connected Gmail account: ${email}`);
+      // Refresh accounts and emails
+      setTimeout(() => {
+        fetchAccounts();
+        fetchEmails();
+      }, 1000);
+    }
+
+    // Clear URL parameters after handling
+    if (error || success) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('error');
+      url.searchParams.delete('success');
+      url.searchParams.delete('email');
+      window.history.replaceState({}, '', url.toString());
+    }
+  }, [searchParams]);
+
+  // Connect Gmail account
+  const connectGmailAccount = async (email?: string) => {
+    try {
+      setIsConnecting(true);
+      setError(null);
+      
+      const params = email ? `?email=${encodeURIComponent(email)}` : '';
+      window.location.href = `/api/gmail/oauth/authorize${params}`;
+    } catch (err) {
+      setError('Failed to start Gmail connection');
+      console.error('Error starting OAuth flow:', err);
+      setIsConnecting(false);
+    }
+  };
+
+  // Disconnect Gmail account
+  const disconnectGmailAccount = async (email: string) => {
+    try {
+      const response = await fetch(`/api/gmail/oauth/accounts?email=${encodeURIComponent(email)}`, {
+        method: 'DELETE',
+      });
+      const result = await response.json();
+
+      if (result.success) {
+        setSuccessMessage(`Successfully disconnected Gmail account: ${email}`);
+        fetchAccounts();
+        // Clear emails if this was the selected account
+        if (selectedMailbox === email) {
+          setSelectedMailbox('');
+          setEmails([]);
+        }
+      } else {
+        setError(result.error || 'Failed to disconnect Gmail account');
+      }
+    } catch (err) {
+      setError('Failed to disconnect Gmail account');
+      console.error('Error disconnecting account:', err);
+    }
+  };
+
+  // Fetch emails using Gmail OAuth2 API
   const fetchEmails = async () => {
     try {
       setIsLoading(true);
       setError(null);
       
-      const response = await fetch('/api/email/inbox?limit=20');
+      const emailParam = selectedMailbox ? `?email=${encodeURIComponent(selectedMailbox)}&limit=20` : '?limit=20';
+      const response = await fetch(`/api/gmail/emails${emailParam}`);
       const result = await response.json();
       
       if (result.success) {
-        // Filter emails to only show Anton & Astrid
-        const filteredEmails = (result.data || []).filter((email: EmailMessage) => 
-          email.mailboxEmail === 'anton.osipov@daveenci.ai' || 
-          email.mailboxEmail === 'astrid@daveenci.ai'
-        );
-        setEmails(filteredEmails);
+        setEmails(result.data || []);
+        if (result.message) {
+          setError(result.message); // Show informational message
+        }
       } else {
-        setError(result.error || 'Failed to fetch emails');
+        setError(result.error || 'Failed to fetch Gmail emails');
       }
     } catch (err) {
-      setError('Failed to connect to email service');
+      setError('Failed to connect to Gmail service');
       console.error('Error fetching emails:', err);
     } finally {
       setIsLoading(false);
@@ -192,23 +280,17 @@ export default function GmailPage() {
     }
   };
 
-  // Fetch Gmail accounts (Anton & Astrid only)
+  // Fetch Gmail OAuth2 accounts
   const fetchAccounts = async () => {
     try {
-      console.log('[Gmail] Fetching accounts...');
-      const response = await fetch('/api/email/accounts');
+      console.log('[Gmail] Fetching Gmail OAuth2 accounts...');
+      const response = await fetch('/api/gmail/accounts');
       const result = await response.json();
       console.log('[Gmail] Accounts API response:', result);
       
       if (result.success) {
-        // Filter to only show Anton & Astrid accounts
-        const allAccounts = result.data || [];
-        const gmailAccounts = allAccounts.filter((account: GmailAccount) => 
-          account.emailAddress === 'anton.osipov@daveenci.ai' || 
-          account.emailAddress === 'astrid@daveenci.ai'
-        );
-        
-        console.log('[Gmail] Setting filtered accounts:', gmailAccounts);
+        const gmailAccounts = result.data || [];
+        console.log('[Gmail] Setting Gmail accounts:', gmailAccounts);
         setAccounts(gmailAccounts);
         
         // Set default selected mailbox based on logged-in user
@@ -222,14 +304,9 @@ export default function GmailPage() {
               setSelectedMailbox(userAccount.emailAddress);
               console.log('[Gmail] Set default mailbox to logged-in user:', userEmail);
             } else {
-              // Fallback to Anton if user's email not found
-              const antonAccount = gmailAccounts.find((account: GmailAccount) => 
-                account.emailAddress === 'anton.osipov@daveenci.ai'
-              );
-              if (antonAccount) {
-                setSelectedMailbox(antonAccount.emailAddress);
-                console.log('[Gmail] User email not found, defaulting to Anton');
-              }
+              // Fallback to first account
+              setSelectedMailbox(gmailAccounts[0].emailAddress);
+              console.log('[Gmail] User email not found, defaulting to first account');
             }
           } else {
             // Fallback to first account if no user session
@@ -237,13 +314,17 @@ export default function GmailPage() {
             console.log('[Gmail] No user session, defaulting to first account:', gmailAccounts[0].emailAddress);
           }
         }
+
+        if (result.message) {
+          setError(result.message); // Show informational message if no accounts
+        }
       } else {
         console.error('[Gmail] Error fetching accounts:', result.error);
-        setError(`Failed to fetch accounts: ${result.error}`);
+        setError(`Failed to fetch Gmail accounts: ${result.error}`);
       }
     } catch (err) {
       console.error('[Gmail] Error fetching accounts:', err);
-      setError('Failed to connect to accounts service');
+      setError('Failed to connect to Gmail service');
     }
   };
 
@@ -365,16 +446,17 @@ export default function GmailPage() {
     setIsReplyOpen(true);
   };
 
-  const handleArchive = async (email: EmailMessage) => {
+  // Email action handlers using Gmail OAuth2 API
+  const handleEmailAction = async (email: EmailMessage, action: string, actionName: string) => {
     const isUnread = email.isRead === false || email.flagInfo?.includes('unread');
     
     try {
-      console.log('[Gmail Archive] Archiving email:', email.messageId, email.subject);
+      console.log(`[Gmail ${actionName}] ${actionName} email:`, email.messageId, email.subject);
       
       // OPTIMISTIC UPDATE: Remove from UI and update counts immediately
       setEmails(prevEmails => {
         const filteredEmails = prevEmails.filter(e => e.messageId !== email.messageId);
-        console.log('[Gmail Archive] Removed from UI (optimistic)');
+        console.log(`[Gmail ${actionName}] Removed from UI (optimistic)`);
         return filteredEmails;
       });
 
@@ -392,28 +474,29 @@ export default function GmailPage() {
         });
       });
 
-      // Call API to actually archive the email
-      const response = await fetch('/api/email/archive', {
+      // Call Gmail OAuth2 API
+      const response = await fetch('/api/gmail/actions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          messageId: email.messageId,
-          mailboxEmail: email.mailboxEmail
+          action: action,
+          email: email.mailboxEmail,
+          messageId: email.messageId
         }),
       });
 
       const result = await response.json();
 
       if (result.success) {
-        console.log('[Gmail Archive] Email archived successfully (background)');
+        console.log(`[Gmail ${actionName}] Email ${action} successful`);
       } else {
-        console.error('[Gmail Archive] API error:', result.error);
+        console.error(`[Gmail ${actionName}] API error:`, result.error);
         
         // ROLLBACK: Restore email to UI and account counts if API call failed
         setEmails(prevEmails => {
-          console.log('[Gmail Archive] Rolling back - restoring email to UI');
+          console.log(`[Gmail ${actionName}] Rolling back - restoring email to UI`);
           return [...prevEmails, email].sort((a, b) => {
             const timeA = typeof a.receivedTime === 'number' ? a.receivedTime : 0;
             const timeB = typeof b.receivedTime === 'number' ? b.receivedTime : 0;
@@ -435,106 +518,24 @@ export default function GmailPage() {
           });
         });
         
-        setError(`Failed to archive email: ${result.error}`);
+        setError(`Failed to ${action} email: ${result.error}`);
       }
     } catch (error) {
-      console.error('[Gmail Archive] Error archiving email:', error);
-      setError('Failed to archive email - network error');
+      console.error(`[Gmail ${actionName}] Error:`, error);
+      setError(`Failed to ${action} email - network error`);
     }
+  };
+
+  const handleArchive = async (email: EmailMessage) => {
+    await handleEmailAction(email, 'archive', 'Archive');
   };
 
   const handleSpam = async (email: EmailMessage) => {
-    const isUnread = email.isRead === false || email.flagInfo?.includes('unread');
-    
-    try {
-      console.log('[Gmail Spam] Marking email as spam:', email.messageId, email.subject);
-      
-      // OPTIMISTIC UPDATE
-      setEmails(prevEmails => prevEmails.filter(e => e.messageId !== email.messageId));
-
-      // Update account counts optimistically
-      setAccounts(prevAccounts => {
-        return prevAccounts.map(account => {
-          if (account.emailAddress === email.mailboxEmail) {
-            return {
-              ...account,
-              totalEmails: Math.max(0, account.totalEmails - 1),
-              unreadEmails: isUnread ? Math.max(0, account.unreadEmails - 1) : account.unreadEmails
-            };
-          }
-          return account;
-        });
-      });
-
-      const response = await fetch('/api/email/spam', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          messageId: email.messageId,
-          mailboxEmail: email.mailboxEmail
-        }),
-      });
-
-      const result = await response.json();
-
-      if (!result.success) {
-        console.error('[Gmail Spam] API error:', result.error);
-        setError(`Failed to mark email as spam: ${result.error}`);
-        // Rollback logic would go here
-      }
-    } catch (error) {
-      console.error('[Gmail Spam] Error marking email as spam:', error);
-      setError('Failed to mark email as spam - network error');
-    }
+    await handleEmailAction(email, 'markAsSpam', 'Spam');
   };
 
   const handleTrash = async (email: EmailMessage) => {
-    const isUnread = email.isRead === false || email.flagInfo?.includes('unread');
-    
-    try {
-      console.log('[Gmail Trash] Deleting email:', email.messageId, email.subject);
-      
-      // OPTIMISTIC UPDATE
-      setEmails(prevEmails => prevEmails.filter(e => e.messageId !== email.messageId));
-
-      // Update account counts optimistically
-      setAccounts(prevAccounts => {
-        return prevAccounts.map(account => {
-          if (account.emailAddress === email.mailboxEmail) {
-            return {
-              ...account,
-              totalEmails: Math.max(0, account.totalEmails - 1),
-              unreadEmails: isUnread ? Math.max(0, account.unreadEmails - 1) : account.unreadEmails
-            };
-          }
-          return account;
-        });
-      });
-
-      const response = await fetch('/api/email/delete', {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          messageId: email.messageId,
-          mailboxEmail: email.mailboxEmail
-        }),
-      });
-
-      const result = await response.json();
-
-      if (!result.success) {
-        console.error('[Gmail Trash] API error:', result.error);
-        setError(`Failed to delete email: ${result.error}`);
-        // Rollback logic would go here
-      }
-    } catch (error) {
-      console.error('[Gmail Trash] Error trashing email:', error);
-      setError('Failed to delete email - network error');
-    }
+    await handleEmailAction(email, 'delete', 'Trash');
   };
 
   // Send reply
@@ -585,6 +586,14 @@ export default function GmailPage() {
     fetchStats();
   }, []);
 
+  // Auto-dismiss messages after 5 seconds
+  useEffect(() => {
+    if (successMessage) {
+      const timer = setTimeout(() => setSuccessMessage(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [successMessage]);
+
   // Filter emails based on selected mailbox
   const filteredEmails = selectedMailbox ? emails.filter(email => {
     const emailMailbox = email.mailboxEmail?.trim()?.toLowerCase();
@@ -597,27 +606,57 @@ export default function GmailPage() {
       <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
         <PageHeader title="Gmail">
           <div className="hidden md:flex items-center gap-2">
+            {accounts.length > 0 && (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setSelectedMailbox('');
+                    setError(null);
+                    setSuccessMessage(null);
+                  }}
+                >
+                  Reset Filters
+                </Button>
+                <Button
+                  onClick={() => {
+                    fetchAccounts();
+                    fetchEmails();
+                    fetchStats();
+                  }}
+                >
+                  Refresh
+                </Button>
+              </>
+            )}
             <Button
-              variant="outline"
-              onClick={() => {
-                setSelectedMailbox('');
-                setError(null);
-              }}
+              onClick={() => connectGmailAccount()}
+              disabled={isConnecting}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
             >
-              Reset Filters
-            </Button>
-            <Button
-              onClick={() => {
-                fetchAccounts();
-                fetchEmails();
-                fetchStats();
-              }}
-            >
-              Refresh
+              {isConnecting ? (
+                <>
+                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                  Connecting...
+                </>
+              ) : (
+                <>
+                  <Plus className="w-4 h-4 mr-2" />
+                  {accounts.length > 0 ? 'Add Account' : 'Connect Gmail'}
+                </>
+              )}
             </Button>
           </div>
         </PageHeader>
         
+        {/* Success Alert */}
+        {successMessage && (
+          <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded mb-4 flex items-center">
+            <CheckCircle className="w-5 h-5 mr-2" />
+            {successMessage}
+          </div>
+        )}
+
         {/* Error Alert */}
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
@@ -625,67 +664,128 @@ export default function GmailPage() {
           </div>
         )}
 
-        {/* Mailbox Filter Cards - Only Anton & Astrid */}
+        {/* Connected Gmail Accounts */}
         {accounts.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             {accounts.map((account) => {
               const isActive = selectedMailbox === account.emailAddress;
               const mailboxName = account.mailboxName || account.accountDisplayName || account.accountName;
-              const colors = {
-                'anton.osipov@daveenci.ai': { 
+              
+              // Dynamic colors based on email domain
+              const getColorScheme = (email: string) => {
+                if (email.includes('gmail')) {
+                  return { 
+                    color: 'text-red-600', 
+                    hoverBg: 'hover:bg-red-50', 
+                    borderColor: 'border-b-red-500', 
+                    activeBg: 'bg-red-50', 
+                    activeBorder: 'border-red-500' 
+                  };
+                }
+                return { 
                   color: 'text-blue-600', 
                   hoverBg: 'hover:bg-blue-50', 
                   borderColor: 'border-b-blue-500', 
                   activeBg: 'bg-blue-50', 
                   activeBorder: 'border-blue-500' 
-                },
-                'astrid@daveenci.ai': { 
-                  color: 'text-purple-600', 
-                  hoverBg: 'hover:bg-purple-50', 
-                  borderColor: 'border-b-purple-500', 
-                  activeBg: 'bg-purple-50', 
-                  activeBorder: 'border-purple-500' 
-                }
+                };
               };
               
-              const colorScheme = colors[account.emailAddress as keyof typeof colors] || colors['anton.osipov@daveenci.ai'];
-              
+              const colorScheme = getColorScheme(account.emailAddress);
               const unreadCount = account.unreadEmails || 0;
               const totalCount = account.totalEmails || 0;
               
               return (
                 <div 
                   key={account.accountId}
+                  className={`bg-white p-6 rounded-lg shadow-sm transition-all duration-200 relative ${
+                    isActive 
+                      ? `${colorScheme.activeBg} border-2 ${colorScheme.activeBorder} shadow-md scale-105` 
+                      : `border border-gray-200 ${colorScheme.borderColor} border-b-2 ${colorScheme.hoverBg} hover:shadow-md cursor-pointer`
+                  }`}
                   onClick={() => {
                     console.log(`[Gmail Card Click] Clicked on card for: "${account.emailAddress}"`);
                     handleMailboxClick(account.emailAddress);
                   }}
-                  className={`bg-white p-6 rounded-lg shadow-sm transition-all duration-200 cursor-pointer ${
-                    isActive 
-                      ? `${colorScheme.activeBg} border-2 ${colorScheme.activeBorder} shadow-md scale-105` 
-                      : `border border-gray-200 ${colorScheme.borderColor} border-b-2 ${colorScheme.hoverBg} hover:shadow-md`
-                  }`}
                 >
-                  {/* Name in bold - top row */}
-                  <div className={`text-xl font-bold ${colorScheme.color} mb-2 truncate`}>
-                    {mailboxName || 'Mailbox'}
+                  {/* Disconnect button */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      disconnectGmailAccount(account.emailAddress);
+                    }}
+                    className="absolute top-2 right-2 text-gray-400 hover:text-red-600 transition-colors p-1"
+                    title="Disconnect account"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+
+                  {/* Gmail icon and name */}
+                  <div className="flex items-center mb-2">
+                    <Mail className={`w-5 h-5 mr-2 ${colorScheme.color}`} />
+                    <div className={`text-xl font-bold ${colorScheme.color} truncate`}>
+                      {mailboxName || 'Gmail Account'}
+                    </div>
                   </div>
                   
-                  {/* Email address in gray - 2nd row */}
+                  {/* Email address */}
                   <div className="text-sm text-gray-500 mb-3 truncate">
                     {account.emailAddress}
                   </div>
                   
-                  {/* Unread / Total emails - 3rd row */}
+                  {/* Stats */}
                   <div className="text-base text-gray-700 font-medium">
                     <span className="text-2xl font-bold">{unreadCount}</span> Unread
                     <span className="text-gray-400 mx-2">•</span>
                     <span className="text-lg">{totalCount}</span> Total
                   </div>
+
+                  {/* Last sync info */}
+                  {account.lastSyncAt && (
+                    <div className="text-xs text-gray-400 mt-2">
+                      Last synced: {new Date(account.lastSyncAt).toLocaleString()}
+                    </div>
+                  )}
+
+                  {/* Error indicator */}
+                  {account.error && (
+                    <div className="text-xs text-red-500 mt-2 flex items-center">
+                      <AlertTriangle className="w-3 h-3 mr-1" />
+                      {account.error}
+                    </div>
+                  )}
                 </div>
               );
             })}
           </div>
+        )}
+
+        {/* No accounts connected state */}
+        {accounts.length === 0 && !isLoading && (
+          <Card className="p-12 text-center">
+            <Mail className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-gray-600 mb-2">No Gmail Accounts Connected</h2>
+            <p className="text-gray-500 mb-6">
+              Connect your Gmail account to start managing your emails with OAuth2 security.
+            </p>
+            <Button
+              onClick={() => connectGmailAccount()}
+              disabled={isConnecting}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              {isConnecting ? (
+                <>
+                  <RefreshCw className="w-5 h-5 mr-2 animate-spin" />
+                  Connecting...
+                </>
+              ) : (
+                <>
+                  <ExternalLink className="w-5 h-5 mr-2" />
+                  Connect Gmail Account
+                </>
+              )}
+            </Button>
+          </Card>
         )}
 
         {/* Email List */}

@@ -437,3 +437,20 @@ model BlogSchedule {
 
   @@map("blog_schedules")
 }
+
+// Gmail OAuth2 Integration
+model GmailAccount {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  displayName  String?  @map("display_name")
+  refreshToken String   @map("refresh_token") // Long-lived token for getting access tokens
+  accessToken  String?  @map("access_token") // Short-lived token (we'll refresh this)
+  tokenExpiry  DateTime? @map("token_expiry") @db.Timestamptz
+  scopes       String[] @default([]) // OAuth2 scopes granted
+  isActive     Boolean  @default(true) @map("is_active")
+  lastSyncAt   DateTime? @map("last_sync_at") @db.Timestamptz
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  
+  @@map("gmail_accounts")
+}

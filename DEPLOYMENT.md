@@ -15,6 +15,21 @@ OPENAI_API_KEY="your-openai-api-key"
 REPLICATE_API_TOKEN="your-replicate-token"
 ```
 
+### **Gmail OAuth2 Integration (for Gmail tab functionality):**
+```bash
+GOOGLE_CLIENT_ID="your-google-oauth-client-id"
+GOOGLE_CLIENT_SECRET="your-google-oauth-client-secret"
+GOOGLE_REDIRECT_URI="https://your-domain.com/api/gmail/oauth/callback"
+```
+
+### **Email Features (Zoho IMAP - optional, for Email tab):**
+```bash
+ZOHO_PASSWORD_ANTON="your-zoho-app-password-for-anton"
+ZOHO_PASSWORD_ASTRID="your-zoho-app-password-for-astrid"
+ZOHO_PASSWORD_OPS="your-zoho-app-password-for-ops"
+ZOHO_PASSWORD_HELLO="your-zoho-app-password-for-hello"
+```
+
 ### **Optional:**
 ```bash
 GITHUB_REPO="daveenci-ai/daveenci-ai-avatar"
