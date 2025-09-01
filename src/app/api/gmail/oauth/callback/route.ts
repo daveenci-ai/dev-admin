@@ -5,6 +5,8 @@ import logger from '@/lib/logger';
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
+  const baseUrl = process.env.NEXTAUTH_URL || 'https://admin.daveenci.ai';
+  
   try {
     const { searchParams } = new URL(request.url);
     const code = searchParams.get('code');
@@ -12,8 +14,6 @@ export async function GET(request: NextRequest) {
     const error = searchParams.get('error');
     
     // Check for OAuth2 errors
-    const baseUrl = process.env.NEXTAUTH_URL || 'https://admin.daveenci.ai';
-    
     if (error) {
       logger.error('[Gmail Callback] OAuth2 error:', error);
       
