@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     logger.info(`[Gmail Auth] Starting OAuth2 flow${email ? ` for ${email}` : ''}`);
     
     // Generate the OAuth2 authorization URL
-    const authUrl = getAuthorizationUrl(email);
+    const authUrl = getAuthorizationUrl(email || undefined);
     
     logger.info('[Gmail Auth] Generated authorization URL, redirecting to Google');
     

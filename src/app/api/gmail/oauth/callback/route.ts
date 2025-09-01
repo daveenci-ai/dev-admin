@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
     }
     
     // Exchange authorization code for tokens
-    const tokenData = await exchangeCodeForTokens(code, email);
+    const tokenData = await exchangeCodeForTokens(code, email || undefined);
     
     // Store tokens in database
     await storeGmailTokens(tokenData);
