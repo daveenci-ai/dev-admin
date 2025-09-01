@@ -12,11 +12,13 @@ export async function GET(request: NextRequest) {
     const error = searchParams.get('error');
     
     // Check for OAuth2 errors
+    const baseUrl = process.env.NEXTAUTH_URL || 'https://admin.daveenci.ai';
+    
     if (error) {
       logger.error('[Gmail Callback] OAuth2 error:', error);
       
       return NextResponse.redirect(
-        new URL('/gmail?error=oauth_denied', request.url)
+        new URL('/gmail?error=oauth_denied', baseUrl)
       );
     }
     
@@ -24,7 +26,7 @@ export async function GET(request: NextRequest) {
       logger.error('[Gmail Callback] No authorization code received');
       
       return NextResponse.redirect(
-        new URL('/gmail?error=no_code', request.url)
+        new URL('/gmail?error=no_code', baseUrl)
       );
     }
     
@@ -49,14 +51,14 @@ export async function GET(request: NextRequest) {
     
     // Redirect back to Gmail page with success message
     return NextResponse.redirect(
-      new URL(`/gmail?success=connected&email=${encodeURIComponent(tokenData.email)}`, request.url)
+      new URL(`/gmail?success=connected&email=${encodeURIComponent(tokenData.email)}`, baseUrl)
     );
     
   } catch (error) {
     logger.error('[Gmail Callback] Error processing OAuth2 callback:', error);
     
     return NextResponse.redirect(
-      new URL('/gmail?error=callback_failed', request.url)
+      new URL('/gmail?error=callback_failed', baseUrl)
     );
   }
 }
