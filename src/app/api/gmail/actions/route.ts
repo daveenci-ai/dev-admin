@@ -10,6 +10,8 @@ import {
 } from '@/lib/gmailService';
 import logger from '@/lib/logger';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   try {
     // Verify user is authenticated
