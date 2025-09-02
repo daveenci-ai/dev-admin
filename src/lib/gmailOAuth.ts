@@ -45,6 +45,8 @@ export function getAuthorizationUrl(email?: string): string {
   
   const scopes = [
     'https://mail.google.com/', // Full Gmail access (read, send, delete, modify)
+    'https://www.googleapis.com/auth/gmail.compose', // Manage drafts and send emails
+    'https://www.googleapis.com/auth/gmail.labels', // See and edit your email labels
     'https://www.googleapis.com/auth/userinfo.email', // Get user's email address
     'https://www.googleapis.com/auth/userinfo.profile', // Get user's basic profile info
   ];
@@ -110,6 +112,8 @@ export async function storeGmailTokens(tokenData: {
   try {
     const scopes = [
       'https://mail.google.com/', // Full Gmail access (read, send, delete, modify)
+      'https://www.googleapis.com/auth/gmail.compose', // Manage drafts and send emails
+      'https://www.googleapis.com/auth/gmail.labels', // See and edit your email labels
       'https://www.googleapis.com/auth/userinfo.email', // Get user's email address
       'https://www.googleapis.com/auth/userinfo.profile', // Get user's basic profile info
     ];

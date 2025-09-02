@@ -379,3 +379,198 @@ export async function getGmailMessageContent(email: string, messageId: string): 
     throw new Error(`Failed to get message content: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
+
+// Get all labels for a Gmail account
+export async function getGmailLabels(email: string) {
+  try {
+    const gmail = await createGmailApiClient(email);
+    
+    const response = await gmail.users.labels.list({
+      userId: 'me',
+    });
+
+    logger.info(`[Gmail Service] Retrieved ${response.data.labels?.length || 0} labels for ${email}`);
+    return response.data.labels || [];
+  } catch (error) {
+    logger.error(`[Gmail Service] Failed to get labels for ${email}:`, error);
+    throw new Error(`Failed to get labels: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
+
+// Create a new label
+export async function createGmailLabel(email: string, labelName: string) {
+  try {
+    const gmail = await createGmailApiClient(email);
+    
+    const response = await gmail.users.labels.create({
+      userId: 'me',
+      requestBody: {
+        name: labelName,
+        labelListVisibility: 'labelShow',
+        messageListVisibility: 'show',
+      },
+    });
+
+    logger.info(`[Gmail Service] Label "${labelName}" created for ${email}`);
+    return response.data;
+  } catch (error) {
+    logger.error(`[Gmail Service] Failed to create label "${labelName}" for ${email}:`, error);
+    throw new Error(`Failed to create label: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
+
+// Add labels to a message
+export async function addGmailLabels(email: string, messageId: string, labelIds: string[]) {
+  try {
+    const gmail = await createGmailApiClient(email);
+    
+    await gmail.users.messages.modify({
+      userId: 'me',
+      id: messageId,
+      requestBody: {
+        addLabelIds: labelIds,
+      },
+    });
+
+    logger.info(`[Gmail Service] Labels added to message ${messageId} for ${email}`);
+  } catch (error) {
+    logger.error(`[Gmail Service] Failed to add labels to message ${messageId} for ${email}:`, error);
+    throw new Error(`Failed to add labels: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
+
+// Remove labels from a message
+export async function removeGmailLabels(email: string, messageId: string, labelIds: string[]) {
+  try {
+    const gmail = await createGmailApiClient(email);
+    
+    await gmail.users.messages.modify({
+      userId: 'me',
+      id: messageId,
+      requestBody: {
+        removeLabelIds: labelIds,
+      },
+    });
+
+    logger.info(`[Gmail Service] Labels removed from message ${messageId} for ${email}`);
+  } catch (error) {
+    logger.error(`[Gmail Service] Failed to remove labels from message ${messageId} for ${email}:`, error);
+    throw new Error(`Failed to remove labels: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
+
+// Create and save draft
+export async function createGmailDraft(email: string, to: string, subject: string, body: string, cc?: string, bcc?: string) {
+  try {
+    const gmail = await createGmailApiClient(email);
+    
+    // Create email content
+    const emailLines = [];
+    emailLines.push(`To: ${to}`);
+    if (cc) emailLines.push(`Cc: ${cc}`);
+    if (bcc) emailLines.push(`Bcc: ${bcc}`);
+    emailLines.push(`Subject: ${subject}`);
+    emailLines.push('');
+    emailLines.push(body);
+    
+    const email_content = emailLines.join('\r\n');
+    const encodedEmail = Buffer.from(email_content).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
+    const response = await gmail.users.drafts.create({
+      userId: 'me',
+      requestBody: {
+        message: {
+          raw: encodedEmail,
+        },
+      },
+    });
+
+    logger.info(`[Gmail Service] Draft created for ${email}`);
+    return response.data;
+  } catch (error) {
+    logger.error(`[Gmail Service] Failed to create draft for ${email}:`, error);
+    throw new Error(`Failed to create draft: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
+
+// Get all drafts
+export async function getGmailDrafts(email: string, limit: number = 10) {
+  try {
+    const gmail = await createGmailApiClient(email);
+    
+    const response = await gmail.users.drafts.list({
+      userId: 'me',
+      maxResults: limit,
+    });
+
+    const drafts = response.data.drafts || [];
+    
+    // Get full draft details
+    const detailedDrafts = await Promise.all(
+      drafts.map(async (draft) => {
+        const draftResponse = await gmail.users.drafts.get({
+          userId: 'me',
+          id: draft.id!,
+          format: 'full',
+        });
+        
+        const message = draftResponse.data.message;
+        const headers = message?.payload?.headers || [];
+        
+        return {
+          id: draft.id,
+          messageId: message?.id,
+          subject: headers.find(h => h.name === 'Subject')?.value || 'No Subject',
+          to: headers.find(h => h.name === 'To')?.value || '',
+          cc: headers.find(h => h.name === 'Cc')?.value || '',
+          bcc: headers.find(h => h.name === 'Bcc')?.value || '',
+          snippet: message?.snippet || '',
+          createdTime: message?.internalDate ? parseInt(message.internalDate) : Date.now(),
+        };
+      })
+    );
+
+    logger.info(`[Gmail Service] Retrieved ${detailedDrafts.length} drafts for ${email}`);
+    return detailedDrafts;
+  } catch (error) {
+    logger.error(`[Gmail Service] Failed to get drafts for ${email}:`, error);
+    throw new Error(`Failed to get drafts: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
+
+// Send a draft
+export async function sendGmailDraft(email: string, draftId: string) {
+  try {
+    const gmail = await createGmailApiClient(email);
+    
+    const response = await gmail.users.drafts.send({
+      userId: 'me',
+      requestBody: {
+        id: draftId,
+      },
+    });
+
+    logger.info(`[Gmail Service] Draft ${draftId} sent for ${email}`);
+    return response.data;
+  } catch (error) {
+    logger.error(`[Gmail Service] Failed to send draft ${draftId} for ${email}:`, error);
+    throw new Error(`Failed to send draft: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
+
+// Delete a draft
+export async function deleteGmailDraft(email: string, draftId: string) {
+  try {
+    const gmail = await createGmailApiClient(email);
+    
+    await gmail.users.drafts.delete({
+      userId: 'me',
+      id: draftId,
+    });
+
+    logger.info(`[Gmail Service] Draft ${draftId} deleted for ${email}`);
+  } catch (error) {
+    logger.error(`[Gmail Service] Failed to delete draft ${draftId} for ${email}:`, error);
+    throw new Error(`Failed to delete draft: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
