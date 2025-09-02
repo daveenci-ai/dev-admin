@@ -44,10 +44,9 @@ export function getAuthorizationUrl(email?: string): string {
   const oauth2Client = createOAuth2Client();
   
   const scopes = [
-    'https://www.googleapis.com/auth/gmail.readonly',
-    'https://www.googleapis.com/auth/gmail.modify',
-    'https://www.googleapis.com/auth/gmail.send',
-    'https://mail.google.com/', // IMAP/SMTP access
+    'https://mail.google.com/', // Full Gmail access (read, send, delete, modify)
+    'https://www.googleapis.com/auth/userinfo.email', // Get user's email address
+    'https://www.googleapis.com/auth/userinfo.profile', // Get user's basic profile info
   ];
 
   const authUrl = oauth2Client.generateAuthUrl({
@@ -110,10 +109,9 @@ export async function storeGmailTokens(tokenData: {
 }): Promise<void> {
   try {
     const scopes = [
-      'https://www.googleapis.com/auth/gmail.readonly',
-      'https://www.googleapis.com/auth/gmail.modify',
-      'https://www.googleapis.com/auth/gmail.send',
-      'https://mail.google.com/',
+      'https://mail.google.com/', // Full Gmail access (read, send, delete, modify)
+      'https://www.googleapis.com/auth/userinfo.email', // Get user's email address
+      'https://www.googleapis.com/auth/userinfo.profile', // Get user's basic profile info
     ];
 
     await prisma.gmailAccount.upsert({
